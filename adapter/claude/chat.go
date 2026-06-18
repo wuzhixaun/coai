@@ -150,6 +150,30 @@ func (c *ChatInstance) GetChatBody(props *adaptercommon.ChatProps, stream bool) 
 
 func (c *ChatInstance) ProcessLine(data string) (*globals.Chunk, error) {
 	if form := processChatResponse(data); form != nil {
+		if form.Type == "content_block_start" && form.ContentBlock.Type == "text" {
+			return &globals.Chunk{
+				Content: c.CloseThinking(),
+			}, nil
+		}
+
+		if form.Type == "content_block_stop" {
+			return &globals.Chunk{
+				Content: c.CloseThinking(),
+			}, nil
+		}
+
+		if form.Delta.Thinking != "" {
+			return &globals.Chunk{
+				Content: c.WriteThinking(form.Delta.Thinking),
+			}, nil
+		}
+
+		if form.Delta.Text != "" {
+			return &globals.Chunk{
+				Content: c.CloseThinking() + form.Delta.Text,
+			}, nil
+		}
+
 		return &globals.Chunk{
 			Content: form.Delta.Text,
 		}, nil
@@ -160,6 +184,28 @@ func (c *ChatInstance) ProcessLine(data string) (*globals.Chunk, error) {
 	}
 
 	return &globals.Chunk{Content: ""}, nil
+}
+
+func (c *ChatInstance) WriteThinking(content string) string {
+	if content == "" {
+		return ""
+	}
+
+	if c.isFirstThinking {
+		c.isFirstThinking = false
+		return fmt.Sprintf("<think>\n%s", content)
+	}
+
+	return content
+}
+
+func (c *ChatInstance) CloseThinking() string {
+	if c.isFirstThinking || c.isThinkingOver {
+		return ""
+	}
+
+	c.isThinkingOver = true
+	return "\n</think>\n\n"
 }
 
 func processChatErrorResponse(data string) *ChatErrorResponse {
@@ -178,6 +224,9 @@ func processChatResponse(data string) *ChatStreamResponse {
 
 // CreateStreamChatRequest is the stream request for anthropic claude
 func (c *ChatInstance) CreateStreamChatRequest(props *adaptercommon.ChatProps, hook globals.Hook) error {
+	c.isFirstThinking = true
+	c.isThinkingOver = false
+	ticks := 0
 	err := utils.EventScanner(&utils.EventScannerProps{
 		Method:  "POST",
 		Uri:     c.GetChatEndpoint(),
@@ -187,6 +236,10 @@ func (c *ChatInstance) CreateStreamChatRequest(props *adaptercommon.ChatProps, h
 			partial, err := c.ProcessLine(data)
 			if err != nil {
 				return err
+			}
+
+			if partial != nil && !partial.IsEmpty() {
+				ticks++
 			}
 
 			return hook(partial)
@@ -204,6 +257,10 @@ func (c *ChatInstance) CreateStreamChatRequest(props *adaptercommon.ChatProps, h
 			return errors.New(fmt.Sprintf("%s (type: %s)", form.Error.Message, form.Error.Type))
 		}
 		return fmt.Errorf("%s\n%s", err.Error, errors.New(utils.ToMarkdownCode("json", err.Body)))
+	}
+
+	if ticks == 0 {
+		return errors.New("no response")
 	}
 
 	return nil

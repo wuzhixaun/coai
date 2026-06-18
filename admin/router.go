@@ -12,6 +12,14 @@ func Register(app *gin.RouterGroup) {
 
 	app.GET("/admin/config/test/search", web.TestSearch)
 
+	app.GET("/admin/license", GetLicenseAPI)
+
+	app.GET("/admin/record/list", RecordListAPI)
+	app.POST("/admin/record/stats", RecordStatsAPI)
+
+	app.GET("/admin/payment/view", PaymentListAPI)
+	app.GET("/admin/payment/recheck", PaymentRecheckAPI)
+
 	app.GET("/admin/analytics/info", InfoAPI)
 	app.GET("/admin/analytics/model", ModelAnalysisAPI)
 	app.GET("/admin/analytics/request", RequestAnalysisAPI)

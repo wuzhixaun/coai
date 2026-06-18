@@ -80,7 +80,12 @@ func (m *ChargeManager) GetCharge(model string) *Charge {
 }
 
 func (m *ChargeManager) SaveConfig() error {
-	return utils.SaveConfig("charge", m.Sequence)
+	if err := utils.SaveConfig("charge", m.Sequence); err != nil {
+		return err
+	}
+
+	m.Load()
+	return nil
 }
 
 func (m *ChargeManager) GetMaxId() int {

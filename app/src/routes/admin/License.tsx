@@ -6,19 +6,35 @@ import {
   CardTitle,
 } from "@/components/ui/card.tsx";
 import { useTranslation } from "react-i18next";
-import { CreditCard, Flame, InfoIcon, Puzzle, QrCode, Sparkles } from "lucide-react";
-import { useEffect } from "react";
+import {
+  CreditCard,
+  Flame,
+  InfoIcon,
+  Loader2,
+  Puzzle,
+  QrCode,
+  Sparkles,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { toast } from "sonner";
 import { useCurrency } from "@/store/info";
+import axios from "axios";
 
-type ModuleItemProps = {
+type ModuleItemData = {
   id: string;
   price: number;
   bought: boolean;
 };
-function ModuleItem({ id, price, bought }: ModuleItemProps) {
+
+type LicenseData = {
+  domain: string;
+  digest: string;
+  modules: ModuleItemData[];
+};
+
+function ModuleItem({ id, price, bought }: ModuleItemData) {
   const { t } = useTranslation();
   const { symbol } = useCurrency();
 
@@ -76,11 +92,51 @@ function ModuleItem({ id, price, bought }: ModuleItemProps) {
 
 function License() {
   const { t } = useTranslation();
-  const data = { domain: "", digest: "" };
+  const [data, setData] = useState<LicenseData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    toast.info(t("admin.license.pro-required"));
+    axios
+      .get("/admin/license")
+      .then((res) => {
+        setData(res.data);
+        if (res.data.modules.some((m: ModuleItemData) => m.bought)) {
+          toast.success(t("admin.license.pro-authorized"));
+        } else {
+          toast.info(t("admin.license.pro-required"));
+        }
+      })
+      .catch(() => {
+        setError(true);
+        toast.error(t("admin.license.load-error"));
+      })
+      .finally(() => setLoading(false));
   }, [t]);
+
+  if (loading) {
+    return (
+      <div className={`system flex items-center justify-center h-64`}>
+        <Loader2 className={`w-8 h-8 animate-spin text-primary`} />
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className={`system`}>
+        <Card className={`admin-card system-card`}>
+          <CardHeader>
+            <CardTitle>{t("admin.license.title")}</CardTitle>
+            <CardDescription>{t("admin.license.load-error")}</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
+  const hasPro = data.modules.some((m) => m.bought);
+  const authorized = data.digest && data.digest !== "unauthorized" && hasPro;
 
   return (
     <div className={`system`}>
@@ -96,7 +152,7 @@ function License() {
               className={`inline-flex flex-row items-center py-1 px-2 ml-auto text-xs border select-none cursor-pointer rounded-lg text-unread font-bold hover:border-muted-foreground transition duration-300`}
             >
               <QrCode className={`w-3.5 h-3.5 mr-1`} />
-              0x{(data.digest || "unauthorized").toUpperCase()}
+              0x{authorized ? data.digest.toUpperCase() : "UNAUTHORIZED"}
             </p>
           </CardTitle>
           <CardDescription>{t("admin.license.description")}</CardDescription>
@@ -124,7 +180,10 @@ function License() {
                   <td className={`font-bold`}>{t("admin.license.digest")}</td>
                   <td>
                     <Badge variant={`outline`} className={`m-1 ml-4`}>
-                      0x{(data.digest || "unauthorized").toUpperCase()}
+                      0x
+                      {authorized
+                        ? data.digest.toUpperCase()
+                        : "UNAUTHORIZED"}
                     </Badge>
                   </td>
                 </tr>
@@ -132,7 +191,7 @@ function License() {
             </table>
           </div>
 
-          {(!data.digest || data.digest === "unauthorized") && (
+          {!authorized && (
             <>
               <h2
                 className={`mb-4 select-none font-bold text-lg inline-flex flex-row items-center`}
@@ -157,14 +216,16 @@ function License() {
           <div
             className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-16`}
           >
-            {/* afdian */}
-            <ModuleItem id={`afdian`} price={1000} bought={false} />
-            {/*paypal */}
-            <ModuleItem id={`paypal`} price={2000} bought={false} />
-            {/* stripe */}
-            <ModuleItem id={`stripe`} price={2000} bought={false} />
-            {/* digital */}
-            <ModuleItem id={`digital`} price={50000} bought={false} />
+            {data.modules
+              .filter((m) => m.id !== "coai-pro")
+              .map((mod) => (
+                <ModuleItem
+                  key={mod.id}
+                  id={mod.id}
+                  price={mod.price}
+                  bought={mod.bought}
+                />
+              ))}
           </div>
         </CardContent>
       </Card>

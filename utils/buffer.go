@@ -35,6 +35,8 @@ type Buffer struct {
 	TokenName       string                `json:"-"`
 	Charge          Charge                `json:"-"`
 	VisionRecall    bool                  `json:"-"`
+	ChannelID       int                   `json:"-"`
+	ChannelName     string                `json:"-"`
 }
 
 func initInputToken(model string, history []globals.Message) int {
@@ -324,6 +326,19 @@ func (b *Buffer) GetTokenName() string {
 
 func (b *Buffer) SetTokenName(tokenName string) {
 	b.TokenName = tokenName
+}
+
+func (b *Buffer) SetChannel(id int, name string) {
+	b.ChannelID = id
+	b.ChannelName = name
+}
+
+func (b *Buffer) GetChannelID() int {
+	return b.ChannelID
+}
+
+func (b *Buffer) GetChannelName() string {
+	return b.ChannelName
 }
 
 func (b *Buffer) GetRecordPrompts() string {

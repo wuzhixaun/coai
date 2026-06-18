@@ -1124,7 +1124,9 @@
       "info": "承認情報",
       "description": "CoAI Proバージョンライセンス管理",
       "purchase": "購入承認",
-      "pro-required": "この機能はCoAI Pro専用です。この機能を使用するには、ライセンス管理ページでCoAI Proライセンスを購入してください"
+      "pro-required": "この機能はCoAI Pro専用です。この機能を使用するには、ライセンス管理ページでCoAI Proライセンスを購入してください",
+      "pro-authorized": "CoAI Pro認証検証に成功しました",
+      "load-error": "認証情報の読み込みに失敗しました。しばらくしてからもう一度お試しください"
     },
     "group": "グループ",
     "custom-group": "カスタムグループ化",
@@ -1236,6 +1238,8 @@
     "wechat": "WeChat Pay",
     "wxpay": "WeChat Pay",
     "alipay": "Alipay",
+    "bank": "Bank Card / UnionPay",
+    "epay": "Aggregated Pay",
     "paypal": "PayPal",
     "stripe": "Stripe",
     "afdian": "発電を愛する",
@@ -1254,7 +1258,8 @@
     "notify-stripe": {
       "success": "購入完了！",
       "canceled": "支払いキャンセル！",
-      "processing": "支払いを処理しています..."
+      "processing": "支払いを処理しています...",
+      "missing-order": "Stripe注文番号がありません。お支払いを再開してください"
     },
     "xunhupay-wechat": "タイガーペッパーWeChat",
     "xunhupay-alipay": "タイガーペッパーアリペイ",
@@ -1263,6 +1268,18 @@
       "description": "WeChatまたはAlipayを使用して、以下のQRコードをスキャンしてお支払いください",
       "success": "購入完了！",
       "remaining-time": "残りのお支払い時間"
+    },
+    "notify-paypal": {
+      "success": "PayPalの支払いが完了しました。クレジットを受け取りました",
+      "canceled": "PayPalの支払いがキャンセルされました",
+      "processing": "PayPalの支払い処理中です。後でクレジットを更新してください",
+      "missing-order": "PayPal注文番号がありません。お支払いを再開してください"
+    },
+    "notify-epay": {
+      "success": "支払いが完了しました。クレジットを受け取りました",
+      "canceled": "支払いがキャンセルされました",
+      "processing": "支払い処理中です。後でクレジットを更新してください",
+      "missing-order": "支払い注文番号がありません。お支払いを再開してください"
     }
   },
   "back-home": "ホームページに戻る",

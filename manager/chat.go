@@ -296,6 +296,11 @@ func ChatHandler(conn *Connection, user *auth.User, instance *conversation.Conve
 	if !hit {
 		CollectQuota(conn.GetCtx(), user, buffer, plan, err)
 	}
+	chargedQuota := buffer.GetRecordQuota()
+	if plan || hit {
+		chargedQuota = 0
+	}
+	SaveUsageRecord(db, user, buffer, chargedQuota, "")
 
 	if buffer.IsEmpty() {
 		conn.Send(globals.ChatSegmentResponse{

@@ -1206,7 +1206,9 @@
         }
       },
       "purchase": "購買授權",
-      "pro-required": "此功能為CoAI Pro 專屬，請在授權管理頁面購買CoAI Pro 授權以使用該功能"
+      "pro-required": "此功能為CoAI Pro 專屬，請在授權管理頁面購買CoAI Pro 授權以使用該功能",
+      "pro-authorized": "CoAI Pro 授權驗證成功",
+      "load-error": "授權資訊載入失敗，請稍後重試"
     }
   },
   "mask": {
@@ -1447,6 +1449,8 @@
     "wxpay": "微信支付",
     "wechatpay": "微信支付",
     "alipay": "支付寶",
+    "bank": "銀行卡/銀聯",
+    "epay": "聚合支付",
     "paypal": "PayPal",
     "stripe": "Stripe",
     "afdian": "愛發電",
@@ -1472,7 +1476,20 @@
     "notify-stripe": {
       "success": "支付成功",
       "canceled": "付款取消",
-      "processing": "支付處理中..."
+      "processing": "支付處理中...",
+      "missing-order": "缺少 Stripe 訂單編號，請重新發起支付"
+    },
+    "notify-paypal": {
+      "success": "PayPal 付款成功，點數已到賬",
+      "canceled": "已取消PayPal 支付",
+      "processing": "PayPal 付款處理中，請稍後刷新點數",
+      "missing-order": "缺少PayPal 訂單編號，請重新發起支付"
+    },
+    "notify-epay": {
+      "success": "支付成功，點數已到賬",
+      "canceled": "已取消支付",
+      "processing": "支付處理中，請稍後刷新點數",
+      "missing-order": "缺少支付訂單編號，請重新發起支付"
     }
   },
   "copied": {

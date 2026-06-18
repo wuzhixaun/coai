@@ -6,14 +6,17 @@ import (
 )
 
 type ChatInstance struct {
-	Endpoint string
-	ApiKey   string
+	Endpoint        string
+	ApiKey          string
+	isFirstThinking bool
+	isThinkingOver  bool
 }
 
 func NewChatInstance(endpoint, apiKey string) *ChatInstance {
 	return &ChatInstance{
-		Endpoint: endpoint,
-		ApiKey:   apiKey,
+		Endpoint:        endpoint,
+		ApiKey:          apiKey,
+		isFirstThinking: true,
 	}
 }
 

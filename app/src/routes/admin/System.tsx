@@ -31,6 +31,7 @@ import {
   getConfig,
   initialSystemState,
   MailState,
+  PaymentState,
   SearchState,
   setConfig,
   SiteState,
@@ -41,6 +42,7 @@ import {
 import { useEffectAsync } from "@/utils/hook.ts";
 import { withNotify } from "@/api/common.ts";
 import { doVerify } from "@/api/auth.ts";
+import { syncSiteInfo } from "@/admin/api/info.ts";
 import {
   Dialog,
   DialogContent,
@@ -422,7 +424,9 @@ function Mail({ data, dispatch, onChange }: CompProps<MailState>) {
               value: e.target.value,
             })
           }
-          placeholder={`${t("admin.system.mailFrom")} <${data.username}@${location.hostname}>`}
+          placeholder={`${t("admin.system.mailFrom")} <${data.username}@${
+            location.hostname
+          }>`}
           className={cn("transition-all duration-300")}
         />
       </ParagraphItem>
@@ -660,6 +664,263 @@ function Site({ data, dispatch, onChange }: CompProps<SiteState>) {
         </Button>
       </ParagraphFooter>
     </Paragraph>
+  );
+}
+
+function Payment({ data, dispatch, onChange }: CompProps<PaymentState>) {
+  const { t } = useTranslation();
+  const ePayMethods = ["alipay", "wxpay", "bank"];
+
+  return (
+    <>
+      <Paragraph title="PayPal 支付" configParagraph={true} isCollapsed={true}>
+        <ParagraphDescription border>
+          配置 PayPal Orders API 后，钱包页会显示 PayPal 充值入口。Sandbox
+          用于测试，Live 用于正式收款。
+        </ParagraphDescription>
+        <ParagraphItem>
+          <Label>启用 PayPal</Label>
+          <Switch
+            checked={data.paypal.enabled}
+            onCheckedChange={(value) => {
+              dispatch({ type: "update:payment.paypal.enabled", value });
+            }}
+          />
+        </ParagraphItem>
+        <ParagraphItem>
+          <Label>环境</Label>
+          <Select
+            value={data.paypal.mode}
+            onValueChange={(value: "sandbox" | "live") => {
+              dispatch({ type: "update:payment.paypal.mode", value });
+            }}
+          >
+            <SelectTrigger className={`select`}>
+              <SelectValue placeholder="sandbox" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="sandbox">Sandbox</SelectItem>
+              <SelectItem value="live">Live</SelectItem>
+            </SelectContent>
+          </Select>
+        </ParagraphItem>
+        <ParagraphItem>
+          <Label>Client ID</Label>
+          <Input
+            value={data.paypal.client_id}
+            onChange={(e) =>
+              dispatch({
+                type: "update:payment.paypal.client_id",
+                value: e.target.value,
+              })
+            }
+            placeholder="PayPal REST app client id"
+          />
+        </ParagraphItem>
+        <ParagraphItem>
+          <Label>Secret</Label>
+          <Input
+            type="password"
+            value={data.paypal.secret}
+            onChange={(e) =>
+              dispatch({
+                type: "update:payment.paypal.secret",
+                value: e.target.value,
+              })
+            }
+            placeholder="PayPal REST app secret"
+          />
+        </ParagraphItem>
+        <ParagraphItem>
+          <Label>币种</Label>
+          <Input
+            value={data.paypal.currency}
+            onChange={(e) =>
+              dispatch({
+                type: "update:payment.paypal.currency",
+                value: e.target.value.toUpperCase(),
+              })
+            }
+            placeholder="USD"
+          />
+        </ParagraphItem>
+        <ParagraphFooter>
+          <div className={`grow`} />
+          <Button size={`sm`} loading={true} onClick={async () => onChange()}>
+            保存
+          </Button>
+        </ParagraphFooter>
+      </Paragraph>
+
+      <Paragraph title="Stripe 支付" configParagraph={true} isCollapsed={true}>
+        <ParagraphDescription border>
+          配置 Stripe Hosted Checkout 后，钱包页会显示 Stripe 充值入口。Webhook
+          地址为 /api/payment/stripe/webhook。
+        </ParagraphDescription>
+        <ParagraphItem>
+          <Label>启用 Stripe</Label>
+          <Switch
+            checked={data.stripe.enabled}
+            onCheckedChange={(value) => {
+              dispatch({ type: "update:payment.stripe.enabled", value });
+            }}
+          />
+        </ParagraphItem>
+        <ParagraphItem>
+          <Label>Publishable Key</Label>
+          <Input
+            value={data.stripe.public_key}
+            onChange={(e) =>
+              dispatch({
+                type: "update:payment.stripe.public_key",
+                value: e.target.value,
+              })
+            }
+            placeholder="pk_live_..."
+          />
+        </ParagraphItem>
+        <ParagraphItem>
+          <Label>Secret Key</Label>
+          <Input
+            type="password"
+            value={data.stripe.secret_key}
+            onChange={(e) =>
+              dispatch({
+                type: "update:payment.stripe.secret_key",
+                value: e.target.value,
+              })
+            }
+            placeholder="sk_live_..."
+          />
+        </ParagraphItem>
+        <ParagraphItem>
+          <Label>Webhook Secret</Label>
+          <Input
+            type="password"
+            value={data.stripe.webhook_secret}
+            onChange={(e) =>
+              dispatch({
+                type: "update:payment.stripe.webhook_secret",
+                value: e.target.value,
+              })
+            }
+            placeholder="whsec_..."
+          />
+        </ParagraphItem>
+        <ParagraphItem>
+          <Label>币种</Label>
+          <Input
+            value={data.stripe.currency}
+            onChange={(e) =>
+              dispatch({
+                type: "update:payment.stripe.currency",
+                value: e.target.value.toLowerCase(),
+              })
+            }
+            placeholder="usd"
+          />
+        </ParagraphItem>
+        <ParagraphFooter>
+          <div className={`grow`} />
+          <Button size={`sm`} loading={true} onClick={async () => onChange()}>
+            保存
+          </Button>
+        </ParagraphFooter>
+      </Paragraph>
+
+      <Paragraph
+        title={t("admin.system.epayTitle")}
+        configParagraph={true}
+        isCollapsed={true}
+      >
+        <ParagraphDescription border>
+          {t("admin.system.epayTip")}
+        </ParagraphDescription>
+        <ParagraphItem>
+          <Label>{t("admin.system.epayEnabled")}</Label>
+          <Switch
+            checked={data.epay.enabled}
+            onCheckedChange={(value) => {
+              dispatch({ type: "update:payment.epay.enabled", value });
+            }}
+          />
+        </ParagraphItem>
+        <ParagraphItem>
+          <Label>{t("admin.system.epayDomain")}</Label>
+          <Input
+            value={data.epay.domain}
+            onChange={(e) =>
+              dispatch({
+                type: "update:payment.epay.domain",
+                value: e.target.value,
+              })
+            }
+            placeholder={t("admin.system.epayDomainPlaceholder")}
+          />
+        </ParagraphItem>
+        <ParagraphItem>
+          <Label>{t("admin.system.epayBusinessId")}</Label>
+          <Input
+            value={data.epay.business_id}
+            onChange={(e) =>
+              dispatch({
+                type: "update:payment.epay.business_id",
+                value: e.target.value,
+              })
+            }
+            placeholder={t("admin.system.epayBusinessIdPlaceholder")}
+          />
+        </ParagraphItem>
+        <ParagraphItem>
+          <Label>{t("admin.system.epayBusinessKey")}</Label>
+          <Input
+            type="password"
+            value={data.epay.business_key}
+            onChange={(e) =>
+              dispatch({
+                type: "update:payment.epay.business_key",
+                value: e.target.value,
+              })
+            }
+            placeholder={t("admin.system.epayBusinessKeyPlaceholder")}
+          />
+        </ParagraphItem>
+        <ParagraphItem>
+          <Label>{t("admin.system.epayMethods")}</Label>
+          <MultiCombobox
+            value={data.epay.methods}
+            list={ePayMethods}
+            listTranslate="payment"
+            disabled={data.epay.aggregation}
+            disabledSearch
+            onChange={(value) => {
+              dispatch({ type: "update:payment.epay.methods", value });
+            }}
+            placeholder={t("admin.system.epayMethodsPlaceholder", {
+              length: data.epay.methods.length,
+            })}
+          />
+        </ParagraphItem>
+        <ParagraphItem>
+          <Label className={`flex flex-row items-center`}>
+            {t("admin.system.epayAggregation")}
+            <Tips content={t("admin.system.epayAggregationTip")} />
+          </Label>
+          <Switch
+            checked={data.epay.aggregation}
+            onCheckedChange={(value) => {
+              dispatch({ type: "update:payment.epay.aggregation", value });
+            }}
+          />
+        </ParagraphItem>
+        <ParagraphFooter>
+          <div className={`grow`} />
+          <Button size={`sm`} loading={true} onClick={async () => onChange()}>
+            {t("admin.system.save")}
+          </Button>
+        </ParagraphFooter>
+      </Paragraph>
+    </>
   );
 }
 
@@ -1051,6 +1312,7 @@ function System() {
   const doSaving = async (doToast?: boolean) => {
     const res = await setConfig(data);
 
+    if (res.status) syncSiteInfo();
     if (doToast !== false) withNotify(t, res, true);
   };
 
@@ -1101,6 +1363,12 @@ function System() {
           <Site
             form={data}
             data={data.site}
+            dispatch={setData}
+            onChange={doSaving}
+          />
+          <Payment
+            form={data}
+            data={data.payment}
             dispatch={setData}
             onChange={doSaving}
           />

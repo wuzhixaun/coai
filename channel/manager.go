@@ -142,7 +142,12 @@ func (m *Manager) GetMaxId() int {
 }
 
 func (m *Manager) SaveConfig() error {
-	return utils.SaveConfig("channel", m.Sequence)
+	if err := utils.SaveConfig("channel", m.Sequence); err != nil {
+		return err
+	}
+
+	m.Load()
+	return nil
 }
 
 func (m *Manager) CreateChannel(channel *Channel) error {

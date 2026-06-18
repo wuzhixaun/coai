@@ -131,6 +131,12 @@ func sendTranshipmentResponse(c *gin.Context, form RelayForm, messages []globals
 	if !hit {
 		CollectQuota(c, user, buffer, plan, err)
 	}
+	chargedQuota := buffer.GetRecordQuota()
+	if plan || hit || form.Official {
+		chargedQuota = 0
+	}
+	buffer.SetTokenName(globals.ApiTokenType)
+	SaveUsageRecord(db, user, buffer, chargedQuota, "api chat completion")
 
 	tools := buffer.GetToolCalls()
 
@@ -248,6 +254,12 @@ func sendStreamTranshipmentResponse(c *gin.Context, form RelayForm, messages []g
 		if !hit {
 			CollectQuota(c, user, buffer, plan, err)
 		}
+		chargedQuota := buffer.GetRecordQuota()
+		if plan || hit || form.Official {
+			chargedQuota = 0
+		}
+		buffer.SetTokenName(globals.ApiTokenType)
+		SaveUsageRecord(db, user, buffer, chargedQuota, "api chat completion")
 
 		close(partial)
 		return

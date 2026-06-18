@@ -45,6 +45,46 @@ export function Paypal(props: IconProps) {
   );
 }
 
+export function BankCard(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <rect x="2.5" y="5" width="19" height="14" rx="2.5" />
+      <path d="M2.5 10h19" />
+      <path d="M6.5 15h4" />
+      <path d="M14.5 15h2.5" />
+    </svg>
+  );
+}
+
+export function Epay(props: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z" />
+      <path d="M7.5 12h9" />
+      <path d="m13.5 9 3 3-3 3" />
+      <path d="M8 8.5h2.5" />
+    </svg>
+  );
+}
+
 export function Afdian(props: IconProps) {
   return (
     <svg
@@ -91,6 +131,8 @@ export function QQ(props: IconProps) {
 export const PaymentIcons: Record<string, React.ComponentType<IconProps>> = {
   alipay: Alipay,
   wxpay: Wechat,
+  bank: BankCard,
+  epay: Epay,
   qqpay: QQ,
   paypal: Paypal,
   stripe: Stripe,
@@ -102,6 +144,9 @@ export const PaymentIcons: Record<string, React.ComponentType<IconProps>> = {
 export const PaymentColorClasses: Record<string, ClassValue> = {
   alipay: "text-alipay-foreground bg-alipay hover:bg-alipay/90",
   wechatpay: "text-wechatpay-foreground bg-wechatpay hover:bg-wechatpay/90",
+  wxpay: "text-wechatpay-foreground bg-wechatpay hover:bg-wechatpay/90",
+  bank: "text-primary-foreground bg-primary hover:bg-primary/90",
+  epay: "text-primary-foreground bg-primary hover:bg-primary/90",
   qqpay: "text-qqpay-foreground bg-qqpay hover:bg-qqpay/90",
   paypal: "text-paypal-foreground bg-paypal hover:bg-paypal/90",
   stripe: "text-stripe-foreground bg-stripe hover:bg-stripe/90",

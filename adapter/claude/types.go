@@ -31,11 +31,19 @@ type ChatBody struct {
 }
 
 type ChatStreamResponse struct {
-	Type  string `json:"type"`
-	Index int    `json:"index"`
+	Type         string `json:"type"`
+	Index        int    `json:"index"`
+	ContentBlock struct {
+		Type      string `json:"type"`
+		Text      string `json:"text"`
+		Thinking  string `json:"thinking"`
+		Signature string `json:"signature"`
+	} `json:"content_block"`
 	Delta struct {
-		Type string `json:"type"`
-		Text string `json:"text"`
+		Type      string `json:"type"`
+		Text      string `json:"text"`
+		Thinking  string `json:"thinking"`
+		Signature string `json:"signature"`
 	} `json:"delta"`
 }
 

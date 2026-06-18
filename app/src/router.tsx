@@ -15,7 +15,7 @@ import { lazyFactor } from "@/utils/loader.tsx";
 import { useSelector } from "react-redux";
 import { selectAdmin, selectAuthenticated, selectInit } from "@/store/auth.ts";
 import Index from "@/routes/Index.tsx";
-import License from "@/routes/admin/License.tsx";
+import ProGate from "@/components/admin/ProGate.tsx";
 
 const Model = lazyFactor(() => import("@/routes/Model.tsx"));
 const Wallet = lazyFactor(() => import("@/routes/Wallet.tsx"));
@@ -38,6 +38,9 @@ const AdminSubscription = lazyFactor(
   () => import("@/routes/admin/Subscription.tsx"),
 );
 const AdminLogger = lazyFactor(() => import("@/routes/admin/Logger.tsx"));
+const AdminRecord = lazyFactor(() => import("@/routes/admin/Record.tsx"));
+const AdminPayment = lazyFactor(() => import("@/routes/admin/Payment.tsx"));
+const AdminWarmup = lazyFactor(() => import("@/routes/admin/Warmup.tsx"));
 
 const router = createBrowserRouter([
   {
@@ -181,7 +184,9 @@ const router = createBrowserRouter([
             path: "warmup",
             element: (
               <Suspense>
-                <License />
+                <ProGate>
+                  <AdminWarmup />
+                </ProGate>
               </Suspense>
             ),
           },
@@ -226,7 +231,9 @@ const router = createBrowserRouter([
             path: "record",
             element: (
               <Suspense>
-                <License />
+                <ProGate>
+                  <AdminRecord />
+                </ProGate>
               </Suspense>
             ),
           },
@@ -235,7 +242,9 @@ const router = createBrowserRouter([
             path: "pay",
             element: (
               <Suspense>
-                <License />
+                <ProGate>
+                  <AdminPayment />
+                </ProGate>
               </Suspense>
             ),
           },

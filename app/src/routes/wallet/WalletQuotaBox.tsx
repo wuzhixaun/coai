@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { quotaSelector, refreshQuota } from "@/store/quota.ts";
 import { AppDispatch } from "@/store";
@@ -18,11 +18,152 @@ import {
 import { Input } from "@/components/ui/input.tsx";
 import { useRedeem as redeemCode } from "@/api/redeem.ts";
 import { motion } from "framer-motion";
+import { infoPaymentSelector } from "@/store/info.ts";
+import { PaymentButton } from "@/payment/icons.tsx";
+import {
+  createPaymentOrder,
+  getPaymentOrderStatus,
+} from "@/payment/request.ts";
+import QuotaWrapper from "@/routes/wallet/AmountItem.tsx";
+
+const builtinQuotaAmounts = [1, 5, 10, 20];
+const supportedWalletPayments = new Set([
+  "paypal",
+  "stripe",
+  "alipay",
+  "wxpay",
+  "bank",
+  "epay",
+]);
 
 export default function WalletQuotaBox() {
   const { t } = useTranslation();
+  const dispatch: AppDispatch = useDispatch();
   const quota = useSelector(quotaSelector);
+  const payment = useSelector(infoPaymentSelector);
   const [redeemOpen, setRedeemOpen] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const [currentAmount, setCurrentAmount] = useState(0);
+  const [buyQuota, setBuyQuota] = useState(builtinQuotaAmounts[0] * 10);
+
+  const availablePayment = useMemo(
+    () => payment.filter((method) => supportedWalletPayments.has(method)),
+    [payment],
+  );
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paymentState = params.get("payment");
+    const provider = params.get("provider");
+    const order =
+      params.get("session_id") || params.get("token") || params.get("order");
+    const returnError = params.get("error");
+    const canceledProvider = provider === "stripe" ? "stripe" : "paypal";
+    const isCanceled = paymentState === "cancel";
+
+    if (
+      paymentState !== "paypal" &&
+      paymentState !== "stripe" &&
+      paymentState !== "epay" &&
+      paymentState !== "cancel"
+    ) {
+      return;
+    }
+
+    const notifyKey =
+      paymentState === "epay"
+        ? "payment.notify-epay"
+        : paymentState === "stripe" || canceledProvider === "stripe"
+        ? "payment.notify-stripe"
+        : "payment.notify-paypal";
+
+    const cleanReturnParams = () => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("payment");
+      url.searchParams.delete("provider");
+      url.searchParams.delete("token");
+      url.searchParams.delete("session_id");
+      url.searchParams.delete("order");
+      url.searchParams.delete("PayerID");
+      url.searchParams.delete("error");
+      window.history.replaceState(
+        {},
+        "",
+        `${url.pathname}${url.search}${url.hash}`,
+      );
+    };
+
+    if (isCanceled) {
+      toast.info(t(`${notifyKey}.canceled`));
+      cleanReturnParams();
+      return;
+    }
+
+    if (returnError) {
+      toast.error(t("buy.failed"), {
+        description: returnError,
+      });
+      cleanReturnParams();
+      return;
+    }
+
+    if (!order) {
+      toast.error(t("buy.failed"), {
+        description: t(`${notifyKey}.missing-order`),
+      });
+      cleanReturnParams();
+      return;
+    }
+
+    let ignored = false;
+    void (async () => {
+      const res = await getPaymentOrderStatus(order);
+      if (ignored) return;
+
+      if (res.status && res.order_state) {
+        toast.success(t(`${notifyKey}.success`));
+        dispatch(refreshQuota());
+      } else if (res.status) {
+        toast.info(t(`${notifyKey}.processing`));
+      } else {
+        toast.error(t("buy.failed"), {
+          description: res.error || t("buy.failed-prompt"),
+        });
+      }
+
+      cleanReturnParams();
+    })();
+
+    return () => {
+      ignored = true;
+    };
+  }, [dispatch, t]);
+
+  const doPayment = async (method: string) => {
+    if (buyQuota <= 0) {
+      toast.error(t("buy.failed"), {
+        description: t("buy.buy-description"),
+      });
+      return;
+    }
+
+    setPaying(true);
+    const res = await createPaymentOrder(
+      method,
+      buyQuota,
+      t("payment.order.quota", { quota: buyQuota }),
+    );
+
+    if (res.status && res.data?.url) {
+      window.location.href = res.data.url;
+      return;
+    }
+
+    setPaying(false);
+    toast.error(t("buy.failed"), {
+      description: res.error || t("buy.failed-prompt"),
+    });
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -104,9 +245,34 @@ export default function WalletQuotaBox() {
                   variants={itemVariants}
                 >
                   <motion.div
-                    className="flex flex-col space-y-2 w-full px-1"
+                    className="flex flex-col space-y-3 w-full px-1"
                     variants={itemVariants}
                   >
+                    {availablePayment.length > 0 && (
+                      <motion.div
+                        className="flex flex-col gap-3"
+                        variants={itemVariants}
+                      >
+                        <QuotaWrapper
+                          current={currentAmount}
+                          onCurrentChange={setCurrentAmount}
+                          amount={buyQuota}
+                          onAmountChange={setBuyQuota}
+                          builtinAmount={builtinQuotaAmounts}
+                        />
+                        <div className="grid grid-cols-1 gap-2">
+                          {availablePayment.map((method) => (
+                            <PaymentButton
+                              key={method}
+                              method={method}
+                              loading
+                              disabled={paying || buyQuota <= 0}
+                              onClick={() => doPayment(method)}
+                            />
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
                     <Button
                       variant="outline"
                       className="w-full transition-all hover:bg-secondary"

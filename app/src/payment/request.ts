@@ -15,6 +15,7 @@ export type PaymentResponse = CommonResponse & {
 
 export type PaymentStatusResponse = CommonResponse & {
   order_state: boolean;
+  payment_status?: string;
   remaining_time?: number;
 };
 

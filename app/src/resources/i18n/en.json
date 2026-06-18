@@ -1124,7 +1124,9 @@
       "info": "License Info:",
       "description": "CoAI Pro Version License Management",
       "purchase": "Purchase license",
-      "pro-required": "This feature is exclusive to CoAI Pro, please purchase a CoAI Pro license on the license management page to use this feature"
+      "pro-required": "This feature is exclusive to CoAI Pro, please purchase a CoAI Pro license on the license management page to use this feature",
+      "pro-authorized": "CoAI Pro license authorized successfully",
+      "load-error": "Failed to load license information, please try again later"
     },
     "group": "Grouping",
     "custom-group": "пользовательская подгруппа",
@@ -1236,6 +1238,8 @@
     "wechat": "WeChat",
     "wxpay": "WeChat Pay",
     "alipay": "Alipay",
+    "bank": "Bank Card / UnionPay",
+    "epay": "Aggregated Pay",
     "paypal": "PayPal",
     "stripe": "Stripe",
     "afdian": "Love Power Generation",
@@ -1254,7 +1258,20 @@
     "notify-stripe": {
       "success": "Payment Successful",
       "canceled": "Payment canceled",
-      "processing": "Processing Payment..."
+      "processing": "Processing Payment...",
+      "missing-order": "Missing Stripe order id. Please start payment again."
+    },
+    "notify-paypal": {
+      "success": "PayPal payment completed. Credits have been added.",
+      "canceled": "PayPal payment canceled",
+      "processing": "PayPal payment is processing. Please refresh credits later.",
+      "missing-order": "Missing PayPal order id. Please start payment again."
+    },
+    "notify-epay": {
+      "success": "Payment completed. Credits have been added.",
+      "canceled": "Payment canceled",
+      "processing": "Payment is processing. Please refresh credits later.",
+      "missing-order": "Missing payment order id. Please start payment again."
     },
     "xunhupay-wechat": "Tiger Pepper WeChat",
     "xunhupay-alipay": "Tiger Pepper Alipay",

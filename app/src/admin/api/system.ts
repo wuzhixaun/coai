@@ -65,17 +65,25 @@ export type SecurityState = {
 
   custom_endpoint: string;
   custom_audit_token: string;
-  
+
   blacklist_ips: string[];
   whitelist_ips: string[];
 };
 
 export type PaymentState = {
+  paypal: {
+    enabled: boolean;
+    mode: "sandbox" | "live";
+    client_id: string;
+    secret: string;
+    currency: string;
+  };
   stripe: {
     enabled: boolean;
     public_key: string;
     secret_key: string;
     webhook_secret: string;
+    currency: string;
   };
   epay: {
     domain: string;
@@ -235,11 +243,19 @@ export const initialSystemState: SystemProps = {
     image_store: false,
   },
   payment: {
+    paypal: {
+      enabled: false,
+      mode: "sandbox",
+      client_id: "",
+      secret: "",
+      currency: "USD",
+    },
     stripe: {
       enabled: false,
       public_key: "",
       secret_key: "",
       webhook_secret: "",
+      currency: "usd",
     },
     epay: {
       domain: "",
@@ -300,6 +316,23 @@ export async function getConfig(): Promise<SystemResponse> {
           : 1000;
 
       data.data.site.currency = data.data.site.currency || "cny";
+      data.data.payment = data.data.payment || initialSystemState.payment;
+      data.data.payment.paypal = data.data.payment.paypal || {
+        ...initialSystemState.payment.paypal,
+      };
+      data.data.payment.paypal.mode =
+        data.data.payment.paypal.mode === "live" ? "live" : "sandbox";
+      data.data.payment.paypal.currency =
+        data.data.payment.paypal.currency || "USD";
+      data.data.payment.stripe = data.data.payment.stripe || {
+        ...initialSystemState.payment.stripe,
+      };
+      data.data.payment.stripe.currency =
+        data.data.payment.stripe.currency || "usd";
+      data.data.payment.epay = data.data.payment.epay || {
+        ...initialSystemState.payment.epay,
+      };
+      data.data.payment.epay.methods = data.data.payment.epay.methods || [];
 
       if (
         !data.data.common.group ||
@@ -339,11 +372,18 @@ export async function getConfig(): Promise<SystemResponse> {
         };
       }
 
-      const rt = (data.data.general.realtime = data.data.general.realtime || {});
+      const rt = (data.data.general.realtime =
+        data.data.general.realtime || {});
       const ws = (rt.ws = rt.ws || {});
-      ws.buffer_size = typeof ws.buffer_size === "number" && ws.buffer_size > 0 ? ws.buffer_size : 1;
+      ws.buffer_size =
+        typeof ws.buffer_size === "number" && ws.buffer_size > 0
+          ? ws.buffer_size
+          : 1;
       ws.aggregate = typeof ws.aggregate === "boolean" ? ws.aggregate : true;
-      ws.aggregate_window_ms = typeof ws.aggregate_window_ms === "number" && ws.aggregate_window_ms > 0 ? ws.aggregate_window_ms : 20;
+      ws.aggregate_window_ms =
+        typeof ws.aggregate_window_ms === "number" && ws.aggregate_window_ms > 0
+          ? ws.aggregate_window_ms
+          : 20;
 
       const at = (data.data.auto_title = data.data.auto_title || {
         enabled: false,
@@ -355,8 +395,10 @@ export async function getConfig(): Promise<SystemResponse> {
       });
       at.enabled = !!at.enabled;
       at.model = at.model || "";
-      at.max_len = typeof at.max_len === "number" && at.max_len > 0 ? at.max_len : 50;
-      at.min_msgs = typeof at.min_msgs === "number" && at.min_msgs > 0 ? at.min_msgs : 6;
+      at.max_len =
+        typeof at.max_len === "number" && at.max_len > 0 ? at.max_len : 50;
+      at.min_msgs =
+        typeof at.min_msgs === "number" && at.min_msgs > 0 ? at.min_msgs : 6;
       at.overwrite = !!at.overwrite;
       at.prompt = at.prompt || "";
     }
