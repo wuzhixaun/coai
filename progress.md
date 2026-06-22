@@ -375,3 +375,11 @@
 - Backend: added `ImageCount` to `conversation.Conversation` and `FormMessage`, a clamped `GetImageCount()` (1-6, default 1) + `SetImageCount`, applied in `ApplyParam`; the chat Jimeng image branch now uses `instance.GetImageCount()` for `N` instead of a hardcoded 1.
 - Frontend: added `image_count` to the settings store (state/reducer/selector/reset/memory), `ChatProps`, and both the chat `send` and `restart` forms; added a gated NumberInput (1-6) in `SettingsDialog` shown only when the selected model matches `jimeng-seedream-*`; added `settings.image-count`/`-tip` i18n keys in cn/en/ja/ru/tw.
 - Verification: Go build + `go test ./manager/...`, all 5 i18n JSON valid, frontend `tsc --noEmit` all pass.
+
+### Jimeng API #4: Model market entries + retire dreamina
+- **Status:** complete
+- Channel/market/charge relationship (clarified for the user): `channel` (channel.Manager → /v1/models) makes a model routable; `market` (admin.MarketInstance → /v1/market) is the curated UI catalog; `charge` (channel.ChargeInstance → /v1/charge) governs billing/permission. All keyed by model name; `group` ties to subscription tiers.
+- The Jimeng AK/SK is configured in `config/config.yaml` channel id 11 (gitignored, so absent from git/commits by design). The live smoke test read that secret at runtime and passed it via env to the guarded test — no secret is hardcoded or committed.
+- Market: added `jimeng-seedream-4.6` / `jimeng-seedream-4.0` to the `market` section with the `image-generation` tag, so they appear as curated cards in the chat model picker. The edit/upscale/outpaint/inpaint/extract models stay out of market (they need input images/masks and run via the Photo page).
+- Retire dreamina: dependency sweep confirmed it was unused (only the constant + adapter.go registration + its own dir). Removed `adapter/dreamina/`, the `DreaminaChannelType` constant, and its factory registration/import. jimeng CLI is kept solely for `video_gen` and annotated to be retired once an official video model is integrated.
+- Verification: `go build ./...`, `go test ./adapter/... ./addition/photo ./manager/...`, config.yaml YAML valid, frontend `tsc` all pass.

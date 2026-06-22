@@ -10,7 +10,6 @@ import (
 	"chat/adapter/dashscope"
 	"chat/adapter/deepseek"
 	"chat/adapter/dify"
-	"chat/adapter/dreamina"
 	"chat/adapter/hunyuan"
 	"chat/adapter/jimeng"
 	"chat/adapter/jimengapi"
@@ -51,8 +50,7 @@ var channelFactories = map[string]adaptercommon.FactoryCreator{
 
 // 图片处理适配器工厂映射
 var imageProcessorFactories = map[string]adaptercommon.ImageEditFactoryCreator{
-	globals.DreaminaChannelType:  dreamina.NewImageProcessorFromConfig,
-	globals.JimengChannelType:    jimeng.NewCLIAdapterFromConfig,
+	globals.JimengChannelType:    jimeng.NewCLIAdapterFromConfig, // CLI，仅 video_gen 仍在使用
 	globals.JimengAPIChannelType: jimengapi.NewImageProcessorFromConfig,
 }
 
