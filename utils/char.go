@@ -240,12 +240,15 @@ func ExtractImages(data string, includeBase64 bool) (content string, images []st
 }
 
 func ExtractImagesFromMarkdown(data string) (images []string) {
-	// extract images like `![image](https://xxx.com/xxx?xxx=xxx&xxx=xxx)` and return urls
-	re := regexp.MustCompile(`!\[.*\]\((https?://\S+)\)`)
+	// extract images like `![image](https://xxx.com/a.png)` or `![image](/storage/results/a.png)`.
+	// Base64 images are handled by ExtractBase64FromMarkdown.
+	re := regexp.MustCompile(`!\[.*?\]\(([^)\s]+)\)`)
 	matches := re.FindAllStringSubmatch(data, -1)
 
 	for _, match := range matches {
-		images = append(images, match[1])
+		if len(match) > 1 && !strings.HasPrefix(match[1], "data:image/") {
+			images = append(images, match[1])
+		}
 	}
 
 	return images

@@ -1501,6 +1501,8 @@
   "bar": {
     "chat": "对话",
     "chat-full": "开始对话",
+    "photo": "图片处理",
+    "photo-full": "图片处理",
     "model": "模型",
     "model-full": "探索模型",
     "preset": "预设",

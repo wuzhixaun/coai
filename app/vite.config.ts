@@ -46,7 +46,11 @@ export default defineConfig({
       "/v1": {
         target: "http://localhost:8094",
         changeOrigin: true,
-      }
+      },
+      "/storage": {
+        target: "http://localhost:8094",
+        changeOrigin: true,
+      },
     }
   }
 });

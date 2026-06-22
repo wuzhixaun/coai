@@ -92,6 +92,8 @@ func ConnectDatabase() *sql.DB {
 	CreateBroadcastTable(db)
 	CreateRecordTable(db)
 	CreatePaymentTable(db)
+	CreatePhotoImagesTable(db)
+	CreatePhotoTasksTable(db)
 
 	if err := doMigration(db); err != nil {
 		fmt.Println(fmt.Sprintf("migration error: %s", err))
@@ -367,6 +369,60 @@ func CreatePaymentTable(db *sql.DB) {
 		  INDEX idx_user (user_id),
 		  INDEX idx_order (order_id),
 		  INDEX idx_state (state)
+		);
+	`)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func CreatePhotoImagesTable(db *sql.DB) {
+	_, err := globals.ExecDb(db, `
+		CREATE TABLE IF NOT EXISTS photo_images (
+		  id VARCHAR(12) PRIMARY KEY,
+		  user_id BIGINT NOT NULL,
+		  filename VARCHAR(255) NOT NULL,
+		  size BIGINT NOT NULL,
+		  width INT DEFAULT 0,
+		  height INT DEFAULT 0,
+		  url VARCHAR(512) NOT NULL,
+		  file_path VARCHAR(512) NOT NULL,
+		  folder_name VARCHAR(255) DEFAULT '',
+		  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		  INDEX idx_user (user_id),
+		  INDEX idx_folder (folder_name)
+		);
+	`)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func CreatePhotoTasksTable(db *sql.DB) {
+	// MySQL strict mode 不允许 TEXT 列有 DEFAULT，所以 TEXT 列不设默认值
+	_, err := globals.ExecDb(db, `
+		CREATE TABLE IF NOT EXISTS photo_tasks (
+		  task_id VARCHAR(12) PRIMARY KEY,
+		  user_id BIGINT NOT NULL,
+		  feature VARCHAR(32) NOT NULL,
+		  status VARCHAR(16) DEFAULT 'pending',
+		  image_ids TEXT NOT NULL,
+		  result_urls TEXT,
+		  error_message TEXT,
+		  progress INT DEFAULT 0,
+		  params TEXT,
+		  total_images INT DEFAULT 0,
+		  processed_images INT DEFAULT 0,
+		  total_videos INT DEFAULT 0,
+		  processed_videos INT DEFAULT 0,
+		  submit_ids TEXT,
+		  source_filenames TEXT,
+		  source_paths TEXT,
+		  folder_name VARCHAR(255) DEFAULT '',
+		  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		  completed_at DATETIME,
+		  INDEX idx_user (user_id),
+		  INDEX idx_status (status)
 		);
 	`)
 	if err != nil {

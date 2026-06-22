@@ -1523,7 +1523,9 @@
     "account": "帳戶",
     "account-full": "帳戶管理",
     "admin": "後台",
-    "admin-full": "後台管理"
+    "admin-full": "後台管理",
+    "photo": "圖片處理",
+    "photo-full": "圖片處理"
   },
   "account": {
     "title": "帳號管理",

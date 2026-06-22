@@ -4,6 +4,7 @@ import "@/assets/pages/home.less";
 import { Button } from "@/components/ui/button.tsx";
 import {
   ChevronDown,
+  Image,
   MessageCircle,
   Shield,
   Wallet,
@@ -111,6 +112,7 @@ function ToolBar() {
         <ChevronDown className={`h-3.5 w-3.5`} />
       </div>
       <BarItem icon={<MessageCircle />} path={`/`} name={"chat"} />
+      <BarItem icon={<Image />} path={`/photo`} name={"photo"} />
       <BarItem icon={<LibraryBig />} path={`/model`} name={"model"} />
       {/* <BarItem icon={<Compass />} path={`/preset`} name={"preset"} /> */}
       <BarItem icon={<Wallet />} path={`/wallet`} name={"wallet"} />

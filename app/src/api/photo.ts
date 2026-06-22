@@ -1,0 +1,93 @@
+import axios from "axios";
+
+export interface PhotoImage {
+  id: string; filename: string; size: number; width: number; height: number;
+  url: string; folder_name: string; created_at: string;
+}
+
+export interface PhotoTask {
+  task_id: string; feature: string; status: "pending" | "processing" | "success" | "failed";
+  image_ids: string[]; result_urls: string[]; error_message: string; progress: number;
+  created_at: string; folder_name: string; total_images: number; processed_images: number;
+  total_videos: number; processed_videos: number; completed_at?: string;
+  source_filenames: string[]; submit_ids: string[];
+}
+
+export interface FeatureConfig {
+  channel_type: string; model?: string; system_prompt: string;
+  templates?: { label: string; prompt: string }[];
+  colors?: { value: string; label: string }[];
+  languages?: { value: string; label: string }[];
+  selling_points?: { value: string; label: string }[];
+  sizes?: { value: string; label: string }[];
+}
+
+export interface PromptsConfig {
+  features: Record<string, FeatureConfig>;
+  defaults: Record<string, string>;
+}
+
+export async function uploadImages(files: File[], folderName = ""): Promise<PhotoImage[]> {
+  const fd = new FormData();
+  files.forEach((f) => fd.append("files", f));
+  if (folderName) fd.append("folder_name", folderName);
+  const token = axios.defaults.headers.common["Authorization"];
+  const res = await fetch(`/api/photo/upload`, {
+    method: "POST",
+    body: fd,
+    headers: token ? { Authorization: String(token) } : {},
+  });
+  if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+  return res.json();
+}
+
+export async function listImages(): Promise<PhotoImage[]> {
+  const { data } = await axios.get("/photo/images");
+  return data;
+}
+
+export async function deleteImage(id: string): Promise<void> {
+  await axios.delete(`/photo/images/${id}`);
+}
+
+export async function submitProcess(
+  imageIds: string[], features: string[],
+  params: Record<string, unknown> = {}, channelOverride = "",
+): Promise<PhotoTask[]> {
+  const { data } = await axios.post("/photo/process", {
+    image_ids: imageIds, features, params, channel_override: channelOverride,
+  });
+  return data;
+}
+
+export async function listTasks(): Promise<PhotoTask[]> {
+  const { data } = await axios.get("/photo/tasks");
+  return data;
+}
+
+export async function getTask(taskId: string): Promise<PhotoTask> {
+  const { data } = await axios.get(`/photo/tasks/${taskId}`);
+  return data;
+}
+
+export async function deleteTask(taskId: string): Promise<void> {
+  await axios.delete(`/photo/tasks/${taskId}`);
+}
+
+export async function retryTask(taskId: string): Promise<PhotoTask> {
+  const { data } = await axios.post(`/photo/tasks/${taskId}/retry`);
+  return data;
+}
+
+export async function getPrompts(): Promise<PromptsConfig> {
+  const { data } = await axios.get("/photo/prompts");
+  return data;
+}
+
+export function getDownloadFileUrl(url: string): string {
+  return `/photo/download/file?url=${encodeURIComponent(url)}`;
+}
+
+export function getDownloadZipUrl(urls: string[]): string {
+  return `/photo/download/zip?urls=${encodeURIComponent(urls.join(","))}`;
+}

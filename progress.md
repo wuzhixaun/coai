@@ -153,3 +153,207 @@
   - Use the wallet page to create a small EasyPay order and complete the payment on the provider page.
   - Confirm `/payment/epay/notify` receives `TRADE_SUCCESS` or equivalent.
   - Confirm the `payment` row changes to `state=true` and quota increases.
+
+## Session: 2026-06-22
+
+### Jimeng API Documentation and Integration Map
+- **Status:** complete
+- Actions taken:
+  - Read the `using-superpowers`, `agent-reach`, and `planning-with-files` skill instructions.
+  - Attempted the planning session catchup helper; the repository-local helper path is absent.
+  - Preserved the existing planning history and appended a dedicated Jimeng research plan.
+  - Inspected the working tree and identified pre-existing uncommitted Jimeng, Dreamina, photo-processing, routing, adapter, and documentation work that must remain untouched.
+  - Fetched and began extracting the official Jimeng Image Generation 4.0 API page.
+  - The combined fetch timed out before the second supplied page was written; logged the failure and switched to a separate-fetch strategy.
+  - Completed extraction of the 4.0 submit/poll/callback lifecycle, parameters, status model, expiration behavior, and business-error retry semantics.
+  - Fetched the second supplied page separately and extracted the current official Jimeng documentation navigation tree.
+  - Read the official product intro, image pricing, quick start, Image Generation 4.6 product page, and Image Generation 4.6 API page.
+  - Identified the 4.6 `req_key`, higher input-image limit, and the critical 4.0-vs-4.6 `scale` type/range incompatibility.
+  - Read official public parameters, HMAC signing method, AI SDK usage, and direct HTTP examples.
+  - Confirmed that Volcengine's Visual SDK supports the exact sync-to-async action family and that all AK/SK signing must stay server-side.
+  - Fetched and reviewed the complete current Jimeng image-document set: material/product extraction, inpainting, super-resolution, text-to-image 3.0/3.1, image-to-image 3.0, and outpainting.
+  - Built a capability/`req_key` matrix and found an official product-extraction field-name inconsistency that must be handled deliberately.
+  - Inspected the existing user-authored Jimeng CLI adapter, custom Dreamina HTTP adapter, generic image interfaces, photo-processing module, and prior migration plan.
+  - Confirmed that neither existing provider is the official Volcengine Jimeng AK/SK Visual API and documented the migration boundary.
+  - Traced the current WebSocket chat and `/v1/images/generations` flows.
+  - Identified that both flows use normal chat factories, while Jimeng/Dreamina are registered only as photo/image processors; documented the required shared image-generation router.
+  - Checked current runtime configuration without exposing secrets and confirmed that the active Jimeng channel is CLI-based, while the disabled Dreamina channel is a custom Bearer API contract.
+  - Created `docs/jimeng-api-integration.md` with official documentation index, API lifecycle, capability matrix, current-project gap analysis, target architecture, channel config example, phased implementation plan, and verification checklist.
+  - Reviewed the generated Markdown and updated planning/progress files.
+- Files created/modified:
+  - `/Users/wuzhixuan/code/project/coai/docs/jimeng-api-integration.md`
+  - `/Users/wuzhixuan/code/project/coai/task_plan.md`
+  - `/Users/wuzhixuan/code/project/coai/findings.md`
+  - `/Users/wuzhixuan/code/project/coai/progress.md`
+
+### Jimeng API Phase 1 Implementation
+- **Status:** complete
+- Actions taken:
+  - Re-read the current Jimeng integration document and existing planning files.
+  - Rechecked the planning catchup helper; it is still absent at `.cursor/skills/planning-with-files/scripts/session-catchup.py`.
+  - Confirmed the working tree already contains user-owned Jimeng CLI, Dreamina custom API, photo module, and routing changes, so the official API implementation will be added in a separate `adapter/jimengapi` package.
+  - Scoped phase 1 to the official client plus `jimeng-seedream-4.6` text-to-image loop via `/v1/images/generations`.
+  - Added `jimeng-api` channel type and admin channel metadata.
+  - Added a reusable image-generation adapter interface, adapter retry wrapper, and channel dispatch path.
+  - Implemented `adapter/jimengapi` with Volcengine HMAC-SHA256 signing, submit, poll, result parsing, proxy support, and `storage/results` persistence.
+  - Registered `jimeng-seedream-4.6` to `jimeng_seedream46_cvtob`.
+  - Routed `/v1/images/generations` to the official Jimeng image-generation path when the model is `jimeng-seedream-4.6`.
+  - Added Jimeng conversation backend branching so selecting a Jimeng image model in chat returns Markdown image output instead of going through text chat.
+  - Added `n` support for Jimeng image generation by submitting up to 6 single-image tasks and returning all images in OpenAI-compatible `data[]`.
+  - Added a Photo page `生成数量` control and backend `image_count` handling for generative features.
+  - Removed `.DS_Store` files and added `.DS_Store` / `chat.bak*` to `.gitignore` to reduce dirty-tree noise without deleting executable backups.
+  - Updated the existing Photo prompt test expectation from `dreamina` to the current `jimeng` config.
+- Files modified:
+  - `/Users/wuzhixuan/code/project/coai/.gitignore`
+  - `/Users/wuzhixuan/code/project/coai/adapter/adapter.go`
+  - `/Users/wuzhixuan/code/project/coai/adapter/common/interface.go`
+  - `/Users/wuzhixuan/code/project/coai/adapter/common/types.go`
+  - `/Users/wuzhixuan/code/project/coai/adapter/request.go`
+  - `/Users/wuzhixuan/code/project/coai/adapter/jimengapi/*`
+  - `/Users/wuzhixuan/code/project/coai/channel/worker.go`
+  - `/Users/wuzhixuan/code/project/coai/globals/constant.go`
+  - `/Users/wuzhixuan/code/project/coai/globals/variables.go`
+  - `/Users/wuzhixuan/code/project/coai/manager/images.go`
+  - `/Users/wuzhixuan/code/project/coai/manager/chat.go`
+  - `/Users/wuzhixuan/code/project/coai/addition/photo/handler.go`
+  - `/Users/wuzhixuan/code/project/coai/addition/photo/processor.go`
+  - `/Users/wuzhixuan/code/project/coai/addition/photo/prompts_test.go`
+  - `/Users/wuzhixuan/code/project/coai/app/src/admin/channel.ts`
+  - `/Users/wuzhixuan/code/project/coai/app/src/components/photo/FeaturePanel.tsx`
+  - `/Users/wuzhixuan/code/project/coai/utils/char.go`
+  - `/Users/wuzhixuan/code/project/coai/utils/image.go`
+  - `/Users/wuzhixuan/code/project/coai/utils/char_test.go`
+  - `/Users/wuzhixuan/code/project/coai/task_plan.md`
+  - `/Users/wuzhixuan/code/project/coai/progress.md`
+
+### Verification: Jimeng API Phase 1
+- **Status:** complete
+- Results:
+  - `GOCACHE=/tmp/coai-go-cache go test ./adapter/jimengapi ./utils ./adapter ./channel ./manager` passed.
+  - `GOCACHE=/tmp/coai-go-cache go test ./addition/photo` passed after aligning the test expectation to current config.
+  - `GOCACHE=/tmp/coai-go-cache go test ./...` passed.
+  - `GOCACHE=/tmp/coai-go-cache go build -o /tmp/coai-jimeng-phase1 .` passed.
+  - `./node_modules/.bin/tsc --noEmit` in `app/` passed.
+  - Go commands still emit a third-party `github.com/chai2010/webp` C warning about `2 ^ ALPHA_OFFSET`; it is non-fatal and outside this change.
+
+### Jimeng Credential Configuration
+- **Status:** complete
+- Actions taken:
+  - Inspected the supplied screenshot and local key files without printing secret values.
+  - Confirmed `AccessKey.txt` contains the AK/SK pair required by Volcengine signed Visual API requests.
+  - Confirmed `ApiKey.txt` is an API Key style credential and is not used by the current official Jimeng Visual API adapter.
+  - Backed up the runtime config to `config/config.yaml.bak.before-jimeng-api`.
+  - Configured `config/config.yaml` with a `jimeng-api` channel for `jimeng-seedream-4.6`, endpoint `https://visual.volcengineapi.com`, and secret format `AK|SK`.
+  - Added a `non-billing` charge rule for `jimeng-seedream-4.6` to avoid the unset-price guard for normal authenticated use.
+- Verification:
+  - Re-read `config/config.yaml` with secrets redacted and confirmed the channel is enabled, model is present, endpoint is set, and secret contains the expected `AK|SK` separator.
+
+### Jimeng API Phase 2 Implementation
+- **Status:** complete
+- Actions taken:
+  - Added `jimeng-seedream-4.0` to the backend model constants, Jimeng image-generation model list, admin channel metadata, runtime `config/config.yaml`, and non-billing charge rule.
+  - Expanded the Jimeng API model registry with per-model `req_key`, capability, max input images, max output count, prompt length, scale kind/default, output format, size area bounds, and default aspect-ratio bounds.
+  - Added `BuildSubmitTaskRequest` to normalize and validate Jimeng generation requests before submit.
+  - Implemented separate scale handling: 4.6 encodes `scale` as integer `[1,100]`, while 4.0 encodes `scale` as float `[0,1]`.
+  - Added validation for empty/overlong prompts, unsupported masks, `n` upper bound, input image count and URL format, JPEG/PNG extension checks, data URL rejection, size area, paired width/height, and aspect-ratio range.
+  - Extended `/v1/images/generations` request parsing for Jimeng with `size`, `width`, `height`, `scale`, `min_ratio`, `max_ratio`, `force_single`, `images`, `image_urls`, and `masks`.
+  - Added focused Jimeng API tests for 4.0 mapping, 4.6/4.0 scale normalization, invalid scale, validation failures, and signed image URLs without file extensions.
+- Files modified:
+  - `/Users/wuzhixuan/code/project/coai/adapter/common/types.go`
+  - `/Users/wuzhixuan/code/project/coai/adapter/jimengapi/types.go`
+  - `/Users/wuzhixuan/code/project/coai/adapter/jimengapi/image.go`
+  - `/Users/wuzhixuan/code/project/coai/adapter/jimengapi/validation.go`
+  - `/Users/wuzhixuan/code/project/coai/adapter/jimengapi/client_test.go`
+  - `/Users/wuzhixuan/code/project/coai/adapter/jimengapi/validation_test.go`
+  - `/Users/wuzhixuan/code/project/coai/globals/variables.go`
+  - `/Users/wuzhixuan/code/project/coai/manager/types.go`
+  - `/Users/wuzhixuan/code/project/coai/manager/images.go`
+  - `/Users/wuzhixuan/code/project/coai/app/src/admin/channel.ts`
+  - `/Users/wuzhixuan/code/project/coai/config/config.yaml`
+  - `/Users/wuzhixuan/code/project/coai/task_plan.md`
+  - `/Users/wuzhixuan/code/project/coai/findings.md`
+  - `/Users/wuzhixuan/code/project/coai/progress.md`
+
+### Verification: Jimeng API Phase 2
+- **Status:** complete
+- Results:
+  - `GOCACHE=/tmp/coai-go-cache go test ./adapter/jimengapi` passed.
+  - `GOCACHE=/tmp/coai-go-cache go test ./adapter/jimengapi ./utils ./adapter ./channel ./manager ./addition/photo` passed.
+  - `GOCACHE=/tmp/coai-go-cache go test ./...` passed.
+  - `GOCACHE=/tmp/coai-go-cache go build -o /tmp/coai-jimeng-phase2 .` passed.
+  - `./node_modules/.bin/tsc --noEmit` in `app/` passed.
+  - Go commands still emit a third-party `github.com/chai2010/webp` C warning about `2 ^ ALPHA_OFFSET`; it is non-fatal and outside this change.
+- Not run:
+  - Live Jimeng API generation smoke test, because a real call may consume paid Volcengine quota.
+
+### Jimeng API Phase 3 Implementation
+- **Status:** complete
+- Scope (user-confirmed): wire the official `jimeng-api` adapter into Photo editing — image edit (seedream 4.6/4.0) + `jimeng-superres` + `jimeng-outpaint`; support both `binary_data_base64` and `image_urls` inputs; no live smoke test.
+- Actions taken:
+  - Verified Phase 1/2 build and `jimengapi`/`photo` tests still pass before continuing.
+  - Added `jimeng-superres` (`jimeng_i2i_seed3_tilesr_cvtob`) and `jimeng-outpaint` (`jimeng_img2img_seed3_painting_edit`) model constants and registry specs with new `upscale`/`outpaint` capabilities.
+  - Extended `SubmitTaskRequest` with `binary_data_base64`, `resolution`, directional `top/bottom/left/right`, and `seed`.
+  - Implemented `CreateImageEditRequest` (image edit via seedream with mixed base64/URL inputs), `CreateImageUpscaleRequest` (resolution normalized to 4k/8k, detail scale 50), and `CreateImageOutpaintRequest` (decodes image dimensions and derives expand-only directional fractions from the target ratio).
+  - Added shared helpers in `process.go`: input classification, raw-base64 normalization, a submit/poll/store/emit runner, image-size decoding, ratio parsing, and outpaint edge math.
+  - Made `jimeng-api` satisfy `ImageEditFactory`/`ImageUpscaleFactory`/`ImageOutpaintFactory` and registered `NewImageProcessorFromConfig` in `imageProcessorFactories`.
+  - Matched the dreamina chunk-content convention (`utils.GetImageMarkdown`) so Photo result storage stays consistent.
+  - Added `jimeng-superres` / `jimeng-outpaint` to admin channel metadata, the runtime `config/config.yaml` jimeng-api channel, and the non-billing charge rule.
+  - Added `process_test.go` covering input classification, resolution mapping, ratio parsing, outpaint edge math, base64 size decoding, and registry specs.
+- Files created/modified:
+  - `/Users/wuzhixuan/code/project/coai/adapter/jimengapi/process.go` (new)
+  - `/Users/wuzhixuan/code/project/coai/adapter/jimengapi/edit.go` (new)
+  - `/Users/wuzhixuan/code/project/coai/adapter/jimengapi/upscale.go` (new)
+  - `/Users/wuzhixuan/code/project/coai/adapter/jimengapi/outpaint.go` (new)
+  - `/Users/wuzhixuan/code/project/coai/adapter/jimengapi/process_test.go` (new)
+  - `/Users/wuzhixuan/code/project/coai/adapter/jimengapi/types.go`
+  - `/Users/wuzhixuan/code/project/coai/adapter/jimengapi/struct.go`
+  - `/Users/wuzhixuan/code/project/coai/adapter/adapter.go`
+  - `/Users/wuzhixuan/code/project/coai/globals/variables.go`
+  - `/Users/wuzhixuan/code/project/coai/app/src/admin/channel.ts`
+  - `/Users/wuzhixuan/code/project/coai/config/config.yaml`
+  - `/Users/wuzhixuan/code/project/coai/task_plan.md`
+  - `/Users/wuzhixuan/code/project/coai/findings.md`
+  - `/Users/wuzhixuan/code/project/coai/progress.md`
+
+### Verification: Jimeng API Phase 3
+- **Status:** complete
+- Results:
+  - `GOCACHE=/tmp/coai-go-cache go vet ./adapter/jimengapi` passed.
+  - `GOCACHE=/tmp/coai-go-cache go test ./adapter/jimengapi ./adapter ./manager ./channel ./addition/photo ./utils ./globals` passed.
+  - `GOCACHE=/tmp/coai-go-cache go build -o /tmp/coai-jimeng-phase3 .` passed.
+  - `./node_modules/.bin/tsc --noEmit` in `app/` passed.
+  - Only the usual non-fatal `github.com/chai2010/webp` C warning remains.
+- Not run:
+  - Live edit/upscale/outpaint smoke test against the official API (user chose 暂不联调; would consume paid quota).
+
+### Jimeng API Phase 3 Follow-up: prompts.json Switch + Live Smoke Test
+- **Status:** complete
+- Actions taken:
+  - Backed up `config/prompts.json` to `config/prompts.json.bak.before-jimeng-api`.
+  - Repointed Photo editing features to official models: edit-class → `jimeng-seedream-4.6`, `hd_upscale` → `jimeng-superres`, `resize` → `jimeng-outpaint`, all `channel_type: jimeng-api`; left `video_gen` on CLI and `detail_image`/`logo_custom` local.
+  - Added a guarded live test (`adapter/jimengapi/live_smoke_test.go`, `JIMENG_LIVE=1`, AK/SK via env) and ran it against the real endpoint.
+  - Live results: text-to-image PASS; image edit PASS after confirming `binary_data_base64` is the correct input field (8×8 image rejected as too small with `50207`, 512×512 succeeded).
+  - Fixed `storeImageURL`: Volcengine TOS URLs end in `.image`, so results were saved as non-renderable `*.image`; now restricted to known image extensions with `.png` fallback. Verified live (edit result saved `.png`).
+  - Updated `addition/photo` `TestGetChannelType` expectation (`white_bg` → `jimeng-api`).
+  - Cleaned smoke-test download artifacts under `adapter/jimengapi/storage`.
+- Files created/modified:
+  - `/Users/wuzhixuan/code/project/coai/config/prompts.json` (+ `.bak.before-jimeng-api`)
+  - `/Users/wuzhixuan/code/project/coai/adapter/jimengapi/image.go`
+  - `/Users/wuzhixuan/code/project/coai/adapter/jimengapi/live_smoke_test.go` (new, guarded)
+  - `/Users/wuzhixuan/code/project/coai/addition/photo/prompts_test.go`
+
+### Verification: Jimeng API Phase 3 Follow-up
+- **Status:** complete
+- Results:
+  - Live `TestLiveSmoke` (generate + edit) PASS against `https://visual.volcengineapi.com`.
+  - `go test ./adapter/jimengapi ./adapter ./addition/photo ./manager ./channel ./utils ./globals` passed (guarded live test skips without `JIMENG_LIVE=1`).
+  - `go build` and frontend `tsc --noEmit` passed.
+
+### Jimeng API Phase 3 Follow-up 2: Superres + Outpaint Live Smoke
+- **Status:** complete
+- Added `upscale` and `outpaint` subtests to `live_smoke_test.go` (shared `makeSolidPNGBase64` helper).
+- Live results against `https://visual.volcengineapi.com`:
+  - **`jimeng-superres` (resolution 4k) PASS** — returned and stored a `.png` result.
+  - **`jimeng-outpaint` (512×512 → 16:9) PASS** — directional-fraction outpaint returned and stored a `.png` result.
+- All four official capabilities are now live-verified: generate, edit, upscale, outpaint.
+- Cleaned smoke-test artifacts; `go test`/`go build`/`tsc` still pass.

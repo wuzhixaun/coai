@@ -30,6 +30,13 @@ const (
 	CozeChannelType        = "coze"
 )
 
+// 图片处理专用渠道类型
+const (
+	DreaminaChannelType  = "dreamina"   // 即梦云 API
+	JimengChannelType    = "jimeng"     // 即梦 CLI (subprocess)
+	JimengAPIChannelType = "jimeng-api" // 火山引擎即梦官方 Visual API
+)
+
 const (
 	NonBilling   = "non-billing"
 	TimesBilling = "times-billing"

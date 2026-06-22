@@ -148,3 +148,134 @@ func NewVideoRequestWithCache(_ *redis.Client, buffer *utils.Buffer, group strin
 
 	return false, err
 }
+
+// ── 图片处理渠道调度 ──────────────────────────────────────
+
+func NewImageEditRequestWithChannel(group string, props *adaptercommon.ImageEditProps, hook globals.Hook) error {
+	if len(props.OriginalModel) == 0 {
+		props.OriginalModel = props.Model
+	}
+
+	ticker := ConduitInstance.GetTicker(props.OriginalModel, group)
+	if ticker == nil || ticker.IsEmpty() {
+		return fmt.Errorf("cannot find channel for model %s", props.OriginalModel)
+	}
+
+	var err error
+	for !ticker.IsDone() {
+		if channel := ticker.Next(); channel != nil {
+			props.MaxRetries = utils.ToPtr(channel.GetRetry())
+			if err = adapter.NewImageEditRequest(channel, props, hook); adapter.IsSkipError(err) {
+				return err
+			}
+			globals.Warn(fmt.Sprintf("[channel] image edit error: %s (model: %s, channel: %s)", err.Error(), props.OriginalModel, channel.GetName()))
+		}
+	}
+
+	if err == nil {
+		err = fmt.Errorf("channels are exhausted for model %s", props.OriginalModel)
+	}
+	return err
+}
+
+func NewImageGenerationRequestWithChannel(group string, props *adaptercommon.ImageGenerationProps, hook globals.Hook) error {
+	if len(props.OriginalModel) == 0 {
+		props.OriginalModel = props.Model
+	}
+
+	ticker := ConduitInstance.GetTicker(props.OriginalModel, group)
+	if ticker == nil || ticker.IsEmpty() {
+		return fmt.Errorf("cannot find channel for model %s", props.OriginalModel)
+	}
+
+	var err error
+	for !ticker.IsDone() {
+		if channel := ticker.Next(); channel != nil {
+			props.MaxRetries = utils.ToPtr(channel.GetRetry())
+			if err = adapter.NewImageGenerationRequest(channel, props, hook); adapter.IsSkipError(err) {
+				return err
+			}
+			globals.Warn(fmt.Sprintf("[channel] image generation error: %s (model: %s, channel: %s)", err.Error(), props.OriginalModel, channel.GetName()))
+		}
+	}
+
+	if err == nil {
+		err = fmt.Errorf("channels are exhausted for model %s", props.OriginalModel)
+	}
+	return err
+}
+
+func NewImageToVideoRequestWithChannel(group string, props *adaptercommon.ImageToVideoProps, hook globals.Hook) error {
+	if len(props.OriginalModel) == 0 {
+		props.OriginalModel = props.Model
+	}
+
+	ticker := ConduitInstance.GetTicker(props.OriginalModel, group)
+	if ticker == nil || ticker.IsEmpty() {
+		return fmt.Errorf("cannot find channel for model %s", props.OriginalModel)
+	}
+
+	var err error
+	for !ticker.IsDone() {
+		if channel := ticker.Next(); channel != nil {
+			props.MaxRetries = utils.ToPtr(channel.GetRetry())
+			if err = adapter.NewImageToVideoRequest(channel, props, hook); adapter.IsSkipError(err) {
+				return err
+			}
+			globals.Warn(fmt.Sprintf("[channel] image-to-video error: %s (model: %s, channel: %s)", err.Error(), props.OriginalModel, channel.GetName()))
+		}
+	}
+
+	if err == nil {
+		err = fmt.Errorf("channels are exhausted for model %s", props.OriginalModel)
+	}
+	return err
+}
+
+func NewImageUpscaleRequestWithChannel(group string, props *adaptercommon.ImageUpscaleProps, hook globals.Hook) error {
+	if len(props.OriginalModel) == 0 {
+		props.OriginalModel = props.Model
+	}
+	ticker := ConduitInstance.GetTicker(props.OriginalModel, group)
+	if ticker == nil || ticker.IsEmpty() {
+		return fmt.Errorf("cannot find channel for model %s", props.OriginalModel)
+	}
+	var err error
+	for !ticker.IsDone() {
+		if channel := ticker.Next(); channel != nil {
+			props.MaxRetries = utils.ToPtr(channel.GetRetry())
+			if err = adapter.NewImageUpscaleRequest(channel, props, hook); adapter.IsSkipError(err) {
+				return err
+			}
+			globals.Warn(fmt.Sprintf("[channel] upscale error: %s (model: %s, channel: %s)", err.Error(), props.OriginalModel, channel.GetName()))
+		}
+	}
+	if err == nil {
+		err = fmt.Errorf("channels are exhausted for model %s", props.OriginalModel)
+	}
+	return err
+}
+
+func NewImageOutpaintRequestWithChannel(group string, props *adaptercommon.ImageOutpaintProps, hook globals.Hook) error {
+	if len(props.OriginalModel) == 0 {
+		props.OriginalModel = props.Model
+	}
+	ticker := ConduitInstance.GetTicker(props.OriginalModel, group)
+	if ticker == nil || ticker.IsEmpty() {
+		return fmt.Errorf("cannot find channel for model %s", props.OriginalModel)
+	}
+	var err error
+	for !ticker.IsDone() {
+		if channel := ticker.Next(); channel != nil {
+			props.MaxRetries = utils.ToPtr(channel.GetRetry())
+			if err = adapter.NewImageOutpaintRequest(channel, props, hook); adapter.IsSkipError(err) {
+				return err
+			}
+			globals.Warn(fmt.Sprintf("[channel] outpaint error: %s (model: %s, channel: %s)", err.Error(), props.OriginalModel, channel.GetName()))
+		}
+	}
+	if err == nil {
+		err = fmt.Errorf("channels are exhausted for model %s", props.OriginalModel)
+	}
+	return err
+}

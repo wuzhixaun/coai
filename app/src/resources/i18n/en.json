@@ -1362,6 +1362,8 @@
   "anonymous": "please sign in here",
   "bar": {
     "chat": "Chat",
+    "photo": "Photo Studio",
+    "photo-full": "Photo Studio",
     "model": "Model",
     "wallet": "Wallet",
     "log": "Log",

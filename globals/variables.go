@@ -146,6 +146,10 @@ const (
 	SkylarkChat                  = "skylark-chat"
 	DeepseekV3                   = "deepseek-chat"
 	DeepseekR1                   = "deepseek-reasoner"
+	JimengSeedream46             = "jimeng-seedream-4.6"
+	JimengSeedream40             = "jimeng-seedream-4.0"
+	JimengSuperres               = "jimeng-superres"
+	JimengOutpaint               = "jimeng-outpaint"
 )
 
 var OpenAIDalleModels = []string{
@@ -154,6 +158,11 @@ var OpenAIDalleModels = []string{
 
 var GoogleImagenModels = []string{
 	GoogleImagen002,
+}
+
+var JimengImageGenerationModels = []string{
+	JimengSeedream46,
+	JimengSeedream40,
 }
 
 var VisionModels = []string{
@@ -188,6 +197,10 @@ func IsOpenAIDalleModel(model string) bool {
 func IsGoogleImagenModel(model string) bool {
 	// using image generation api if model is in imagen models
 	return in(model, GoogleImagenModels)
+}
+
+func IsJimengImageGenerationModel(model string) bool {
+	return in(model, JimengImageGenerationModels)
 }
 
 func IsVisionModel(model string) bool {

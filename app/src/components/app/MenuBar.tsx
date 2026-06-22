@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button.tsx";
 import router from "@/router.tsx";
 import React from "react";
 import {
+  Image,
   LibraryBig,
   MessageCircle,
   Shield,
@@ -67,6 +68,7 @@ function MenuBar({ children, className }: MenuBarProps) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <BarItem icon={<MessageCircle />} path={`/`} name={"chat"} />
+            <BarItem icon={<Image />} path={`/photo`} name={"photo"} />
             <BarItem icon={<LibraryBig />} path={`/model`} name={"model"} />
             {/* <BarItem icon={<Compass />} path={`/preset`} name={"preset"} /> */}
             <BarItem icon={<Wallet />} path={`/wallet`} name={"wallet"} />

@@ -102,9 +102,19 @@ type TranshipmentError struct {
 }
 
 type RelayImageForm struct {
-	Model  string `json:"model"`
-	Prompt string `json:"prompt"`
-	N      *int   `json:"n,omitempty"`
+	Model       string   `json:"model"`
+	Prompt      string   `json:"prompt"`
+	N           *int     `json:"n,omitempty"`
+	Size        any      `json:"size,omitempty"`
+	Width       *int     `json:"width,omitempty"`
+	Height      *int     `json:"height,omitempty"`
+	Scale       *float64 `json:"scale,omitempty"`
+	MinRatio    *float64 `json:"min_ratio,omitempty"`
+	MaxRatio    *float64 `json:"max_ratio,omitempty"`
+	ForceSingle *bool    `json:"force_single,omitempty"`
+	Images      []string `json:"images,omitempty"`
+	ImageURLs   []string `json:"image_urls,omitempty"`
+	Masks       []string `json:"masks,omitempty"`
 }
 
 type RelayImageData struct {

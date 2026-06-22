@@ -162,6 +162,47 @@ func createChatTask(
 			return
 		}
 
+		if globals.IsJimengImageGenerationModel(model) {
+			prompt := ""
+			if len(segment) > 0 {
+				prompt = strings.TrimSpace(segment[len(segment)-1].Content)
+			}
+			props := adaptercommon.CreateImageGenerationProps(&adaptercommon.ImageGenerationProps{
+				Model:       model,
+				Prompt:      prompt,
+				N:           1,
+				ForceSingle: utils.ToPtr(true),
+				ReturnURL:   true,
+				User:        auth.GetUsernameString(db, user),
+			})
+
+			hit = false
+			err = channel.NewImageGenerationRequestWithChannel(
+				auth.GetGroup(db, user),
+				props,
+				func(data *globals.Chunk) error {
+					if len(interruptSignal) > 0 {
+						return errors.New(interruptMessage)
+					}
+					chunkChan <- partialChunk{
+						Chunk: data,
+						End:   false,
+						Hit:   false,
+						Error: nil,
+					}
+					return nil
+				},
+			)
+
+			chunkChan <- partialChunk{
+				Chunk: nil,
+				End:   true,
+				Hit:   hit,
+				Error: err,
+			}
+			return
+		}
+
 		hit, err := channel.NewChatRequestWithCache(
 			cache, buffer,
 			auth.GetGroup(db, user),

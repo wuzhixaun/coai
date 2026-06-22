@@ -71,6 +71,7 @@ export const ChannelTypes: Record<string, string> = {
   deepseek: "深度求索 DeepSeek",
   coze: "扣子 Coze",
   dify: "Dify",
+  "jimeng-api": "即梦官方 API",
 };
 
 export const ShortChannelTypes: Record<string, string> = {
@@ -93,6 +94,7 @@ export const ShortChannelTypes: Record<string, string> = {
   deepseek: "DeepSeek",
   coze: "Coze",
   dify: "Dify",
+  "jimeng-api": "即梦 API",
 };
 
 export const ChannelInfos: Record<string, ChannelInfo> = {
@@ -313,6 +315,22 @@ export const ChannelInfos: Record<string, ChannelInfo> = {
       "> 由于 Dify 平台一个 Key 对应一个 CHATFLOW （模型），所以模型名称仅在用户调用本系统时用于标识用户调用的对象，不代表调用 Dify 平台 CHATFLOW 时被调用 CHATFLOW 的名称 \n" +
       "> 因此，您需要为每一个 Dify 平台的 CHATFLOW 分别创建渠道 \n" +
       "> 如果需要让系统自动适配 Dify 平台的图标，请将模型名称填写为 **dify** 开头的模型，如 **dify-chat** \n",
+  },
+  "jimeng-api": {
+    endpoint: "https://visual.volcengineapi.com",
+    format: "<access-key>|<secret-key>",
+    models: [
+      "jimeng-seedream-4.6",
+      "jimeng-seedream-4.0",
+      "jimeng-superres",
+      "jimeng-outpaint",
+    ],
+    description:
+      "> 火山引擎即梦官方 Visual API。密钥格式为 **AK|SK**，支持多行密钥池。\n" +
+      "> 接入点默认填写 *https://visual.volcengineapi.com*，后端固定使用 Region=cn-north-1、Service=cv 进行签名。\n" +
+      "> 支持 `jimeng-seedream-4.6` / `jimeng-seedream-4.0` 图像生成与图生图编辑；4.6 的 scale 为整数 1-100，4.0 的 scale 为小数 0-1。\n" +
+      "> 同时支持 `jimeng-superres` 智能超清（4k/8k）与 `jimeng-outpaint` 智能扩图（按目标比例自动计算扩展方向）。\n" +
+      "> 生成结果会将火山 24 小时临时图片 URL 转存到本地 `storage/results`。\n",
   },
 };
 

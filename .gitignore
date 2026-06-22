@@ -1,4 +1,5 @@
 app/node_modules
+.DS_Store
 .vscode
 .idea
 config.yaml
@@ -14,6 +15,7 @@ sdk
 logs
 
 chat
+chat.bak*
 *.exe
 chat.exe
 

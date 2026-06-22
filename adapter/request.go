@@ -74,6 +74,91 @@ func NewVideoRequest(conf globals.ChannelConfig, props *adaptercommon.VideoProps
 	return conf.ProcessError(err)
 }
 
+func NewImageEditRequest(conf globals.ChannelConfig, props *adaptercommon.ImageEditProps, hook globals.Hook) error {
+	err := createImageEditRequest(conf, props, hook)
+
+	retries := conf.GetRetry()
+	props.Current++
+
+	if IsAvailableError(err) {
+		if props.Current < retries {
+			content := strings.Replace(err.Error(), "\n", "", -1)
+			globals.Warn(fmt.Sprintf("retrying image edit request for %s (attempt %d/%d, error: %s)", props.OriginalModel, props.Current+1, retries, content))
+			return NewImageEditRequest(conf, props, hook)
+		}
+	}
+
+	return conf.ProcessError(err)
+}
+
+func NewImageGenerationRequest(conf globals.ChannelConfig, props *adaptercommon.ImageGenerationProps, hook globals.Hook) error {
+	err := createImageGenerationRequest(conf, props, hook)
+
+	retries := conf.GetRetry()
+	props.Current++
+
+	if IsAvailableError(err) {
+		if props.Current < retries {
+			content := strings.Replace(err.Error(), "\n", "", -1)
+			globals.Warn(fmt.Sprintf("retrying image generation request for %s (attempt %d/%d, error: %s)", props.OriginalModel, props.Current+1, retries, content))
+			return NewImageGenerationRequest(conf, props, hook)
+		}
+	}
+
+	return conf.ProcessError(err)
+}
+
+func NewImageToVideoRequest(conf globals.ChannelConfig, props *adaptercommon.ImageToVideoProps, hook globals.Hook) error {
+	err := createImageToVideoRequest(conf, props, hook)
+
+	retries := conf.GetRetry()
+	props.Current++
+
+	if IsAvailableError(err) {
+		if props.Current < retries {
+			content := strings.Replace(err.Error(), "\n", "", -1)
+			globals.Info(fmt.Sprintf("retrying image-to-video request for %s (attempt %d/%d, error: %s)", props.OriginalModel, props.Current+1, retries, content))
+			return NewImageToVideoRequest(conf, props, hook)
+		}
+	}
+
+	return conf.ProcessError(err)
+}
+
+func NewImageUpscaleRequest(conf globals.ChannelConfig, props *adaptercommon.ImageUpscaleProps, hook globals.Hook) error {
+	err := createImageUpscaleRequest(conf, props, hook)
+
+	retries := conf.GetRetry()
+	props.Current++
+
+	if IsAvailableError(err) {
+		if props.Current < retries {
+			content := strings.Replace(err.Error(), "\n", "", -1)
+			globals.Warn(fmt.Sprintf("retrying upscale request for %s (attempt %d/%d, error: %s)", props.OriginalModel, props.Current+1, retries, content))
+			return NewImageUpscaleRequest(conf, props, hook)
+		}
+	}
+
+	return conf.ProcessError(err)
+}
+
+func NewImageOutpaintRequest(conf globals.ChannelConfig, props *adaptercommon.ImageOutpaintProps, hook globals.Hook) error {
+	err := createImageOutpaintRequest(conf, props, hook)
+
+	retries := conf.GetRetry()
+	props.Current++
+
+	if IsAvailableError(err) {
+		if props.Current < retries {
+			content := strings.Replace(err.Error(), "\n", "", -1)
+			globals.Warn(fmt.Sprintf("retrying outpaint request for %s (attempt %d/%d, error: %s)", props.OriginalModel, props.Current+1, retries, content))
+			return NewImageOutpaintRequest(conf, props, hook)
+		}
+	}
+
+	return conf.ProcessError(err)
+}
+
 func ClearMessages(model string, messages []globals.Message) []globals.Message {
 	if globals.IsVisionModel(model) {
 		return messages

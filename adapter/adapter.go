@@ -10,7 +10,10 @@ import (
 	"chat/adapter/dashscope"
 	"chat/adapter/deepseek"
 	"chat/adapter/dify"
+	"chat/adapter/dreamina"
 	"chat/adapter/hunyuan"
+	"chat/adapter/jimeng"
+	"chat/adapter/jimengapi"
 	"chat/adapter/midjourney"
 	"chat/adapter/openai"
 	"chat/adapter/palm2"
@@ -44,6 +47,80 @@ var channelFactories = map[string]adaptercommon.FactoryCreator{
 
 	globals.MoonshotChannelType: openai.NewChatInstanceFromConfig, // openai format
 	globals.GroqChannelType:     openai.NewChatInstanceFromConfig, // openai format
+}
+
+// 图片处理适配器工厂映射
+var imageProcessorFactories = map[string]adaptercommon.ImageEditFactoryCreator{
+	globals.DreaminaChannelType:  dreamina.NewImageProcessorFromConfig,
+	globals.JimengChannelType:    jimeng.NewCLIAdapterFromConfig,
+	globals.JimengAPIChannelType: jimengapi.NewImageProcessorFromConfig,
+}
+
+var imageGenerationFactories = map[string]adaptercommon.ImageGenerationFactoryCreator{
+	globals.JimengAPIChannelType: jimengapi.NewImageGeneratorFromConfig,
+}
+
+func createImageGenerationRequest(conf globals.ChannelConfig, props *adaptercommon.ImageGenerationProps, hook globals.Hook) error {
+	props.Model = conf.GetModelReflect(props.OriginalModel)
+	props.Proxy = conf.GetProxy()
+
+	factoryType := conf.GetType()
+	if creator, ok := imageGenerationFactories[factoryType]; ok {
+		return creator(conf).CreateImageGenerationRequest(props, hook)
+	}
+
+	return fmt.Errorf("该模型不支持图片生成 (channel type: %s)。请选择 jimeng-seedream-4.6 等图片生成模型", conf.GetType())
+}
+
+func createImageEditRequest(conf globals.ChannelConfig, props *adaptercommon.ImageEditProps, hook globals.Hook) error {
+	props.Model = conf.GetModelReflect(props.OriginalModel)
+	props.Proxy = conf.GetProxy()
+
+	factoryType := conf.GetType()
+	if creator, ok := imageProcessorFactories[factoryType]; ok {
+		return creator(conf).CreateImageEditRequest(props, hook)
+	}
+
+	return fmt.Errorf("该模型不支持图片编辑 (channel type: %s)。请选择 jimeng-v2 等图片专用模型", conf.GetType())
+}
+
+func createImageUpscaleRequest(conf globals.ChannelConfig, props *adaptercommon.ImageUpscaleProps, hook globals.Hook) error {
+	props.Model = conf.GetModelReflect(props.OriginalModel)
+	props.Proxy = conf.GetProxy()
+
+	if creator, ok := imageProcessorFactories[conf.GetType()]; ok {
+		if inst, ok := creator(conf).(adaptercommon.ImageUpscaleFactory); ok {
+			return inst.CreateImageUpscaleRequest(props, hook)
+		}
+	}
+	return fmt.Errorf("该模型不支持高清放大，请选择 jimeng-v2")
+}
+
+func createImageOutpaintRequest(conf globals.ChannelConfig, props *adaptercommon.ImageOutpaintProps, hook globals.Hook) error {
+	props.Model = conf.GetModelReflect(props.OriginalModel)
+	props.Proxy = conf.GetProxy()
+
+	if creator, ok := imageProcessorFactories[conf.GetType()]; ok {
+		if inst, ok := creator(conf).(adaptercommon.ImageOutpaintFactory); ok {
+			return inst.CreateImageOutpaintRequest(props, hook)
+		}
+	}
+	return fmt.Errorf("该模型不支持画布扩展，请选择 jimeng-v2")
+}
+
+func createImageToVideoRequest(conf globals.ChannelConfig, props *adaptercommon.ImageToVideoProps, hook globals.Hook) error {
+	props.Model = conf.GetModelReflect(props.OriginalModel)
+	props.Proxy = conf.GetProxy()
+
+	factoryType := conf.GetType()
+	if creator, ok := imageProcessorFactories[factoryType]; ok {
+		inst := creator(conf)
+		if v, ok := inst.(adaptercommon.ImageToVideoFactory); ok {
+			return v.CreateImageToVideoRequest(props, hook)
+		}
+		return fmt.Errorf("video not supported by channel type %s", conf.GetType())
+	}
+	return fmt.Errorf("unknown channel type %s", conf.GetType())
 }
 
 func createChatRequest(conf globals.ChannelConfig, props *adaptercommon.ChatProps, hook globals.Hook) error {

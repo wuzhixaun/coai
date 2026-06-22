@@ -24,6 +24,7 @@ const Account = lazyFactor(() => import("@/routes/Account.tsx"));
 const Generation = lazyFactor(() => import("@/routes/Generation.tsx"));
 const Sharing = lazyFactor(() => import("@/routes/Sharing.tsx"));
 const Article = lazyFactor(() => import("@/routes/Article.tsx"));
+const Photo = lazyFactor(() => import("@/routes/Photo.tsx"));
 
 const AdminPage = lazyFactor(() => import("@/routes/Admin.tsx"));
 const AdminDashboard = lazyFactor(() => import("@/routes/admin/DashBoard.tsx"));
@@ -75,6 +76,17 @@ const router = createBrowserRouter([
           <Suspense>
             <Wallet />
           </Suspense>
+        ),
+      },
+      {
+        id: "photo",
+        path: "photo",
+        element: (
+          <AuthRequired>
+            <Suspense>
+              <Photo />
+            </Suspense>
+          </AuthRequired>
         ),
       },
       // {

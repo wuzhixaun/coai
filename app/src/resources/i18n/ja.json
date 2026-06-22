@@ -1376,7 +1376,9 @@
     "account-full": "アカウント管理",
     "admin-full": "管理者",
     "key": "鍵",
-    "key-full": "トークン管理"
+    "key-full": "トークン管理",
+    "photo": "画像処理",
+    "photo-full": "画像処理"
   },
   "notify": "お知らせ",
   "new-notify": "新しい通知",
