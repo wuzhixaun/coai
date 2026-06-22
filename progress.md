@@ -369,3 +369,9 @@
 - Registry/config: added the three models to `globals` constants, `config/config.yaml` channel + non-billing charge, and admin `channel.ts` metadata.
 - Deferred: a brush/canvas mask-drawing UI to drive `jimeng-inpaint` from the Photo page. The backend inpaint path is ready and live-verified; the existing `image_erase` feature stays on seedream edit until the mask UI exists.
 - Verification: `go vet`/`go test ./adapter/jimengapi ./addition/photo`/`go build`/frontend `tsc` all pass; added `edit_test.go` (prompt-field selection, capability routing, offline validation paths).
+
+### Jimeng API #3: Chat Image-Count UI
+- **Status:** complete
+- Backend: added `ImageCount` to `conversation.Conversation` and `FormMessage`, a clamped `GetImageCount()` (1-6, default 1) + `SetImageCount`, applied in `ApplyParam`; the chat Jimeng image branch now uses `instance.GetImageCount()` for `N` instead of a hardcoded 1.
+- Frontend: added `image_count` to the settings store (state/reducer/selector/reset/memory), `ChatProps`, and both the chat `send` and `restart` forms; added a gated NumberInput (1-6) in `SettingsDialog` shown only when the selected model matches `jimeng-seedream-*`; added `settings.image-count`/`-tip` i18n keys in cn/en/ja/ru/tw.
+- Verification: Go build + `go test ./manager/...`, all 5 i18n JSON valid, frontend `tsc --noEmit` all pass.

@@ -482,6 +482,8 @@
     "memory": "記憶體用量",
     "max-tokens": "最大回覆 Token 數",
     "max-tokens-tip": "最大回覆 Token 數，超過此數值將會被截斷（過高的數值可能會導致超過模型的最大 Token 而請求失敗）",
+    "image-count": "圖片生成數量",
+    "image-count-tip": "對話中選擇即夢圖片模型時一次生成的圖片數量（1-6），每張單獨計費。",
     "temperature": "溫度",
     "temperature-tip": "隨機取樣的比例，高溫度會產生更多的隨機性，低溫度會產生較集中和確定性的文字",
     "top-p": "核心取樣機率閾值",

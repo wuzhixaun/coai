@@ -42,6 +42,11 @@ import Github from "@/components/ui/icons/Github.tsx";
 import { isTauri } from "@/utils/desktop.ts";
 import { useDeeptrain } from "@/conf/env.ts";
 import ThemeToggle from "@/components/ThemeProvider.tsx";
+import { selectModel } from "@/store/chat.ts";
+
+// Jimeng 图片生成模型才支持「图片生成数量」
+const isJimengImageModel = (model: string): boolean =>
+  /^jimeng-seedream-/.test(model);
 
 function SettingsDialog() {
   const { t, i18n } = useTranslation();
@@ -63,6 +68,8 @@ function SettingsDialog() {
   const presencePenalty = useSelector(settings.presencePenaltySelector);
   const frequencyPenalty = useSelector(settings.frequencyPenaltySelector);
   const repetitionPenalty = useSelector(settings.repetitionPenaltySelector);
+  const imageCount = useSelector(settings.imageCountSelector);
+  const model = useSelector(selectModel);
 
   const [memorySize, setMemorySize] = useState(getMemoryPerformance());
 
@@ -242,6 +249,25 @@ function SettingsDialog() {
                       }}
                     />
                   </div>
+                  {isJimengImageModel(model) && (
+                    <div className={`item`}>
+                      <div className={`name`}>
+                        {t("settings.image-count")}
+                        <Tips content={t("settings.image-count-tip")} />
+                      </div>
+                      <div className={`grow`} />
+                      <NumberInput
+                        className={`value large-value`}
+                        value={imageCount}
+                        acceptNaN={false}
+                        min={1}
+                        max={6}
+                        onValueChange={(value: number) => {
+                          dispatch(settings.setImageCount(value));
+                        }}
+                      />
+                    </div>
+                  )}
                   <div className={`item`}>
                     <div className={`name`}>
                       {t("settings.temperature")}

@@ -170,7 +170,7 @@ func createChatTask(
 			props := adaptercommon.CreateImageGenerationProps(&adaptercommon.ImageGenerationProps{
 				Model:       model,
 				Prompt:      prompt,
-				N:           1,
+				N:           instance.GetImageCount(),
 				ForceSingle: utils.ToPtr(true),
 				ReturnURL:   true,
 				User:        auth.GetUsernameString(db, user),

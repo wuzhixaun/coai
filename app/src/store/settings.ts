@@ -21,6 +21,7 @@ export const initialSettings = {
   presence_penalty: 0,
   frequency_penalty: 0,
   repetition_penalty: 1,
+  image_count: 1,
   hide_model: false,
   hide_toolbar: false,
   hide_toolbar_text: true,
@@ -41,6 +42,7 @@ export const settingsSlice = createSlice({
     presence_penalty: getNumberMemory("presence_penalty", 0), // presence_penalty
     frequency_penalty: getNumberMemory("frequency_penalty", 0), // frequency_penalty
     repetition_penalty: getNumberMemory("repetition_penalty", 1), // repetition_penalty
+    image_count: getNumberMemory("image_count", 1), // 图片生成数量（Jimeng 图片模型）
     hide_model: getBooleanMemory("hide_model", false), // hide model
     hide_toolbar: getBooleanMemory("hide_toolbar", false), // hide toolbar
     hide_toolbar_text: getBooleanMemory("hide_toolbar_text", true), // hide toolbar text
@@ -102,6 +104,10 @@ export const settingsSlice = createSlice({
       state.repetition_penalty = action.payload as number;
       setNumberMemory("repetition_penalty", action.payload);
     },
+    setImageCount: (state, action) => {
+      state.image_count = action.payload as number;
+      setNumberMemory("image_count", action.payload);
+    },
     setHideModel: (state, action) => {
       state.hide_model = action.payload as boolean;
       setBooleanMemory("hide_model", action.payload);
@@ -126,6 +132,7 @@ export const settingsSlice = createSlice({
       state.presence_penalty = initialSettings.presence_penalty;
       state.frequency_penalty = initialSettings.frequency_penalty;
       state.repetition_penalty = initialSettings.repetition_penalty;
+      state.image_count = initialSettings.image_count;
       state.hide_model = initialSettings.hide_model;
       state.hide_toolbar = initialSettings.hide_toolbar;
       state.hide_toolbar_text = initialSettings.hide_toolbar_text;
@@ -141,6 +148,7 @@ export const settingsSlice = createSlice({
       setNumberMemory("presence_penalty", initialSettings.presence_penalty);
       setNumberMemory("frequency_penalty", initialSettings.frequency_penalty);
       setNumberMemory("repetition_penalty", initialSettings.repetition_penalty);
+      setNumberMemory("image_count", initialSettings.image_count);
       setBooleanMemory("hide_model", initialSettings.hide_model);
       setBooleanMemory("hide_toolbar", initialSettings.hide_toolbar);
       setBooleanMemory("hide_toolbar_text", initialSettings.hide_toolbar_text);
@@ -164,6 +172,7 @@ export const {
   setPresencePenalty,
   setFrequencyPenalty,
   setRepetitionPenalty,
+  setImageCount,
   resetSettings,
   setHideModel,
   setHideToolbar,
@@ -193,6 +202,8 @@ export const frequencyPenaltySelector = (state: RootState): number =>
   state.settings.frequency_penalty;
 export const repetitionPenaltySelector = (state: RootState): number =>
   state.settings.repetition_penalty;
+export const imageCountSelector = (state: RootState): number =>
+  state.settings.image_count;
 export const hideModelSelector = (state: RootState): boolean =>
   state.settings.hide_model;
 export const hideToolbarSelector = (state: RootState): boolean =>

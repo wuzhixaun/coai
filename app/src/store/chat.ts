@@ -37,6 +37,7 @@ import {
   contextSelector,
   frequencyPenaltySelector,
   historySelector,
+  imageCountSelector,
   maxTokensSelector,
   presencePenaltySelector,
   repetitionPenaltySelector,
@@ -487,6 +488,7 @@ export function useMessageActions() {
   const presence_penalty = useSelector(presencePenaltySelector);
   const frequency_penalty = useSelector(frequencyPenaltySelector);
   const repetition_penalty = useSelector(repetitionPenaltySelector);
+  const image_count = useSelector(imageCountSelector);
 
   return {
     send: async (message: string, using_model?: string) => {
@@ -518,6 +520,7 @@ export function useMessageActions() {
         presence_penalty,
         frequency_penalty,
         repetition_penalty,
+        image_count,
       });
       if (!state) return false;
 
@@ -549,6 +552,7 @@ export function useMessageActions() {
         presence_penalty,
         frequency_penalty,
         repetition_penalty,
+        image_count,
         message: "",
       });
 

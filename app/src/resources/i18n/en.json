@@ -412,6 +412,8 @@
     "temperature-tip": "Random sampling ratio. High temperature produces more randomness, low temperature produces more concentrated and deterministic text.",
     "max-tokens": "Maximum number of response tokens",
     "max-tokens-tip": "Maximum number of reply tokens. Exceeding this value will be truncated (too high a value may cause the request to fail due to exceeding the model's maximum token limit).",
+    "image-count": "Image count",
+    "image-count-tip": "Number of images generated per turn when a Jimeng image model is selected in chat (1-6). Each image is billed separately.",
     "top-p": "Nucleus Sampling Probability Threshold",
     "top-p-tip": "(TopP) The higher the probability value, the higher the randomness generated; the lower the value, the higher the certainty generated.",
     "top-k": "Sample Candidate Set Size",

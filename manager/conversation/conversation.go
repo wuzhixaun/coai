@@ -31,6 +31,8 @@ type Conversation struct {
 	PresencePenalty   *float32 `json:"presence_penalty,omitempty"`
 	FrequencyPenalty  *float32 `json:"frequency_penalty,omitempty"`
 	RepetitionPenalty *float32 `json:"repetition_penalty,omitempty"`
+
+	ImageCount *int `json:"image_count,omitempty"` // 图片生成模型一次生成的图片数量（1-6）
 }
 
 type FormMessage struct {
@@ -49,6 +51,8 @@ type FormMessage struct {
 	PresencePenalty   *float32 `json:"presence_penalty,omitempty"`
 	FrequencyPenalty  *float32 `json:"frequency_penalty,omitempty"`
 	RepetitionPenalty *float32 `json:"repetition_penalty,omitempty"`
+
+	ImageCount *int `json:"image_count,omitempty"`
 }
 
 func NewAnonymousConversation() *Conversation {
@@ -174,6 +178,25 @@ func (c *Conversation) GetRepetitionPenalty() *float32 {
 
 func (c *Conversation) SetRepetitionPenalty(repetitionPenalty *float32) {
 	c.RepetitionPenalty = repetitionPenalty
+}
+
+func (c *Conversation) SetImageCount(count *int) {
+	c.ImageCount = count
+}
+
+// GetImageCount 返回图片生成数量，归一化到 [1,6]，默认 1。
+func (c *Conversation) GetImageCount() int {
+	if c.ImageCount == nil {
+		return 1
+	}
+	n := *c.ImageCount
+	if n < 1 {
+		return 1
+	}
+	if n > 6 {
+		return 6
+	}
+	return n
 }
 
 func (c *Conversation) GetMaxTokens() *int {
@@ -328,6 +351,7 @@ func (c *Conversation) ApplyParam(form *FormMessage) {
 	c.SetPresencePenalty(form.PresencePenalty)
 	c.SetFrequencyPenalty(form.FrequencyPenalty)
 	c.SetRepetitionPenalty(form.RepetitionPenalty)
+	c.SetImageCount(form.ImageCount)
 }
 
 func (c *Conversation) AddMessageFromByte(data []byte) (string, error) {
