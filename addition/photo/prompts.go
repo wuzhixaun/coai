@@ -25,6 +25,7 @@ type FeatureConfig struct {
 	Languages    []PromptOption    `json:"languages,omitempty"`
 	SellingPoints []PromptOption   `json:"selling_points,omitempty"`
 	Sizes        []PromptOption    `json:"sizes,omitempty"`
+	Categories   []PromptOption    `json:"categories,omitempty"`
 }
 
 type PromptTemplate struct {
@@ -184,6 +185,8 @@ func GetOptions(feature string, optionKey string) []PromptOption {
 		return fc.SellingPoints
 	case "sizes":
 		return fc.Sizes
+	case "categories":
+		return fc.Categories
 	default:
 		return nil
 	}

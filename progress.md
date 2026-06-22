@@ -357,3 +357,15 @@
   - **`jimeng-outpaint` (512×512 → 16:9) PASS** — directional-fraction outpaint returned and stored a `.png` result.
 - All four official capabilities are now live-verified: generate, edit, upscale, outpaint.
 - Cleaned smoke-test artifacts; `go test`/`go build`/`tsc` still pass.
+
+### Jimeng API Phase 3 Second Batch: Inpaint + Material/Product Extract
+- **Status:** backend + extract Photo features complete; inpaint brush-mask UI deferred
+- Backend (adapter): added capabilities `inpaint`/`extract` and specs `jimeng-inpaint` (`jimeng_image2image_dream_inpaint`), `jimeng-material-extract` (`i2i_material_extraction`), `jimeng-product-extract` (`jimeng_i2i_extract_tiled_images`). `CreateImageEditRequest` now routes by capability; extract writes the prompt into the per-model field (`image_edit_prompt` vs `edit_prompt`); inpaint takes source+mask as ordered 2-image input with default seed 101.
+- Live verification (real API):
+  - **inpaint PASS** — source + grayscale mask 2-image contract works.
+  - **product_extract PASS** — confirmed `edit_prompt` is the correct field (table value, not the example's `image_edit_prompt`).
+  - **material_extract** — `image_edit_prompt` field accepted and task ran to output review; failed only with `50511 Post Img Risk Not Pass` because the synthetic solid-color test image produced a risk-flagged output. Field/path verified; real product images expected to pass. Smoke test tolerates 50511 on synthetic input.
+- Photo features: added `material_extract` + `product_extract` as full Photo features (backend feature consts + processor + ProcessTask cases + prompts.json entries with category options + frontend FeaturePanel buttons and a category picker). Both excluded from `生成数量` repetition.
+- Registry/config: added the three models to `globals` constants, `config/config.yaml` channel + non-billing charge, and admin `channel.ts` metadata.
+- Deferred: a brush/canvas mask-drawing UI to drive `jimeng-inpaint` from the Photo page. The backend inpaint path is ready and live-verified; the existing `image_erase` feature stays on seedream edit until the mask UI exists.
+- Verification: `go vet`/`go test ./adapter/jimengapi ./addition/photo`/`go build`/frontend `tsc` all pass; added `edit_test.go` (prompt-field selection, capability routing, offline validation paths).

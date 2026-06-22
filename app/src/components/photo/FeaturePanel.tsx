@@ -28,6 +28,8 @@ const FEATURES: { key: string; label: string; icon: string }[] = [
   { key: "logo_custom", label: "Logo定制", icon: "🏷️" },
   { key: "production_flow", label: "流程图", icon: "📊" },
   { key: "resize", label: "改尺寸", icon: "📐" },
+  { key: "material_extract", label: "素材提取", icon: "🧩" },
+  { key: "product_extract", label: "商品提取", icon: "📦" },
   { key: "video_gen", label: "视频", icon: "🎬" },
 ];
 
@@ -36,6 +38,7 @@ const NEEDS_PARAM: Record<string, string[]> = {
   marketing: ["selling_point"], image_translate: ["target_lang"],
   model_image: ["prompt"], instruction_gen: ["prompt"],
   logo_custom: ["logo_image_id", "position"], resize: ["target_sizes"],
+  material_extract: ["category"], product_extract: ["category"],
   video_gen: ["prompt"],
 };
 
@@ -85,6 +88,8 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
       if (key === "marketing") init.selling_point = "Premium Quality";
       if (key === "resize") init.target_sizes = ["1:1", "16:9"];
       if (key === "logo_custom") init.position = "bottom-right";
+      if (key === "material_extract") init.category = "提取图案";
+      if (key === "product_extract") init.category = "服装";
       setParams((p) => ({ ...p, [key]: init }));
     }
   };
@@ -252,6 +257,19 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
                   </div>
                 </div>
               </>
+            )}
+
+            {/* Category picker (素材/商品提取) */}
+            {dialogKey && ["material_extract", "product_extract"].includes(dialogKey) && (
+              <div>
+                <Label>提取类别</Label>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {(cfg?.categories ?? []).map((opt) => (
+                    <Badge key={opt.value} variant={p.category === opt.value ? "default" : "outline"} className="cursor-pointer"
+                      onClick={() => setParam("category", opt.value)}>{opt.label}</Badge>
+                  ))}
+                </div>
+              </div>
             )}
 
             {/* Size picker */}

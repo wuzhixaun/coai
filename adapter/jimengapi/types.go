@@ -18,6 +18,8 @@ const (
 	CapabilityGenerate Capability = "generate"
 	CapabilityUpscale  Capability = "upscale"
 	CapabilityOutpaint Capability = "outpaint"
+	CapabilityInpaint  Capability = "inpaint"
+	CapabilityExtract  Capability = "extract"
 )
 
 type ScaleKind string
@@ -41,6 +43,11 @@ type ModelSpec struct {
 	DefaultMinRatio float64
 	DefaultMaxRatio float64
 	OutputFormat    string
+	// PromptField 指定 prompt 写入哪个请求字段。提取类接口使用
+	// image_edit_prompt / edit_prompt，其余默认 "prompt"。
+	PromptField string
+	// DefaultSeed 提供给需要 seed 的能力（如 inpaint），<0 表示不设置。
+	DefaultSeed int
 }
 
 var modelSpecs = map[string]ModelSpec{
@@ -93,6 +100,39 @@ var modelSpecs = map[string]ModelSpec{
 		MaxPromptRunes: 800,
 		OutputFormat:   "png",
 	},
+	"jimeng-inpaint": {
+		Model:          "jimeng-inpaint",
+		ReqKey:         "jimeng_image2image_dream_inpaint",
+		Capability:     CapabilityInpaint,
+		MaxImages:      2, // 源图 + 单通道灰度 mask
+		MaxOutputCount: 1,
+		MaxPromptRunes: 800,
+		PromptField:    "prompt",
+		DefaultSeed:    101,
+		OutputFormat:   "jpeg",
+	},
+	"jimeng-material-extract": {
+		Model:          "jimeng-material-extract",
+		ReqKey:         "i2i_material_extraction",
+		Capability:     CapabilityExtract,
+		MaxImages:      1,
+		MaxOutputCount: 1,
+		MaxPromptRunes: 800,
+		PromptField:    "image_edit_prompt",
+		DefaultSeed:    -1,
+		OutputFormat:   "jpeg",
+	},
+	"jimeng-product-extract": {
+		Model:          "jimeng-product-extract",
+		ReqKey:         "jimeng_i2i_extract_tiled_images",
+		Capability:     CapabilityExtract,
+		MaxImages:      1,
+		MaxOutputCount: 1,
+		MaxPromptRunes: 800,
+		PromptField:    "edit_prompt", // 接口表字段；示例中曾出现 image_edit_prompt
+		DefaultSeed:    -1,
+		OutputFormat:   "jpeg",
+	},
 }
 
 func GetModelSpec(model string) (ModelSpec, bool) {
@@ -122,6 +162,11 @@ type SubmitTaskRequest struct {
 	Bottom *float64 `json:"bottom,omitempty"`
 	Left   *float64 `json:"left,omitempty"`
 	Right  *float64 `json:"right,omitempty"`
+
+	// 提取类接口的 prompt 字段（按模型择一写入）
+	ImageEditPrompt *string  `json:"image_edit_prompt,omitempty"` // 素材提取 POD
+	EditPrompt      *string  `json:"edit_prompt,omitempty"`       // 商品提取
+	LoraWeight      *float64 `json:"lora_weight,omitempty"`       // 素材提取可选
 }
 
 type GetResultRequest struct {

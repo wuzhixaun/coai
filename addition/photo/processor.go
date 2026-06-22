@@ -117,7 +117,8 @@ func clampGenerateCount(count int) int {
 
 func supportsGenerateCount(feature string) bool {
 	switch feature {
-	case FeatureHdUpscale, FeatureResize, FeatureVideoGen, FeatureDetailImage, FeatureLogoCustom:
+	case FeatureHdUpscale, FeatureResize, FeatureVideoGen, FeatureDetailImage, FeatureLogoCustom,
+		FeatureMaterialExtract, FeatureProductExtract:
 		return false
 	default:
 		return true
@@ -245,6 +246,24 @@ func processProductionFlow(imagePath, channelOverride, userGroup string) (string
 	}
 	prompt := GetSystemPrompt("production_flow", nil)
 	return callImageEdit(b64, prompt, resolveModel("production_flow", channelOverride), userGroup)
+}
+
+func processMaterialExtract(imagePath, category, channelOverride, userGroup string) (string, error) {
+	b64, err := ReadImageBytesAsBase64(imagePath)
+	if err != nil {
+		return "", err
+	}
+	prompt := GetSystemPrompt("material_extract", map[string]string{"category": category})
+	return callImageEdit(b64, prompt, resolveModel("material_extract", channelOverride), userGroup)
+}
+
+func processProductExtract(imagePath, category, channelOverride, userGroup string) (string, error) {
+	b64, err := ReadImageBytesAsBase64(imagePath)
+	if err != nil {
+		return "", err
+	}
+	prompt := GetSystemPrompt("product_extract", map[string]string{"category": category})
+	return callImageEdit(b64, prompt, resolveModel("product_extract", channelOverride), userGroup)
 }
 
 func processResizeItem(imagePath, ratio, channelOverride, userGroup string) (string, error) {
@@ -418,6 +437,12 @@ func ProcessTask(ctx context.Context, db *sql.DB, taskID, feature string, imageP
 					url, e := processResizeItem(p, ratio, channelOverride, userGroup)
 					appendGenerated(&resultURLs, &err, url, e)
 				}
+			case FeatureMaterialExtract:
+				url, e := processMaterialExtract(p, getStringParam(params, "category", "图案"), channelOverride, userGroup)
+				appendGenerated(&resultURLs, &err, url, e)
+			case FeatureProductExtract:
+				url, e := processProductExtract(p, getStringParam(params, "category", "服装"), channelOverride, userGroup)
+				appendGenerated(&resultURLs, &err, url, e)
 			}
 		}
 	}

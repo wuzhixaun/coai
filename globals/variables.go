@@ -150,6 +150,9 @@ const (
 	JimengSeedream40             = "jimeng-seedream-4.0"
 	JimengSuperres               = "jimeng-superres"
 	JimengOutpaint               = "jimeng-outpaint"
+	JimengInpaint                = "jimeng-inpaint"
+	JimengMaterialExtract        = "jimeng-material-extract"
+	JimengProductExtract         = "jimeng-product-extract"
 )
 
 var OpenAIDalleModels = []string{

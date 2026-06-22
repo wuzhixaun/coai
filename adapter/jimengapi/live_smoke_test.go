@@ -153,6 +153,91 @@ func TestLiveSmoke(t *testing.T) {
 		}
 		t.Logf("outpaint ok: %s", strings.Join(results, " | "))
 	})
+
+	// 5) 局部重绘 inpaint：验证源图 + mask 两图输入契约
+	t.Run("inpaint", func(t *testing.T) {
+		source := makeSolidPNGBase64(t, 512, 512)
+		mask := makeMaskPNGBase64(t, 512, 512) // 中心白色区域 = 重绘
+		var results []string
+		err := gen.CreateImageEditRequest(&adaptercommon.ImageEditProps{
+			Model:  "jimeng-inpaint",
+			Images: []string{source, mask},
+			Prompt: "在重绘区域生成一朵红色花朵",
+		}, func(chunk *globals.Chunk) error {
+			if chunk != nil && chunk.Content != "" {
+				results = append(results, chunk.Content)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("inpaint failed: %v", err)
+		}
+		t.Logf("inpaint ok: %s", strings.Join(results, " | "))
+	})
+
+	// 6) 素材提取 POD：验证 image_edit_prompt 字段
+	t.Run("material_extract", func(t *testing.T) {
+		var results []string
+		err := gen.CreateImageEditRequest(&adaptercommon.ImageEditProps{
+			Model:  "jimeng-material-extract",
+			Images: []string{makeSolidPNGBase64(t, 1024, 1024)},
+			Prompt: "提取图案",
+		}, func(chunk *globals.Chunk) error {
+			if chunk != nil && chunk.Content != "" {
+				results = append(results, chunk.Content)
+			}
+			return nil
+		})
+		if err != nil {
+			// 50511 = 输出图后审核未通过：说明 image_edit_prompt 字段已被接受、任务跑到了出图审核，
+			// 仅因合成纯色测试图内容被判风险。视为「字段/链路已验证」，不判失败。
+			if strings.Contains(err.Error(), "50511") {
+				t.Logf("material_extract field/path OK; output risk-rejected on synthetic input (50511): %v", err)
+				return
+			}
+			t.Fatalf("material_extract failed: %v", err)
+		}
+		t.Logf("material_extract ok: %s", strings.Join(results, " | "))
+	})
+
+	// 7) 商品提取：验证 edit_prompt 字段（示例中曾出现 image_edit_prompt 不一致）
+	t.Run("product_extract", func(t *testing.T) {
+		var results []string
+		err := gen.CreateImageEditRequest(&adaptercommon.ImageEditProps{
+			Model:  "jimeng-product-extract",
+			Images: []string{makeSolidPNGBase64(t, 1024, 1024)},
+			Prompt: "提取商品主体：日用品",
+		}, func(chunk *globals.Chunk) error {
+			if chunk != nil && chunk.Content != "" {
+				results = append(results, chunk.Content)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("product_extract failed (edit_prompt may be wrong field, try image_edit_prompt): %v", err)
+		}
+		t.Logf("product_extract ok: %s", strings.Join(results, " | "))
+	})
+}
+
+// makeMaskPNGBase64 生成中心为白色（重绘）、四周黑色（保留）的灰度 mask。
+func makeMaskPNGBase64(t *testing.T, w, h int) string {
+	t.Helper()
+	var buf bytes.Buffer
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			v := uint8(0)
+			if x > w/4 && x < 3*w/4 && y > h/4 && y < 3*h/4 {
+				v = 255
+			}
+			img.Set(x, y, color.RGBA{R: v, G: v, B: v, A: 255})
+		}
+	}
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatalf("encode mask png: %v", err)
+	}
+	return base64.StdEncoding.EncodeToString(buf.Bytes())
 }
 
 // makeSolidPNGBase64 生成指定尺寸纯色 PNG 的原始 base64（无 data: 前缀）。

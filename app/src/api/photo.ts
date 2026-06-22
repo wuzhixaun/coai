@@ -20,6 +20,7 @@ export interface FeatureConfig {
   languages?: { value: string; label: string }[];
   selling_points?: { value: string; label: string }[];
   sizes?: { value: string; label: string }[];
+  categories?: { value: string; label: string }[];
 }
 
 export interface PromptsConfig {

@@ -324,12 +324,15 @@ export const ChannelInfos: Record<string, ChannelInfo> = {
       "jimeng-seedream-4.0",
       "jimeng-superres",
       "jimeng-outpaint",
+      "jimeng-inpaint",
+      "jimeng-material-extract",
+      "jimeng-product-extract",
     ],
     description:
       "> 火山引擎即梦官方 Visual API。密钥格式为 **AK|SK**，支持多行密钥池。\n" +
       "> 接入点默认填写 *https://visual.volcengineapi.com*，后端固定使用 Region=cn-north-1、Service=cv 进行签名。\n" +
       "> 支持 `jimeng-seedream-4.6` / `jimeng-seedream-4.0` 图像生成与图生图编辑；4.6 的 scale 为整数 1-100，4.0 的 scale 为小数 0-1。\n" +
-      "> 同时支持 `jimeng-superres` 智能超清（4k/8k）与 `jimeng-outpaint` 智能扩图（按目标比例自动计算扩展方向）。\n" +
+      "> 同时支持 `jimeng-superres` 智能超清（4k/8k）、`jimeng-outpaint` 智能扩图、`jimeng-inpaint` 局部重绘（需源图+灰度 mask）、`jimeng-material-extract` 素材提取（image_edit_prompt）、`jimeng-product-extract` 商品提取（edit_prompt）。\n" +
       "> 生成结果会将火山 24 小时临时图片 URL 转存到本地 `storage/results`。\n",
   },
 };

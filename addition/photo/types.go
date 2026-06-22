@@ -27,6 +27,8 @@ const (
 	FeatureProductionFlow = "production_flow"
 	FeatureResize         = "resize"
 	FeatureVideoGen       = "video_gen"
+	FeatureMaterialExtract = "material_extract"
+	FeatureProductExtract  = "product_extract"
 )
 
 var AllFeatures = []string{
@@ -34,6 +36,7 @@ var AllFeatures = []string{
 	FeatureMarketing, FeatureImageTranslate, FeatureHdUpscale, FeatureModelImage,
 	FeatureMaterialChange, FeatureInstructionGen, FeatureDetailImage, FeatureLogoCustom,
 	FeatureProductionFlow, FeatureResize, FeatureVideoGen,
+	FeatureMaterialExtract, FeatureProductExtract,
 }
 
 // isAI 判断功能是否需要 AI（本地功能：detail_image, logo_custom）
