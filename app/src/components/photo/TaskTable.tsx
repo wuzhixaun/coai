@@ -27,6 +27,23 @@ const FEATURE_LABEL: Record<string, string> = {
   logo_custom: "Logo定制", production_flow: "流程图", resize: "改尺寸", video_gen: "视频",
 };
 
+// 把后端/上游的英文报错映射成电商同事看得懂的中文提示
+function friendlyError(raw: string): string {
+  if (!raw) return "";
+  const lower = raw.toLowerCase();
+  if (lower.includes("video not supported") || lower.includes("不是视频模型"))
+    return "视频功能暂未在该渠道开通，请联系管理员配置即梦视频模型";
+  if (lower.includes("channels are exhausted") || lower.includes("unknown channel type"))
+    return "暂无可用渠道，请联系管理员检查模型/渠道配置";
+  if (lower.includes("timeout") || lower.includes("超时"))
+    return "处理超时，请稍后重试（图片/视频生成较慢时可多等一会）";
+  if (lower.includes("at least") || lower.includes("需要至少") || lower.includes("参考图"))
+    return "请先上传参考图后再处理";
+  if (lower.includes("quota") || lower.includes("insufficient") || lower.includes("余额") || lower.includes("积分"))
+    return "额度不足，请充值后重试";
+  return raw;
+}
+
 const TaskRow: React.FC<{ task: PhotoTask; onDelete: (id: string) => void; onRetry: (id: string) => void; onRefresh: (id: string) => void }> =
   ({ task, onDelete, onRetry, onRefresh }) => {
   const [expanded, setExpanded] = React.useState(false);
@@ -70,7 +87,7 @@ const TaskRow: React.FC<{ task: PhotoTask; onDelete: (id: string) => void; onRet
       {/* Expanded row */}
       {expanded && (
         <div className="px-4 pb-3 border-t pt-2">
-          {task.error_message && <p className="text-red-500 text-sm mb-2">错误: {task.error_message}</p>}
+          {task.error_message && <p className="text-red-500 text-sm mb-2">错误: {friendlyError(task.error_message)}</p>}
           {(task.source_filenames?.length ?? 0) > 0 && (
             <p className="text-gray-500 text-xs mb-2">源文件: {task.source_filenames.join(", ")}</p>
           )}

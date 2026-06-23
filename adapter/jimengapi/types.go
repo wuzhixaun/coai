@@ -20,6 +20,7 @@ const (
 	CapabilityOutpaint Capability = "outpaint"
 	CapabilityInpaint  Capability = "inpaint"
 	CapabilityExtract  Capability = "extract"
+	CapabilityVideo    Capability = "video" // 图生视频，与图片共用同一渠道凭证
 )
 
 type ScaleKind string
@@ -133,6 +134,17 @@ var modelSpecs = map[string]ModelSpec{
 		DefaultSeed:    -1,
 		OutputFormat:   "jpeg",
 	},
+	// 图生视频：官方即梦视频生成，与图片共用同一火山视觉 API 凭证与
+	// CVSync2AsyncSubmitTask / CVSync2AsyncGetResult 流程，仅 req_key 不同。
+	"jimeng-video": {
+		Model:          "jimeng-video",
+		ReqKey:         "jimeng_vgfm_i2v_l20", // 图生视频 i2v
+		Capability:     CapabilityVideo,
+		MaxImages:      9,
+		MaxOutputCount: 1,
+		MaxPromptRunes: 800,
+		DefaultSeed:    -1,
+	},
 }
 
 func GetModelSpec(model string) (ModelSpec, bool) {
@@ -167,6 +179,10 @@ type SubmitTaskRequest struct {
 	ImageEditPrompt *string  `json:"image_edit_prompt,omitempty"` // 素材提取 POD
 	EditPrompt      *string  `json:"edit_prompt,omitempty"`       // 商品提取
 	LoraWeight      *float64 `json:"lora_weight,omitempty"`       // 素材提取可选
+
+	// 图生视频 (jimeng-video)
+	AspectRatio *string `json:"aspect_ratio,omitempty"` // 如 "16:9"，留空则按参考图自适应
+	Frames      *int    `json:"frames,omitempty"`       // 视频帧数，留空使用模型默认
 }
 
 type GetResultRequest struct {
@@ -195,6 +211,7 @@ type TaskPayload struct {
 	ImageURLs        []string `json:"image_urls,omitempty"`
 	BinaryDataBase64 []string `json:"binary_data_base64,omitempty"`
 	RespData         string   `json:"resp_data,omitempty"`
+	VideoURL         string   `json:"video_url,omitempty"` // 图生视频结果地址
 }
 
 func (r *APIResponse) IsSuccess() bool {

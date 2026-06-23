@@ -283,6 +283,13 @@ func (c *ImageGenerator) GetResult(ctx context.Context, req GetResultRequest) (*
 	return &resp, nil
 }
 
+// initialPollInterval 是首次轮询的间隔。任务通常几秒内完成，先用短间隔快速取回结果，
+// 之后按 pollBackoffFactor 退避，最高不超过传入的 interval（上限）。
+const (
+	initialPollInterval = 2 * time.Second
+	pollBackoffFactor   = 3 // 每次 ×3/2 退避
+)
+
 func (c *ImageGenerator) Poll(ctx context.Context, reqKey, taskID string, maxWait, interval time.Duration) (*APIResponse, error) {
 	if maxWait <= 0 {
 		maxWait = 10 * time.Minute
@@ -291,16 +298,26 @@ func (c *ImageGenerator) Poll(ctx context.Context, reqKey, taskID string, maxWai
 		interval = 10 * time.Second
 	}
 
-	reqJSON, _ := json.Marshal(GetResultOptions{ReturnURL: true})
-	deadline := time.Now().Add(maxWait)
+	// interval 作为退避上限；从较短的初始间隔起步以更快返回结果。
+	maxInterval := interval
+	cur := initialPollInterval
+	if cur > maxInterval {
+		cur = maxInterval
+	}
 
-	for {
+	reqJSON, _ := json.Marshal(GetResultOptions{ReturnURL: true})
+	start := time.Now()
+	deadline := start.Add(maxWait)
+
+	for attempt := 1; ; attempt++ {
 		resp, err := c.GetResult(ctx, GetResultRequest{
 			ReqKey:  reqKey,
 			TaskID:  taskID,
 			ReqJSON: string(reqJSON),
 		})
 		if err != nil {
+			globals.Warn(fmt.Sprintf("[jimeng-api] poll #%d query failed (task_id=%s, elapsed=%s): %s",
+				attempt, taskID, time.Since(start).Truncate(time.Second), err))
 			return nil, err
 		}
 
@@ -308,12 +325,16 @@ func (c *ImageGenerator) Poll(ctx context.Context, reqKey, taskID string, maxWai
 		if resp.Data != nil {
 			status = resp.Data.Status
 		}
+		globals.Debug(fmt.Sprintf("[jimeng-api] poll #%d task_id=%s status=%q elapsed=%s",
+			attempt, taskID, status, time.Since(start).Truncate(time.Second)))
 
 		switch status {
 		case "done":
 			if !resp.IsSuccess() {
 				return resp, fmt.Errorf(resp.ErrorMessage("jimeng task failed"))
 			}
+			globals.Info(fmt.Sprintf("[jimeng-api] task done (task_id=%s, polls=%d, elapsed=%s)",
+				taskID, attempt, time.Since(start).Truncate(time.Second)))
 			return resp, nil
 		case "not_found", "expired":
 			return resp, fmt.Errorf("jimeng task %s: %s", status, taskID)
@@ -327,16 +348,26 @@ func (c *ImageGenerator) Poll(ctx context.Context, reqKey, taskID string, maxWai
 			}
 		}
 
-		if time.Now().Add(interval).After(deadline) {
+		if time.Now().Add(cur).After(deadline) {
+			globals.Warn(fmt.Sprintf("[jimeng-api] task timeout after %s (task_id=%s, status=%s, polls=%d)",
+				maxWait, taskID, status, attempt))
 			return resp, fmt.Errorf("jimeng task timeout after %s (task_id=%s, status=%s)", maxWait, taskID, status)
 		}
 
-		timer := time.NewTimer(interval)
+		timer := time.NewTimer(cur)
 		select {
 		case <-ctx.Done():
 			timer.Stop()
 			return resp, ctx.Err()
 		case <-timer.C:
+		}
+
+		// 退避到下一个间隔，封顶 maxInterval。
+		if cur < maxInterval {
+			cur = cur * pollBackoffFactor / 2
+			if cur > maxInterval {
+				cur = maxInterval
+			}
 		}
 	}
 }

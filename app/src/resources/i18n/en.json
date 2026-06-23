@@ -171,7 +171,8 @@
       "time": "Time",
       "message": "Message"
     },
-    "thinking-process": "Process of thinking"
+    "thinking-process": "Process of thinking",
+    "generating": "Generating {{seconds}}s"
   },
   "quota-description": "Spending quota for the message",
   "buy": {

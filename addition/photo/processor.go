@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -313,14 +314,22 @@ func processVideoGenSingle(imagePaths []string, prompt string, duration int, cha
 }
 
 func resolveModel(feature, channelOverride string) string {
-	if channelOverride != "" {
+	defaultModel := "jimeng-v2"
+	if fc := GetFeatureConfig(feature); fc != nil {
+		defaultModel = fc.Model
+	}
+	// 仅「生图类」功能允许被前端模型下拉覆盖，且只能切换到另一个生图模型；
+	// 高清/扩图/提取/视频等能力功能必须使用各自专属模型，否则会被错误地路由到
+	// 不支持该能力的模型（例如视频被强制用 seedream → jimeng-api 不支持视频）。
+	if channelOverride != "" && isGenerationModel(defaultModel) && isGenerationModel(channelOverride) {
 		return channelOverride
 	}
-	fc := GetFeatureConfig(feature)
-	if fc == nil {
-		return "jimeng-v2"
-	}
-	return fc.Model
+	return defaultModel
+}
+
+// isGenerationModel 判断是否为生图（文/图生图）基础模型。
+func isGenerationModel(model string) bool {
+	return strings.HasPrefix(model, "jimeng-seedream")
 }
 
 func ProcessTask(ctx context.Context, db *sql.DB, taskID, feature string, imagePaths []string, params map[string]interface{}, channelOverride, userGroup string) {

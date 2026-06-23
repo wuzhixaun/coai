@@ -48,4 +48,5 @@ var (
 	_ adaptercommon.ImageEditFactory       = (*ImageGenerator)(nil)
 	_ adaptercommon.ImageUpscaleFactory    = (*ImageGenerator)(nil)
 	_ adaptercommon.ImageOutpaintFactory   = (*ImageGenerator)(nil)
+	_ adaptercommon.ImageToVideoFactory    = (*ImageGenerator)(nil)
 )

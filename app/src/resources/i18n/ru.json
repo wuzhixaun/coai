@@ -171,7 +171,8 @@
       "time": "Время",
       "message": "Сообщения"
     },
-    "thinking-process": "Процесс мышления"
+    "thinking-process": "Процесс мышления",
+    "generating": "Генерация {{seconds}}s"
   },
   "quota-description": "квота расходов на сообщение",
   "buy": {

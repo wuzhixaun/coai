@@ -21,7 +21,7 @@ import {
   saveAsFile,
 } from "@/utils/dom.ts";
 import { useTranslation } from "react-i18next";
-import React, { Ref, useRef, useState } from "react";
+import React, { Ref, useEffect, useRef, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -357,7 +357,7 @@ function MessageContent({
         ) : message.end === true ? (
           <CircleSlash className={`h-5 w-5 m-1`} />
         ) : (
-          <Loader2 className={`h-5 w-5 m-1 animate-spin`} />
+          <GeneratingIndicator />
         )}
 
         {isAssistant && hasContent && isOutput && (
@@ -366,6 +366,25 @@ function MessageContent({
           />
         )}
       </div>
+    </div>
+  );
+}
+
+function GeneratingIndicator() {
+  const { t } = useTranslation();
+  const [seconds, setSeconds] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div
+      className={`flex flex-row items-center gap-2 m-1 text-sm text-muted-foreground`}
+    >
+      <Loader2 className={`h-5 w-5 animate-spin`} />
+      <span>{t("message.generating", { seconds })}</span>
     </div>
   );
 }

@@ -5,7 +5,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { getPrompts, type PromptsConfig } from "@/api/photo";
-import axios from "axios";
+import { useSelector } from "react-redux";
+import { selectSupportModels } from "@/store/chat.ts";
 
 interface Props {
   selectedCount: number;
@@ -47,29 +48,35 @@ const LANG_OPTS = ["en", "zh", "ja", "ko", "fr", "de", "es"];
 const POS_OPTS = ["bottom-right", "bottom-left", "top-right", "top-left", "center"];
 const SIZE_OPTS = ["1:1", "16:9", "4:3", "3:4", "9:16"];
 
+// 生图模型下拉只展示市场里打了「绘图」(image-generation) 标签的模型，并使用市场配置的
+// 中文友好名。这样以后接入 GPT 画图 / 千问(通义万相) 等模型，只要在后台给它打上该标签
+// 就会自动出现；聊天模型(未打标签)与能力模型(superres/extract/video，不在市场列表)都不会混入，
+// 避免电商同事误选。
+const IMAGE_GEN_TAG = "image-generation";
+
 const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [dialogKey, setDialogKey] = useState<string | null>(null);
   const [params, setParams] = useState<Record<string, Record<string, unknown>>>({});
   const [prompts, setPrompts] = useState<PromptsConfig | null>(null);
-  const [models, setModels] = useState<string[]>([]);
   const [chosenModel, setChosenModel] = useState<string>("");
   const [imageCount, setImageCount] = useState(1);
   const mounted = useRef(true);
 
+  // 从市场模型中按「绘图」标签筛出生图模型（可扩展：新模型打标签即可出现）
+  const supportModels = useSelector(selectSupportModels);
+  const genModels = supportModels.filter((m) => (m.tag || []).includes(IMAGE_GEN_TAG));
+
   useEffect(() => {
     mounted.current = true;
     getPrompts().then((data) => { if (mounted.current) setPrompts(data); }).catch(() => {});
-    // get available models
-    axios.get("/v1/models").then((res) => {
-      if (mounted.current && res.data?.data) {
-        const ids = res.data.data.map((m: any) => typeof m === "string" ? m : m.id);
-        setModels(ids);
-        if (ids.length > 0 && !chosenModel) setChosenModel(ids[0]);
-      }
-    }).catch(() => {});
     return () => { mounted.current = false; };
   }, []);
+
+  // 市场模型加载后，默认选中第一个生图模型
+  useEffect(() => {
+    if (!chosenModel && genModels.length > 0) setChosenModel(genModels[0].id);
+  }, [genModels, chosenModel]);
 
   const toggle = (key: string) => setSelected((prev) => {
     const next = new Set(prev);
@@ -90,6 +97,7 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
       if (key === "logo_custom") init.position = "bottom-right";
       if (key === "material_extract") init.category = "提取图案";
       if (key === "product_extract") init.category = "服装";
+      if (key === "video_gen") init.duration = 5;
       setParams((p) => ({ ...p, [key]: init }));
     }
   };
@@ -136,12 +144,12 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
 
       {/* Model Selector */}
       <div className="mb-3">
-        <Label>选择模型</Label>
+        <Label>生图模型</Label>
         <select className="w-full border rounded p-2 mt-1 text-sm bg-background"
           value={chosenModel}
           onChange={(e) => setChosenModel(e.target.value)}>
-          {models.map((m) => (
-            <option key={m} value={m}>{m}</option>
+          {genModels.map((m) => (
+            <option key={m.id} value={m.id}>{m.name || m.id}</option>
           ))}
         </select>
       </div>
@@ -201,6 +209,20 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
                 <Input value={(p.prompt as string) || ""}
                   onChange={(e) => setParam("prompt", e.target.value)}
                   placeholder={dialogKey === "video_gen" ? "留空则AI自动推理" : "输入提示词..."} />
+              </div>
+            )}
+
+            {/* 视频时长 */}
+            {dialogKey === "video_gen" && (
+              <div>
+                <Label>视频时长</Label>
+                <div className="flex gap-1 mt-1">
+                  {[5, 10].map((sec) => (
+                    <Badge key={sec} variant={(Number(p.duration) || 5) === sec ? "default" : "outline"}
+                      className="cursor-pointer"
+                      onClick={() => setParam("duration", sec)}>{sec} 秒</Badge>
+                  ))}
+                </div>
               </div>
             )}
 

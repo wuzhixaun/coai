@@ -171,7 +171,8 @@
       "time": "期日",
       "message": "メッセージ"
     },
-    "thinking-process": "思考プロセス"
+    "thinking-process": "思考プロセス",
+    "generating": "生成中 {{seconds}}s"
   },
   "quota-description": "メッセージのクレジット使用額",
   "buy": {
