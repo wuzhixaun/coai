@@ -1238,6 +1238,10 @@
   "title": "タイトル",
   "my-account": "マイアカウント",
   "payment": {
+    "qr-title-alipay": "Alipay QRコード決済",
+    "qr-title-wxpay": "WeChat QRコード決済",
+    "qr-tip": "スマートフォンでQRコードをスキャンして決済を完了してください",
+    "qr-success": "支払いが完了しました。ポイントが付与されました",
     "wechat": "WeChat Pay",
     "wxpay": "WeChat Pay",
     "alipay": "Alipay",

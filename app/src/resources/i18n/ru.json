@@ -1238,6 +1238,10 @@
   "title": "заглавие",
   "my-account": "Моя учетная запись",
   "payment": {
+    "qr-title-alipay": "Оплата по QR-коду Alipay",
+    "qr-title-wxpay": "Оплата по QR-коду WeChat",
+    "qr-tip": "Отсканируйте QR-код телефоном, чтобы завершить оплату",
+    "qr-success": "Оплата прошла успешно, баллы начислены",
     "wechat": "WeChat Pay",
     "wxpay": "WeChat Pay",
     "alipay": "Alipay",

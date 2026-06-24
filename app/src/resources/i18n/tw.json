@@ -1448,6 +1448,10 @@
     }
   },
   "payment": {
+    "qr-title-alipay": "支付寶掃碼支付",
+    "qr-title-wxpay": "微信掃碼支付",
+    "qr-tip": "請使用手機掃描二維碼完成支付",
+    "qr-success": "支付成功，點數已到賬",
     "wechat": "微信支付",
     "wxpay": "微信支付",
     "wechatpay": "微信支付",

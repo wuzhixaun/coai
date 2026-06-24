@@ -1428,6 +1428,10 @@
     "switch-preset-desc": "已开始新对话并切换至预设"
   },
   "payment": {
+    "qr-title-alipay": "支付宝扫码支付",
+    "qr-title-wxpay": "微信扫码支付",
+    "qr-tip": "请使用手机扫描二维码完成支付",
+    "qr-success": "支付成功，点数已到账",
     "wechat": "微信支付",
     "wxpay": "微信支付",
     "wechatpay": "微信支付",

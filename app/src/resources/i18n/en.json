@@ -1238,6 +1238,10 @@
   "title": "Title",
   "my-account": "My Account",
   "payment": {
+    "qr-title-alipay": "Alipay Scan to Pay",
+    "qr-title-wxpay": "WeChat Scan to Pay",
+    "qr-tip": "Please scan the QR code with your phone to complete the payment",
+    "qr-success": "Payment successful, credits have been added",
     "wechat": "WeChat",
     "wxpay": "WeChat Pay",
     "alipay": "Alipay",

@@ -8,7 +8,8 @@ import { useTranslation } from "react-i18next";
 
 export type PaymentResponse = CommonResponse & {
   data?: {
-    url: string;
+    url?: string;
+    qrcode?: string;
     params: Record<string, string>;
   };
 };
