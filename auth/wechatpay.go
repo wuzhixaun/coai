@@ -102,6 +102,38 @@ func completeWechatByOrder(db *sql.DB, orderID string) error {
 	return completePaymentOrder(db, orderID, userID, amount)
 }
 
+// queryWechatOrder 主动向微信查询订单状态，作为 /payment/check 的兜底：
+// 本地无公网回调或回调丢失时，前端轮询可借此确认支付结果。
+// 未支付（trade_state 为空或非 SUCCESS）返回 (false, nil)，仅传输错误才向上传播。
+func queryWechatOrder(db *sql.DB, orderID string) (bool, error) {
+	conf := channel.SystemInstance.Payment.WechatPay
+	ctx := context.Background()
+
+	client, err := newWechatClient(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	svc := native.NativeApiService{Client: client}
+	resp, _, err := svc.QueryOrderByOutTradeNo(ctx, native.QueryOrderByOutTradeNoRequest{
+		OutTradeNo: core.String(orderID),
+		Mchid:      core.String(conf.MchID),
+	})
+	if err != nil {
+		return false, fmt.Errorf("微信查单失败: %w", err)
+	}
+
+	if resp.TradeState == nil || *resp.TradeState != "SUCCESS" {
+		// 尚未支付——轮询中的正常状态，不视为错误。
+		return false, nil
+	}
+
+	if err := completeWechatByOrder(db, orderID); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // newWechatNotifyHandler 使用自动下载并轮换的微信支付平台证书构造通知处理器。
 // 处理器内部会先用平台证书做 SHA256-RSA 验签，再用 APIv3Key 做 AES-GCM 解密，
 // 二者均通过后 ParseNotifyRequest 才会把明文写入 content，从而保证验签+解密先于充值。

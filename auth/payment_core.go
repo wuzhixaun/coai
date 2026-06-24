@@ -13,8 +13,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func queryWechatOrder(db *sql.DB, orderID string) (bool, error) { return false, nil }
-
 type CreatePaymentForm struct {
 	Type   string `json:"type" binding:"required"`
 	Quota  int    `json:"quota" binding:"required"`
