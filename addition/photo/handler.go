@@ -171,6 +171,16 @@ func ProcessAPI(c *gin.Context) {
 		}
 	}
 
+	// Logo 定制：把前端传入的 logo 图片 id 解析成本地路径，供处理时读取为第二张参考图。
+	if logoID := getStringParam(req.Params, "logo_image_id", ""); logoID != "" {
+		if logoPaths, e := ResolveImagePaths(db, []string{logoID}, userID); e == nil && len(logoPaths) > 0 {
+			if req.Params == nil {
+				req.Params = map[string]interface{}{}
+			}
+			req.Params["logo_path"] = logoPaths[0]
+		}
+	}
+
 	responses := make([]TaskInfo, 0, len(req.Features))
 	for _, feature := range req.Features {
 		isVideo := feature == FeatureVideoGen

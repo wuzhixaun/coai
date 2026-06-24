@@ -1,6 +1,8 @@
 package photo
 
 import (
+	"bytes"
+	"encoding/base64"
 	"fmt"
 	"image"
 	"image/draw"
@@ -10,6 +12,58 @@ import (
 
 	xdraw "golang.org/x/image/draw" // for high-quality resize (CatmullRom)
 )
+
+// ReadImageBase64EnsureMinSide 读取图片并保证最短边落在 [minSide, maxSide] 内，
+// 返回纯 base64 PNG。即梦素材/商品提取（jimeng_i2i_extract_tiled_images /
+// i2i_material_extraction）要求输入边长 1024–4096，小图（如 800×800）会被服务端
+// 直接判 50500/50207。此处对过小图按比例高质量放大，过大图按比例缩小。
+func ReadImageBase64EnsureMinSide(path string, minSide, maxSide int) (string, error) {
+	src, err := openImage(path)
+	if err != nil {
+		return "", fmt.Errorf("打开图片失败: %w", err)
+	}
+	b := src.Bounds()
+	w, h := b.Dx(), b.Dy()
+	if w == 0 || h == 0 {
+		return "", fmt.Errorf("图片尺寸非法: %dx%d", w, h)
+	}
+
+	img := src
+	short := w
+	if h < short {
+		short = h
+	}
+	long := w
+	if h > long {
+		long = h
+	}
+
+	// 计算缩放系数：最短边补到 minSide，同时最长边不超过 maxSide。
+	scale := 1.0
+	if short < minSide {
+		scale = float64(minSide) / float64(short)
+	}
+	if float64(long)*scale > float64(maxSide) {
+		scale = float64(maxSide) / float64(long)
+	}
+	if scale != 1.0 {
+		nw := int(float64(w)*scale + 0.5)
+		nh := int(float64(h)*scale + 0.5)
+		if nw < 1 {
+			nw = 1
+		}
+		if nh < 1 {
+			nh = 1
+		}
+		img = resizeImage(src, nw, nh)
+	}
+
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		return "", fmt.Errorf("编码图片失败: %w", err)
+	}
+	return base64.StdEncoding.EncodeToString(buf.Bytes()), nil
+}
 
 // ── 中心裁剪 ────────────────────────────────────────────────
 

@@ -6,6 +6,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"path"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -75,7 +81,66 @@ func (c *ImageGenerator) CreateImageToVideoRequest(props *adaptercommon.ImageToV
 		return fmt.Errorf("jimeng 未返回视频结果 (task_id=%s)", taskID)
 	}
 
-	return hook(&globals.Chunk{Content: videoURL})
+	// 下载并落地为本地 .mp4，使下载接口能按 video/mp4 提供、前端可正常预览/下载
+	// （否则返回火山临时 URL，下载接口当作本地文件找不到、退化成 octet-stream/txt）。
+	stored, err := c.storeVideoURL(videoURL)
+	if err != nil {
+		globals.Warn(fmt.Sprintf("[jimeng-api] 视频结果落地失败，回退使用源地址 (task_id=%s): %s", taskID, err))
+		stored = videoURL
+	}
+
+	return hook(&globals.Chunk{Content: stored})
+}
+
+// storeVideoURL 下载视频结果并存到 storage/results，返回本地公开路径。
+func (c *ImageGenerator) storeVideoURL(videoURL string) (string, error) {
+	videoURL = strings.TrimSpace(videoURL)
+	if videoURL == "" {
+		return "", fmt.Errorf("empty video url")
+	}
+	parsed, err := url.Parse(videoURL)
+	if err != nil {
+		return "", err
+	}
+	ext := strings.ToLower(path.Ext(parsed.Path))
+	switch ext {
+	case ".mp4", ".webm", ".mov":
+	default:
+		ext = ".mp4"
+	}
+
+	if err := os.MkdirAll(resultDir, 0755); err != nil {
+		return "", err
+	}
+	filename := resultFilename(videoURL, ext)
+	savePath := filepath.Join(resultDir, filename)
+
+	req, err := http.NewRequest(http.MethodGet, videoURL, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := c.httpClient().Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", fmt.Errorf("download jimeng video failed: http %d", resp.StatusCode)
+	}
+
+	file, err := os.Create(savePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	if _, err := io.Copy(file, resp.Body); err != nil {
+		_ = os.Remove(savePath)
+		return "", err
+	}
+
+	return publicResultURL(filename), nil
 }
 
 // durationToFrames 将秒数换算为火山视频接口的帧数 (24fps + 1)。

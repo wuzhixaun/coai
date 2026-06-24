@@ -85,7 +85,7 @@ const UploadPanel: React.FC<Props> = ({
           </div>
 
           {/* Thumbnail grid */}
-          <div className="grid grid-cols-3 gap-2 mt-2 overflow-auto flex-1">
+          <div className="grid grid-cols-3 gap-2 mt-2 overflow-auto flex-1 content-start items-start auto-rows-min">
             {images.map((img) => (
               <div key={img.id} className={`relative rounded border-2 cursor-pointer ${
                 selectedIds.includes(img.id) ? "border-primary" : "border-transparent"

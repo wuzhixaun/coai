@@ -39,11 +39,9 @@ var AllFeatures = []string{
 	FeatureMaterialExtract, FeatureProductExtract,
 }
 
-// isAI 判断功能是否需要 AI（本地功能：detail_image, logo_custom）
-var localFeatures = map[string]bool{
-	FeatureDetailImage: true,
-	FeatureLogoCustom:  true,
-}
+// localFeatures 现已为空：detail_image / logo_custom 均改由官方即梦 AI 处理。
+// 保留该映射以便将来如有纯本地功能可继续登记。
+var localFeatures = map[string]bool{}
 
 func IsAIFeature(feature string) bool {
 	return !localFeatures[feature]

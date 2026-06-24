@@ -138,7 +138,7 @@ var modelSpecs = map[string]ModelSpec{
 	// CVSync2AsyncSubmitTask / CVSync2AsyncGetResult 流程，仅 req_key 不同。
 	"jimeng-video": {
 		Model:          "jimeng-video",
-		ReqKey:         "jimeng_vgfm_i2v_l20", // 图生视频 i2v
+		ReqKey:         "jimeng_ti2v_v30_pro", // 即梦视频 3.0 Pro（文/图生视频统一 req_key，frames 121/241=5s/10s）
 		Capability:     CapabilityVideo,
 		MaxImages:      9,
 		MaxOutputCount: 1,

@@ -91,19 +91,65 @@ func updateTaskProgress(db *sql.DB, taskID string, progress int) {
 	}
 }
 
+// extractResultURL 从 hook 内容中取出裸结果地址。适配器为兼容聊天渲染，会把图片
+// 结果包成 Markdown(![image](url))；Photo 模块只需其中的 URL（视频为裸路径，原样返回）。
+func extractResultURL(content string) string {
+	content = strings.TrimSpace(content)
+	if strings.HasPrefix(content, "![") {
+		if l := strings.Index(content, "("); l >= 0 {
+			if r := strings.Index(content[l+1:], ")"); r >= 0 {
+				return strings.TrimSpace(content[l+1 : l+1+r])
+			}
+		}
+	}
+	return content
+}
+
 func callImageEdit(imageBase64, prompt, model, userGroup string) (string, error) {
+	return callImageEditMulti([]string{imageBase64}, prompt, model, userGroup)
+}
+
+// callImageEditMulti 支持多张参考图的图生图编辑（如 Logo 定制：商品图 + Logo 图）。
+func callImageEditMulti(images []string, prompt, model, userGroup string) (string, error) {
 	props := adaptercommon.CreateImageEditProps(&adaptercommon.ImageEditProps{
-		Model: model, Images: []string{imageBase64}, Prompt: prompt,
+		Model: model, Images: images, Prompt: prompt,
 	})
 	props.OriginalModel = model
 	var resultURL string
 	err := channel.NewImageEditRequestWithChannel(userGroup, props, func(data *globals.Chunk) error {
 		if data != nil && data.Content != "" {
-			resultURL = data.Content
+			resultURL = extractResultURL(data.Content)
 		}
 		return nil
 	})
 	return resultURL, err
+}
+
+// processDetailImage 细节图：用官方即梦生成商品材质/工艺特写（替代旧的本地裁剪）。
+func processDetailImage(imagePath, channelOverride, userGroup string) (string, error) {
+	b64, err := ReadImageBytesAsBase64(imagePath)
+	if err != nil {
+		return "", err
+	}
+	prompt := GetSystemPrompt("detail_image", nil)
+	return callImageEdit(b64, prompt, resolveModel("detail_image", channelOverride), userGroup)
+}
+
+// processLogoCustom Logo 定制：商品图 + Logo 图作为双参考图，用 AI 自然合成（替代旧的本地叠加）。
+func processLogoCustom(productPath, logoPath, position, channelOverride, userGroup string) (string, error) {
+	productB64, err := ReadImageBytesAsBase64(productPath)
+	if err != nil {
+		return "", err
+	}
+	if logoPath == "" {
+		return "", fmt.Errorf("Logo 定制需要先上传并指定 Logo 图片")
+	}
+	logoB64, err := ReadImageBytesAsBase64(logoPath)
+	if err != nil {
+		return "", fmt.Errorf("读取 Logo 图片失败: %w", err)
+	}
+	prompt := GetSystemPrompt("logo_custom", map[string]string{"position": position})
+	return callImageEditMulti([]string{productB64, logoB64}, prompt, resolveModel("logo_custom", channelOverride), userGroup)
 }
 
 func clampGenerateCount(count int) int {
@@ -206,7 +252,7 @@ func processHdUpscale(imagePath, channelOverride, userGroup string) (string, err
 	var resultURL string
 	err = channel.NewImageUpscaleRequestWithChannel(userGroup, props, func(data *globals.Chunk) error {
 		if data != nil && data.Content != "" {
-			resultURL = data.Content
+			resultURL = extractResultURL(data.Content)
 		}
 		return nil
 	})
@@ -249,8 +295,14 @@ func processProductionFlow(imagePath, channelOverride, userGroup string) (string
 	return callImageEdit(b64, prompt, resolveModel("production_flow", channelOverride), userGroup)
 }
 
+// 即梦素材/商品提取要求输入边长 1024–4096，小图会被服务端直接拒绝（50500/50207）。
+const (
+	extractMinSide = 1024
+	extractMaxSide = 4096
+)
+
 func processMaterialExtract(imagePath, category, channelOverride, userGroup string) (string, error) {
-	b64, err := ReadImageBytesAsBase64(imagePath)
+	b64, err := ReadImageBase64EnsureMinSide(imagePath, extractMinSide, extractMaxSide)
 	if err != nil {
 		return "", err
 	}
@@ -259,7 +311,7 @@ func processMaterialExtract(imagePath, category, channelOverride, userGroup stri
 }
 
 func processProductExtract(imagePath, category, channelOverride, userGroup string) (string, error) {
-	b64, err := ReadImageBytesAsBase64(imagePath)
+	b64, err := ReadImageBase64EnsureMinSide(imagePath, extractMinSide, extractMaxSide)
 	if err != nil {
 		return "", err
 	}
@@ -272,8 +324,22 @@ func processResizeItem(imagePath, ratio, channelOverride, userGroup string) (str
 	if err != nil {
 		return "", err
 	}
+	// 改尺寸=智能扩图：jimeng-outpaint 是 Outpaint 能力，必须走扩图路径（按目标比例
+	// 自动算四向扩展），不能走 callImageEdit（edit 不支持 outpaint 能力会直接报错）。
+	model := resolveModel("resize", channelOverride)
 	prompt := GetSystemPrompt("resize", map[string]string{"target_ratio": ratio})
-	return callImageEdit(b64, prompt, resolveModel("resize", channelOverride), userGroup)
+	props := adaptercommon.CreateImageOutpaintProps(&adaptercommon.ImageOutpaintProps{
+		Model: model, Image: b64, TargetRatio: ratio, Prompt: prompt,
+	})
+	props.OriginalModel = model
+	var resultURL string
+	err = channel.NewImageOutpaintRequestWithChannel(userGroup, props, func(data *globals.Chunk) error {
+		if data != nil && data.Content != "" {
+			resultURL = extractResultURL(data.Content)
+		}
+		return nil
+	})
+	return resultURL, err
 }
 
 func processVideoGenSingle(imagePaths []string, prompt string, duration int, channelOverride, userGroup string) (string, error) {
@@ -306,7 +372,7 @@ func processVideoGenSingle(imagePaths []string, prompt string, duration int, cha
 	var resultURL string
 	err := channel.NewImageToVideoRequestWithChannel(userGroup, props, func(data *globals.Chunk) error {
 		if data != nil && data.Content != "" {
-			resultURL = data.Content
+			resultURL = extractResultURL(data.Content)
 		}
 		return nil
 	})
@@ -451,6 +517,12 @@ func ProcessTask(ctx context.Context, db *sql.DB, taskID, feature string, imageP
 				appendGenerated(&resultURLs, &err, url, e)
 			case FeatureProductExtract:
 				url, e := processProductExtract(p, getStringParam(params, "category", "服装"), channelOverride, userGroup)
+				appendGenerated(&resultURLs, &err, url, e)
+			case FeatureDetailImage:
+				url, e := processDetailImage(p, channelOverride, userGroup)
+				appendGenerated(&resultURLs, &err, url, e)
+			case FeatureLogoCustom:
+				url, e := processLogoCustom(p, getStringParam(params, "logo_path", ""), getStringParam(params, "position", "bottom-right"), channelOverride, userGroup)
 				appendGenerated(&resultURLs, &err, url, e)
 			}
 		}
