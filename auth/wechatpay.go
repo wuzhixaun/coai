@@ -2,15 +2,20 @@ package auth
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 	"time"
 
 	"chat/channel"
+	"chat/globals"
 	"chat/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/wechatpay-apiv3/wechatpay-go/core"
+	"github.com/wechatpay-apiv3/wechatpay-go/core/auth/verifiers"
+	"github.com/wechatpay-apiv3/wechatpay-go/core/downloader"
+	"github.com/wechatpay-apiv3/wechatpay-go/core/notify"
 	"github.com/wechatpay-apiv3/wechatpay-go/core/option"
 	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/native"
 	wxutils "github.com/wechatpay-apiv3/wechatpay-go/utils"
@@ -83,4 +88,79 @@ func createWechatOrder(c *gin.Context, user *User, form CreatePaymentForm) (stri
 	}
 
 	return *resp.CodeUrl, orderID, nil
+}
+
+// completeWechatByOrder 根据订单号查出对应用户与金额，幂等地完成充值。
+func completeWechatByOrder(db *sql.DB, orderID string) error {
+	var userID int64
+	var amount float32
+	if err := globals.QueryRowDb(db,
+		`SELECT user_id, amount FROM payment WHERE order_id = ? AND service = ?`,
+		orderID, wechatPayService).Scan(&userID, &amount); err != nil {
+		return fmt.Errorf("order not found: %w", err)
+	}
+	return completePaymentOrder(db, orderID, userID, amount)
+}
+
+// newWechatNotifyHandler 使用自动下载并轮换的微信支付平台证书构造通知处理器。
+// 处理器内部会先用平台证书做 SHA256-RSA 验签，再用 APIv3Key 做 AES-GCM 解密，
+// 二者均通过后 ParseNotifyRequest 才会把明文写入 content，从而保证验签+解密先于充值。
+func newWechatNotifyHandler(ctx context.Context, client *core.Client, apiV3Key string) (*notify.Handler, error) {
+	conf := channel.SystemInstance.Payment.WechatPay
+
+	mgr := downloader.MgrInstance()
+	if err := mgr.RegisterDownloaderWithClient(ctx, client, conf.MchID, apiV3Key); err != nil {
+		return nil, fmt.Errorf("注册微信平台证书下载器失败: %w", err)
+	}
+	certVisitor := mgr.GetCertificateVisitor(conf.MchID)
+
+	// NewRSANotifyHandler 自带 AES-GCM 解密能力（NewNotifyHandler 已废弃）。
+	handler, err := notify.NewRSANotifyHandler(apiV3Key, verifiers.NewSHA256WithRSAVerifier(certVisitor))
+	if err != nil {
+		return nil, fmt.Errorf("构造微信通知处理器失败: %w", err)
+	}
+	return handler, nil
+}
+
+// WechatNotifyAPI 处理微信支付异步回调：验签+解密成功且交易成功后幂等充值。
+// 微信要求以 HTTP 200 + {"code":"SUCCESS"} 表示已成功接收；其它响应会触发微信重试。
+func WechatNotifyAPI(c *gin.Context) {
+	conf := channel.SystemInstance.Payment.WechatPay
+	ctx := context.Background()
+
+	client, err := newWechatClient(ctx)
+	if err != nil {
+		c.JSON(500, gin.H{"code": "FAIL", "message": "not configured"})
+		return
+	}
+
+	handler, err := newWechatNotifyHandler(ctx, client, conf.APIv3Key)
+	if err != nil {
+		globals.Warn(fmt.Sprintf("[wechat] init notify handler failed: %v", err))
+		c.JSON(500, gin.H{"code": "FAIL", "message": "init handler failed"})
+		return
+	}
+
+	transaction := make(map[string]interface{})
+	if _, err := handler.ParseNotifyRequest(ctx, c.Request, &transaction); err != nil {
+		globals.Warn(fmt.Sprintf("[wechat] notify verify failed: %v", err))
+		c.JSON(401, gin.H{"code": "FAIL", "message": "verify failed"})
+		return
+	}
+
+	if state, _ := transaction["trade_state"].(string); state != "SUCCESS" {
+		// 非成功状态仅确认接收，不充值。
+		c.JSON(200, gin.H{"code": "SUCCESS", "message": "OK"})
+		return
+	}
+
+	orderID, _ := transaction["out_trade_no"].(string)
+	db := utils.GetDBFromContext(c)
+	if err := completeWechatByOrder(db, orderID); err != nil {
+		globals.Warn(fmt.Sprintf("[wechat] complete order %s failed: %v", orderID, err))
+		c.JSON(500, gin.H{"code": "FAIL", "message": "process failed"})
+		return
+	}
+
+	c.JSON(200, gin.H{"code": "SUCCESS", "message": "OK"})
 }

@@ -18,6 +18,7 @@ func Register(app *gin.RouterGroup) {
 	app.POST("/payment/create", CreatePaymentAPI)
 	app.GET("/payment/check/:order", CheckPaymentAPI)
 	app.POST("/payment/alipay/notify", AlipayNotifyAPI)
+	app.POST("/payment/wechat/notify", WechatNotifyAPI)
 	app.GET("/subscription", SubscriptionAPI)
 	app.POST("/subscribe", SubscribeAPI)
 	app.GET("/invite", InviteAPI)
