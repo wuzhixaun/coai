@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { quotaSelector, refreshQuota } from "@/store/quota.ts";
 import { AppDispatch } from "@/store";
@@ -20,20 +20,29 @@ import { useRedeem as redeemCode } from "@/api/redeem.ts";
 import { motion } from "framer-motion";
 import { infoPaymentSelector } from "@/store/info.ts";
 import { PaymentButton } from "@/payment/icons.tsx";
-import { createPaymentOrder } from "@/payment/request.ts";
+import {
+  createPaymentOrder,
+  getPaymentOrderStatus,
+} from "@/payment/request.ts";
 import QuotaWrapper from "@/routes/wallet/AmountItem.tsx";
+import { QRCodeSVG } from "qrcode.react";
 
 const builtinQuotaAmounts = [1, 5, 10, 20];
 const paymentMethods = ["alipay", "wxpay"];
 
 export default function WalletQuotaBox() {
   const { t } = useTranslation();
+  const dispatch: AppDispatch = useDispatch();
   const quota = useSelector(quotaSelector);
   const payment = useSelector(infoPaymentSelector);
   const [redeemOpen, setRedeemOpen] = useState(false);
   const [paying, setPaying] = useState(false);
   const [currentAmount, setCurrentAmount] = useState(0);
   const [buyQuota, setBuyQuota] = useState(builtinQuotaAmounts[0] * 10);
+  const [qrOpen, setQrOpen] = useState(false);
+  const [qrValue, setQrValue] = useState("");
+  const [qrOrder, setQrOrder] = useState("");
+  const [qrMethod, setQrMethod] = useState("alipay");
 
   const availablePayment = useMemo(
     () => payment.filter((method) => paymentMethods.includes(method)),
@@ -54,17 +63,36 @@ export default function WalletQuotaBox() {
       buyQuota,
       t("payment.order.quota", { quota: buyQuota }),
     );
+    setPaying(false);
 
-    if (res.status && res.data?.url) {
-      window.location.href = res.data.url;
+    if (res.status && res.data?.qrcode) {
+      setQrMethod(method);
+      setQrValue(res.data.qrcode);
+      setQrOrder(res.data.params?.order ?? "");
+      setQrOpen(true);
       return;
     }
 
-    setPaying(false);
     toast.error(t("buy.failed"), {
       description: res.error || t("buy.failed-prompt"),
     });
   };
+
+  useEffect(() => {
+    if (!qrOpen || !qrOrder) return;
+
+    const timer = setInterval(async () => {
+      const res = await getPaymentOrderStatus(qrOrder);
+      if (res.status && res.order_state) {
+        clearInterval(timer);
+        setQrOpen(false);
+        toast.success(t("payment.qr-success"));
+        dispatch(refreshQuota());
+      }
+    }, 2000);
+
+    return () => clearInterval(timer);
+  }, [qrOpen, qrOrder]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -96,6 +124,23 @@ export default function WalletQuotaBox() {
       animate="visible"
     >
       <RedeemComponent open={redeemOpen} onOpenChanged={setRedeemOpen} />
+      <Dialog open={qrOpen} onOpenChange={setQrOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {t(
+                qrMethod === "wxpay"
+                  ? "payment.qr-title-wxpay"
+                  : "payment.qr-title-alipay",
+              )}
+            </DialogTitle>
+            <DialogDescription>{t("payment.qr-tip")}</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center py-4">
+            {qrValue && <QRCodeSVG value={qrValue} size={220} />}
+          </div>
+        </DialogContent>
+      </Dialog>
       <motion.div className={`flex flex-col pb-4`} variants={itemVariants}>
         <motion.div className={`dialog-wrapper`} variants={itemVariants}>
           <motion.div className={`buy-interface`} variants={itemVariants}>
