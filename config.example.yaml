@@ -30,24 +30,4 @@ system:
   search:
     endpoint: https://duckduckgo-api.vercel.app
     query: 5
-  payment:
-    paypal:
-      enabled: false
-      mode: sandbox
-      client_id: ""
-      secret: ""
-      currency: USD
-    stripe:
-      enabled: false
-      public_key: ""
-      secret_key: ""
-      webhook_secret: ""
-      currency: usd
-    epay:
-      enabled: false
-      domain: ""
-      business_id: ""
-      business_key: ""
-      # 可选值：alipay, wxpay, bank；开启 aggregation 后会在钱包页显示 epay 聚合支付入口
-      methods: []
-      aggregation: false
+  payment: {}

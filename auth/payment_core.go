@@ -7,12 +7,23 @@ import (
 	"net/http"
 	"strings"
 
-	"chat/channel"
 	"chat/globals"
 	"chat/utils"
 
 	"github.com/gin-gonic/gin"
 )
+
+const alipayService = "alipay"
+const wechatPayService = "wxpay"
+
+func createAlipayOrder(c *gin.Context, user *User, form CreatePaymentForm) (string, string, error) {
+	return "", "", fmt.Errorf("alipay not configured")
+}
+func createWechatOrder(c *gin.Context, user *User, form CreatePaymentForm) (string, string, error) {
+	return "", "", fmt.Errorf("wechat pay not configured")
+}
+func queryAlipayOrder(db *sql.DB, orderID string) (bool, error) { return false, nil }
+func queryWechatOrder(db *sql.DB, orderID string) (bool, error) { return false, nil }
 
 type CreatePaymentForm struct {
 	Type   string `json:"type" binding:"required"`
@@ -117,94 +128,25 @@ func CreatePaymentAPI(c *gin.Context) {
 
 	paymentType := strings.ToLower(strings.TrimSpace(form.Type))
 	form.Type = paymentType
-	if channel.SystemInstance.Payment.EPay.Accepts(paymentType) {
-		paymentURL, orderID, err := createEPayOrder(c, user, form)
+
+	switch paymentType {
+	case alipayService:
+		qrcode, orderID, err := createAlipayOrder(c, user, form)
 		if err != nil {
-			c.JSON(http.StatusOK, gin.H{
-				"status": false,
-				"error":  err.Error(),
-			})
+			c.JSON(http.StatusOK, gin.H{"status": false, "error": err.Error()})
 			return
 		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"status": true,
-			"data": gin.H{
-				"url": paymentURL,
-				"params": gin.H{
-					"order": orderID,
-				},
-			},
-		})
-		return
-	}
-
-	if paymentType == stripeService {
-		session, err := createStripeSession(c, user, form)
+		c.JSON(http.StatusOK, gin.H{"status": true, "data": gin.H{"qrcode": qrcode, "params": gin.H{"order": orderID}}})
+	case wechatPayService:
+		codeURL, orderID, err := createWechatOrder(c, user, form)
 		if err != nil {
-			c.JSON(http.StatusOK, gin.H{
-				"status": false,
-				"error":  err.Error(),
-			})
+			c.JSON(http.StatusOK, gin.H{"status": false, "error": err.Error()})
 			return
 		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"status": true,
-			"data": gin.H{
-				"url": session.URL,
-				"params": gin.H{
-					"order": session.ID,
-				},
-			},
-		})
-		return
+		c.JSON(http.StatusOK, gin.H{"status": true, "data": gin.H{"qrcode": codeURL, "params": gin.H{"order": orderID}}})
+	default:
+		c.JSON(http.StatusOK, gin.H{"status": false, "error": "unsupported payment provider"})
 	}
-
-	if paymentType != paypalService {
-		c.JSON(http.StatusOK, gin.H{
-			"status": false,
-			"error":  "unsupported payment provider",
-		})
-		return
-	}
-
-	order, err := createPayPalOrder(c, form)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"status": false,
-			"error":  err.Error(),
-		})
-		return
-	}
-
-	approvalURL := paypalApprovalURL(*order)
-	if approvalURL == "" {
-		c.JSON(http.StatusOK, gin.H{
-			"status": false,
-			"error":  "paypal approval url is empty",
-		})
-		return
-	}
-
-	db := utils.GetDBFromContext(c)
-	if err := insertPaymentOrder(db, user, form, order.ID, paypalService); err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"status": false,
-			"error":  err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"status": true,
-		"data": gin.H{
-			"url": approvalURL,
-			"params": gin.H{
-				"order": order.ID,
-			},
-		},
-	})
 }
 
 func CheckPaymentAPI(c *gin.Context) {
@@ -248,98 +190,22 @@ func CheckPaymentAPI(c *gin.Context) {
 		return
 	}
 
-	if isEPayService(service) {
-		c.JSON(http.StatusOK, gin.H{
-			"status":         true,
-			"order_state":    false,
-			"payment_status": "WAITING_NOTIFY",
-		})
-		return
-	}
-
-	if service == stripeService {
-		session, err := getStripeSession(orderID)
+	switch service {
+	case alipayService:
+		paid, err := queryAlipayOrder(db, orderID)
 		if err != nil {
-			c.JSON(http.StatusOK, gin.H{
-				"status":      false,
-				"error":       err.Error(),
-				"order_state": false,
-			})
+			c.JSON(http.StatusOK, gin.H{"status": false, "error": err.Error(), "order_state": false})
 			return
 		}
-
-		if isStripeSessionPaid(session) {
-			if err := validateStripePaidAmount(session, amount); err != nil {
-				c.JSON(http.StatusOK, gin.H{
-					"status":      false,
-					"error":       err.Error(),
-					"order_state": false,
-				})
-				return
-			}
-			if err := completePaymentOrder(db, orderID, userID, amount); err != nil {
-				c.JSON(http.StatusOK, gin.H{
-					"status":      false,
-					"error":       err.Error(),
-					"order_state": false,
-				})
-				return
-			}
-
-			c.JSON(http.StatusOK, gin.H{
-				"status":      true,
-				"order_state": true,
-			})
+		c.JSON(http.StatusOK, gin.H{"status": true, "order_state": paid})
+	case wechatPayService:
+		paid, err := queryWechatOrder(db, orderID)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"status": false, "error": err.Error(), "order_state": false})
 			return
 		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"status":         true,
-			"order_state":    false,
-			"payment_status": session.PaymentStatus,
-		})
-		return
+		c.JSON(http.StatusOK, gin.H{"status": true, "order_state": paid})
+	default:
+		c.JSON(http.StatusOK, gin.H{"status": false, "error": "unsupported payment provider", "order_state": false})
 	}
-
-	if service != paypalService {
-		c.JSON(http.StatusOK, gin.H{
-			"status":      false,
-			"error":       "unsupported payment provider",
-			"order_state": false,
-		})
-		return
-	}
-
-	order, err := capturePayPalOrder(orderID)
-	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
-			"status":      false,
-			"error":       err.Error(),
-			"order_state": false,
-		})
-		return
-	}
-
-	if strings.ToUpper(order.Status) == "COMPLETED" {
-		if err := completePaymentOrder(db, orderID, userID, amount); err != nil {
-			c.JSON(http.StatusOK, gin.H{
-				"status":      false,
-				"error":       err.Error(),
-				"order_state": false,
-			})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"status":      true,
-			"order_state": true,
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"status":         true,
-		"order_state":    false,
-		"payment_status": order.Status,
-	})
 }

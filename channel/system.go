@@ -83,41 +83,17 @@ type commonState struct {
 	PromptStore bool     `json:"prompt_store" mapstructure:"promptstore"`
 }
 
-type payPalState struct {
-	Enabled        bool   `json:"enabled" mapstructure:"enabled"`
-	Mode           string `json:"mode" mapstructure:"mode"`
-	ClientID       string `json:"client_id" mapstructure:"clientid"`
-	ClientIDCompat string `json:"-" mapstructure:"client_id"`
-	Secret         string `json:"secret" mapstructure:"secret"`
-	Currency       string `json:"currency" mapstructure:"currency"`
-}
+type alipayState struct{ Enabled bool `json:"enabled" mapstructure:"enabled"` }
+type wechatPayState struct{ Enabled bool `json:"enabled" mapstructure:"enabled"` }
 
-type stripeState struct {
-	Enabled             bool   `json:"enabled" mapstructure:"enabled"`
-	PublicKey           string `json:"public_key" mapstructure:"publickey"`
-	PublicKeyCompat     string `json:"-" mapstructure:"public_key"`
-	SecretKey           string `json:"secret_key" mapstructure:"secretkey"`
-	SecretKeyCompat     string `json:"-" mapstructure:"secret_key"`
-	WebhookSecret       string `json:"webhook_secret" mapstructure:"webhooksecret"`
-	WebhookSecretCompat string `json:"-" mapstructure:"webhook_secret"`
-	Currency            string `json:"currency" mapstructure:"currency"`
-}
-
-type ePayState struct {
-	Enabled           bool     `json:"enabled" mapstructure:"enabled"`
-	Domain            string   `json:"domain" mapstructure:"domain"`
-	BusinessID        string   `json:"business_id" mapstructure:"businessid"`
-	BusinessIDCompat  string   `json:"-" mapstructure:"business_id"`
-	BusinessKey       string   `json:"business_key" mapstructure:"businesskey"`
-	BusinessKeyCompat string   `json:"-" mapstructure:"business_key"`
-	Methods           []string `json:"methods" mapstructure:"methods"`
-	Aggregation       bool     `json:"aggregation" mapstructure:"aggregation"`
-}
+func (s alipayState) IsValid() bool    { return s.Enabled }
+func (s wechatPayState) IsValid() bool { return s.Enabled }
+func (s *alipayState) Normalize()      {}
+func (s *wechatPayState) Normalize()   {}
 
 type paymentState struct {
-	PayPal payPalState `json:"paypal" mapstructure:"paypal"`
-	Stripe stripeState `json:"stripe" mapstructure:"stripe"`
-	EPay   ePayState   `json:"epay" mapstructure:"epay"`
+	Alipay    alipayState    `json:"alipay" mapstructure:"alipay"`
+	WechatPay wechatPayState `json:"wechatpay" mapstructure:"wechatpay"`
 }
 
 type SystemConfig struct {
@@ -176,14 +152,11 @@ func (c *SystemConfig) SaveConfig() error {
 
 func (c *SystemConfig) AsInfo() ApiInfo {
 	payment := make([]string, 0)
-	if c.Payment.PayPal.IsValid() {
-		payment = append(payment, "paypal")
+	if c.Payment.Alipay.IsValid() {
+		payment = append(payment, "alipay")
 	}
-	if c.Payment.Stripe.IsValid() {
-		payment = append(payment, "stripe")
-	}
-	if c.Payment.EPay.IsValid() {
-		payment = append(payment, c.Payment.EPay.GetMethods()...)
+	if c.Payment.WechatPay.IsValid() {
+		payment = append(payment, "wxpay")
 	}
 
 	return ApiInfo{
@@ -360,192 +333,6 @@ func (c *SystemConfig) SupportRelayPlan() bool {
 }
 
 func (p *paymentState) Normalize() {
-	p.PayPal.Normalize()
-	p.Stripe.Normalize()
-	p.EPay.Normalize()
-}
-
-func (p *payPalState) Normalize() {
-	if strings.TrimSpace(p.ClientID) == "" {
-		p.ClientID = strings.TrimSpace(p.ClientIDCompat)
-	}
-}
-
-func (p *payPalState) IsValid() bool {
-	return p.Enabled && p.GetClientID() != "" && strings.TrimSpace(p.Secret) != ""
-}
-
-func (p *payPalState) GetClientID() string {
-	if value := strings.TrimSpace(p.ClientID); value != "" {
-		return value
-	}
-
-	return strings.TrimSpace(p.ClientIDCompat)
-}
-
-func (p *payPalState) GetMode() string {
-	mode := strings.ToLower(strings.TrimSpace(p.Mode))
-	if mode == "live" {
-		return "live"
-	}
-
-	return "sandbox"
-}
-
-func (p *payPalState) GetCurrency() string {
-	currency := strings.ToUpper(strings.TrimSpace(p.Currency))
-	if currency == "" {
-		return "USD"
-	}
-
-	return currency
-}
-
-func (p *stripeState) Normalize() {
-	if strings.TrimSpace(p.PublicKey) == "" {
-		p.PublicKey = strings.TrimSpace(p.PublicKeyCompat)
-	}
-	if strings.TrimSpace(p.SecretKey) == "" {
-		p.SecretKey = strings.TrimSpace(p.SecretKeyCompat)
-	}
-	if strings.TrimSpace(p.WebhookSecret) == "" {
-		p.WebhookSecret = strings.TrimSpace(p.WebhookSecretCompat)
-	}
-}
-
-func (p *stripeState) IsValid() bool {
-	return p.Enabled && p.GetSecretKey() != ""
-}
-
-func (p *stripeState) GetPublicKey() string {
-	if value := strings.TrimSpace(p.PublicKey); value != "" {
-		return value
-	}
-
-	return strings.TrimSpace(p.PublicKeyCompat)
-}
-
-func (p *stripeState) GetSecretKey() string {
-	if value := strings.TrimSpace(p.SecretKey); value != "" {
-		return value
-	}
-
-	return strings.TrimSpace(p.SecretKeyCompat)
-}
-
-func (p *stripeState) GetWebhookSecret() string {
-	if value := strings.TrimSpace(p.WebhookSecret); value != "" {
-		return value
-	}
-
-	return strings.TrimSpace(p.WebhookSecretCompat)
-}
-
-func (p *stripeState) GetCurrency() string {
-	currency := strings.ToLower(strings.TrimSpace(p.Currency))
-	if currency == "" {
-		return "usd"
-	}
-
-	return currency
-}
-
-func (p *ePayState) IsValid() bool {
-	return p.Enabled &&
-		strings.TrimSpace(p.Domain) != "" &&
-		p.GetBusinessID() != "" &&
-		p.GetBusinessKey() != ""
-}
-
-func (p *ePayState) Normalize() {
-	if strings.TrimSpace(p.BusinessID) == "" {
-		p.BusinessID = strings.TrimSpace(p.BusinessIDCompat)
-	}
-	if strings.TrimSpace(p.BusinessKey) == "" {
-		p.BusinessKey = strings.TrimSpace(p.BusinessKeyCompat)
-	}
-}
-
-func (p *ePayState) GetDomain() string {
-	return strings.TrimRight(strings.TrimSpace(p.Domain), "/")
-}
-
-func (p *ePayState) GetBusinessID() string {
-	if value := strings.TrimSpace(p.BusinessID); value != "" {
-		return value
-	}
-
-	return strings.TrimSpace(p.BusinessIDCompat)
-}
-
-func (p *ePayState) GetBusinessKey() string {
-	if value := strings.TrimSpace(p.BusinessKey); value != "" {
-		return value
-	}
-
-	return strings.TrimSpace(p.BusinessKeyCompat)
-}
-
-func (p *ePayState) NormalizeMethod(method string) string {
-	switch strings.ToLower(strings.TrimSpace(method)) {
-	case "wechat", "wechatpay", "weixin", "weixinpay":
-		return "wxpay"
-	case "unionpay", "card", "creditcard", "debitcard":
-		return "bank"
-	case "alipay", "wxpay", "qqpay", "bank", "epay":
-		return strings.ToLower(strings.TrimSpace(method))
-	default:
-		return strings.ToLower(strings.TrimSpace(method))
-	}
-}
-
-func (p *ePayState) GetMethods() []string {
-	if !p.IsValid() {
-		return []string{}
-	}
-
-	if p.Aggregation {
-		return []string{"epay"}
-	}
-
-	methods := make([]string, 0)
-	seen := map[string]bool{}
-	for _, method := range p.Methods {
-		normalized := p.NormalizeMethod(method)
-		if normalized == "" || seen[normalized] {
-			continue
-		}
-		seen[normalized] = true
-		methods = append(methods, normalized)
-	}
-
-	if len(methods) == 0 {
-		return []string{"alipay", "wxpay"}
-	}
-
-	return methods
-}
-
-func (p *ePayState) Accepts(method string) bool {
-	normalized := p.NormalizeMethod(method)
-	if normalized == "" || !p.IsValid() {
-		return false
-	}
-
-	for _, item := range p.GetMethods() {
-		if item == normalized {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (p *ePayState) GatewayType(method string) string {
-	normalized := p.NormalizeMethod(method)
-	if p.Aggregation && normalized == "epay" {
-		return ""
-	}
-
-	return normalized
+	p.Alipay.Normalize()
+	p.WechatPay.Normalize()
 }
