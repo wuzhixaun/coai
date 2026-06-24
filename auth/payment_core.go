@@ -15,9 +15,6 @@ import (
 
 const wechatPayService = "wxpay"
 
-func createAlipayOrder(c *gin.Context, user *User, form CreatePaymentForm) (string, string, error) {
-	return "", "", fmt.Errorf("alipay not configured")
-}
 func createWechatOrder(c *gin.Context, user *User, form CreatePaymentForm) (string, string, error) {
 	return "", "", fmt.Errorf("wechat pay not configured")
 }
