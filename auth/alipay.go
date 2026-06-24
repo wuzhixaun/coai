@@ -87,6 +87,33 @@ func completeAlipayByOrder(db *sql.DB, orderID string) error {
 	return completePaymentOrder(db, orderID, userID, amount)
 }
 
+// queryAlipayOrder 主动向支付宝查单作为回调兜底：已支付则入账并返回 true。
+// 未支付/不存在返回 (false, nil)（轮询期间属正常，不视为错误）；仅真正的错误（如客户端构建失败）才返回 error。
+func queryAlipayOrder(db *sql.DB, orderID string) (bool, error) {
+	client, err := newAlipayClient()
+	if err != nil {
+		return false, err
+	}
+
+	rsp, err := client.TradeQuery(context.Background(), alipay.TradeQuery{OutTradeNo: orderID})
+	if err != nil {
+		return false, fmt.Errorf("支付宝查单失败: %w", err)
+	}
+
+	// v3.2.29：TradeQueryRsp 内嵌 Error，成功码/交易状态直接在 rsp 上（非 rsp.Content.*）。
+	if rsp.Code != alipay.CodeSuccess {
+		return false, nil // 订单未支付/不存在
+	}
+	if rsp.TradeStatus != alipay.TradeStatusSuccess && rsp.TradeStatus != alipay.TradeStatusFinished {
+		return false, nil
+	}
+
+	if err := completeAlipayByOrder(db, orderID); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // AlipayNotifyAPI 处理支付宝异步回调：验签后入账。验签由 DecodeNotification 内部完成。
 func AlipayNotifyAPI(c *gin.Context) {
 	client, err := newAlipayClient()

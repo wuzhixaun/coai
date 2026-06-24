@@ -18,7 +18,6 @@ const wechatPayService = "wxpay"
 func createWechatOrder(c *gin.Context, user *User, form CreatePaymentForm) (string, string, error) {
 	return "", "", fmt.Errorf("wechat pay not configured")
 }
-func queryAlipayOrder(db *sql.DB, orderID string) (bool, error) { return false, nil }
 func queryWechatOrder(db *sql.DB, orderID string) (bool, error) { return false, nil }
 
 type CreatePaymentForm struct {
