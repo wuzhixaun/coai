@@ -13,7 +13,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const alipayService = "alipay"
 const wechatPayService = "wxpay"
 
 func createAlipayOrder(c *gin.Context, user *User, form CreatePaymentForm) (string, string, error) {
