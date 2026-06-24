@@ -141,8 +141,11 @@ func newWechatNotifyHandler(ctx context.Context, client *core.Client, apiV3Key s
 	conf := channel.SystemInstance.Payment.WechatPay
 
 	mgr := downloader.MgrInstance()
-	if err := mgr.RegisterDownloaderWithClient(ctx, client, conf.MchID, apiV3Key); err != nil {
-		return nil, fmt.Errorf("注册微信平台证书下载器失败: %w", err)
+	// 证书下载器注册一次即可（注册时会同步下载平台证书，按商户号去重避免每次回调都触发下载）。
+	if !mgr.HasDownloader(ctx, conf.MchID) {
+		if err := mgr.RegisterDownloaderWithClient(ctx, client, conf.MchID, apiV3Key); err != nil {
+			return nil, fmt.Errorf("注册微信平台证书下载器失败: %w", err)
+		}
 	}
 	certVisitor := mgr.GetCertificateVisitor(conf.MchID)
 
@@ -187,6 +190,12 @@ func WechatNotifyAPI(c *gin.Context) {
 	}
 
 	orderID, _ := transaction["out_trade_no"].(string)
+	if orderID == "" {
+		// 已验签的成功通知却缺少订单号属异常负载；回 SUCCESS 阻止微信重试，但不入账。
+		globals.Warn("[wechat] verified success notify missing out_trade_no; acking without crediting")
+		c.JSON(200, gin.H{"code": "SUCCESS", "message": "OK"})
+		return
+	}
 	db := utils.GetDBFromContext(c)
 	if err := completeWechatByOrder(db, orderID); err != nil {
 		globals.Warn(fmt.Sprintf("[wechat] complete order %s failed: %v", orderID, err))

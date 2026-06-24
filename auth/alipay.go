@@ -59,7 +59,7 @@ func createAlipayOrder(c *gin.Context, user *User, form CreatePaymentForm) (stri
 	}
 	notifyURL := normalizePaymentDomain(c, form.Domain) + "/payment/alipay/notify"
 
-	var p = alipay.TradePreCreate{}
+	p := alipay.TradePreCreate{}
 	p.OutTradeNo = orderID
 	p.Subject = name
 	p.TotalAmount = fmt.Sprintf("%.2f", alipayAmount(form.Quota))

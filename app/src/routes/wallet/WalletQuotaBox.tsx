@@ -81,7 +81,15 @@ export default function WalletQuotaBox() {
   useEffect(() => {
     if (!qrOpen || !qrOrder) return;
 
+    let attempts = 0;
+    const maxAttempts = 150; // 150 * 2s ≈ 5 分钟上限，避免无限轮询。
     const timer = setInterval(async () => {
+      attempts += 1;
+      if (attempts > maxAttempts) {
+        clearInterval(timer);
+        setQrOpen(false);
+        return;
+      }
       const res = await getPaymentOrderStatus(qrOrder);
       if (res.status && res.order_state) {
         clearInterval(timer);
