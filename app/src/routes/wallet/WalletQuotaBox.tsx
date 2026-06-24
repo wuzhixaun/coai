@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { quotaSelector, refreshQuota } from "@/store/quota.ts";
 import { AppDispatch } from "@/store";
@@ -20,25 +20,14 @@ import { useRedeem as redeemCode } from "@/api/redeem.ts";
 import { motion } from "framer-motion";
 import { infoPaymentSelector } from "@/store/info.ts";
 import { PaymentButton } from "@/payment/icons.tsx";
-import {
-  createPaymentOrder,
-  getPaymentOrderStatus,
-} from "@/payment/request.ts";
+import { createPaymentOrder } from "@/payment/request.ts";
 import QuotaWrapper from "@/routes/wallet/AmountItem.tsx";
 
 const builtinQuotaAmounts = [1, 5, 10, 20];
-const supportedWalletPayments = new Set([
-  "paypal",
-  "stripe",
-  "alipay",
-  "wxpay",
-  "bank",
-  "epay",
-]);
+const paymentMethods = ["alipay", "wxpay"];
 
 export default function WalletQuotaBox() {
   const { t } = useTranslation();
-  const dispatch: AppDispatch = useDispatch();
   const quota = useSelector(quotaSelector);
   const payment = useSelector(infoPaymentSelector);
   const [redeemOpen, setRedeemOpen] = useState(false);
@@ -47,97 +36,9 @@ export default function WalletQuotaBox() {
   const [buyQuota, setBuyQuota] = useState(builtinQuotaAmounts[0] * 10);
 
   const availablePayment = useMemo(
-    () => payment.filter((method) => supportedWalletPayments.has(method)),
+    () => payment.filter((method) => paymentMethods.includes(method)),
     [payment],
   );
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const paymentState = params.get("payment");
-    const provider = params.get("provider");
-    const order =
-      params.get("session_id") || params.get("token") || params.get("order");
-    const returnError = params.get("error");
-    const canceledProvider = provider === "stripe" ? "stripe" : "paypal";
-    const isCanceled = paymentState === "cancel";
-
-    if (
-      paymentState !== "paypal" &&
-      paymentState !== "stripe" &&
-      paymentState !== "epay" &&
-      paymentState !== "cancel"
-    ) {
-      return;
-    }
-
-    const notifyKey =
-      paymentState === "epay"
-        ? "payment.notify-epay"
-        : paymentState === "stripe" || canceledProvider === "stripe"
-        ? "payment.notify-stripe"
-        : "payment.notify-paypal";
-
-    const cleanReturnParams = () => {
-      const url = new URL(window.location.href);
-      url.searchParams.delete("payment");
-      url.searchParams.delete("provider");
-      url.searchParams.delete("token");
-      url.searchParams.delete("session_id");
-      url.searchParams.delete("order");
-      url.searchParams.delete("PayerID");
-      url.searchParams.delete("error");
-      window.history.replaceState(
-        {},
-        "",
-        `${url.pathname}${url.search}${url.hash}`,
-      );
-    };
-
-    if (isCanceled) {
-      toast.info(t(`${notifyKey}.canceled`));
-      cleanReturnParams();
-      return;
-    }
-
-    if (returnError) {
-      toast.error(t("buy.failed"), {
-        description: returnError,
-      });
-      cleanReturnParams();
-      return;
-    }
-
-    if (!order) {
-      toast.error(t("buy.failed"), {
-        description: t(`${notifyKey}.missing-order`),
-      });
-      cleanReturnParams();
-      return;
-    }
-
-    let ignored = false;
-    void (async () => {
-      const res = await getPaymentOrderStatus(order);
-      if (ignored) return;
-
-      if (res.status && res.order_state) {
-        toast.success(t(`${notifyKey}.success`));
-        dispatch(refreshQuota());
-      } else if (res.status) {
-        toast.info(t(`${notifyKey}.processing`));
-      } else {
-        toast.error(t("buy.failed"), {
-          description: res.error || t("buy.failed-prompt"),
-        });
-      }
-
-      cleanReturnParams();
-    })();
-
-    return () => {
-      ignored = true;
-    };
-  }, [dispatch, t]);
 
   const doPayment = async (method: string) => {
     if (buyQuota <= 0) {
