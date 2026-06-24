@@ -668,80 +668,69 @@ function Site({ data, dispatch, onChange }: CompProps<SiteState>) {
 }
 
 function Payment({ data, dispatch, onChange }: CompProps<PaymentState>) {
-  const { t } = useTranslation();
-  const ePayMethods = ["alipay", "wxpay", "bank"];
-
   return (
     <>
-      <Paragraph title="PayPal 支付" configParagraph={true} isCollapsed={true}>
+      <Paragraph title="支付宝支付" configParagraph={true} isCollapsed={true}>
         <ParagraphDescription border>
-          配置 PayPal Orders API 后，钱包页会显示 PayPal 充值入口。Sandbox
-          用于测试，Live 用于正式收款。
+          配置支付宝当面付后，钱包页会显示支付宝扫码入口。回调地址为
+          /api/payment/alipay/notify。
         </ParagraphDescription>
         <ParagraphItem>
-          <Label>启用 PayPal</Label>
+          <Label>启用支付宝</Label>
           <Switch
-            checked={data.paypal.enabled}
+            checked={data.alipay.enabled}
             onCheckedChange={(value) => {
-              dispatch({ type: "update:payment.paypal.enabled", value });
+              dispatch({ type: "update:payment.alipay.enabled", value });
             }}
           />
         </ParagraphItem>
         <ParagraphItem>
-          <Label>环境</Label>
-          <Select
-            value={data.paypal.mode}
-            onValueChange={(value: "sandbox" | "live") => {
-              dispatch({ type: "update:payment.paypal.mode", value });
+          <Label>正式环境</Label>
+          <Switch
+            checked={data.alipay.is_prod}
+            onCheckedChange={(value) => {
+              dispatch({ type: "update:payment.alipay.is_prod", value });
             }}
-          >
-            <SelectTrigger className={`select`}>
-              <SelectValue placeholder="sandbox" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="sandbox">Sandbox</SelectItem>
-              <SelectItem value="live">Live</SelectItem>
-            </SelectContent>
-          </Select>
+          />
         </ParagraphItem>
         <ParagraphItem>
-          <Label>Client ID</Label>
+          <Label>App ID</Label>
           <Input
-            value={data.paypal.client_id}
+            value={data.alipay.app_id}
             onChange={(e) =>
               dispatch({
-                type: "update:payment.paypal.client_id",
+                type: "update:payment.alipay.app_id",
                 value: e.target.value,
               })
             }
-            placeholder="PayPal REST app client id"
+            placeholder="支付宝应用 AppID"
           />
         </ParagraphItem>
         <ParagraphItem>
-          <Label>Secret</Label>
+          <Label>应用私钥</Label>
           <Input
             type="password"
-            value={data.paypal.secret}
+            value={data.alipay.private_key}
             onChange={(e) =>
               dispatch({
-                type: "update:payment.paypal.secret",
+                type: "update:payment.alipay.private_key",
                 value: e.target.value,
               })
             }
-            placeholder="PayPal REST app secret"
+            placeholder="应用私钥"
           />
         </ParagraphItem>
         <ParagraphItem>
-          <Label>币种</Label>
+          <Label>支付宝公钥</Label>
           <Input
-            value={data.paypal.currency}
+            value={data.alipay.alipay_public_key}
             onChange={(e) =>
               dispatch({
-                type: "update:payment.paypal.currency",
-                value: e.target.value.toUpperCase(),
+                type: "update:payment.alipay.alipay_public_key",
+                value: e.target.value,
               })
             }
-            placeholder="USD"
+            placeholder="支付宝公钥"
           />
         </ParagraphItem>
         <ParagraphFooter>
@@ -752,171 +741,91 @@ function Payment({ data, dispatch, onChange }: CompProps<PaymentState>) {
         </ParagraphFooter>
       </Paragraph>
 
-      <Paragraph title="Stripe 支付" configParagraph={true} isCollapsed={true}>
+      <Paragraph title="微信支付" configParagraph={true} isCollapsed={true}>
         <ParagraphDescription border>
-          配置 Stripe Hosted Checkout 后，钱包页会显示 Stripe 充值入口。Webhook
-          地址为 /api/payment/stripe/webhook。
+          配置微信 Native 支付后，钱包页会显示微信扫码入口。回调地址为
+          /api/payment/wechat/notify。
         </ParagraphDescription>
         <ParagraphItem>
-          <Label>启用 Stripe</Label>
+          <Label>启用微信支付</Label>
           <Switch
-            checked={data.stripe.enabled}
+            checked={data.wechatpay.enabled}
             onCheckedChange={(value) => {
-              dispatch({ type: "update:payment.stripe.enabled", value });
+              dispatch({ type: "update:payment.wechatpay.enabled", value });
             }}
           />
         </ParagraphItem>
         <ParagraphItem>
-          <Label>Publishable Key</Label>
+          <Label>App ID</Label>
           <Input
-            value={data.stripe.public_key}
+            value={data.wechatpay.app_id}
             onChange={(e) =>
               dispatch({
-                type: "update:payment.stripe.public_key",
+                type: "update:payment.wechatpay.app_id",
                 value: e.target.value,
               })
             }
-            placeholder="pk_live_..."
+            placeholder="App ID"
           />
         </ParagraphItem>
         <ParagraphItem>
-          <Label>Secret Key</Label>
+          <Label>商户号</Label>
+          <Input
+            value={data.wechatpay.mch_id}
+            onChange={(e) =>
+              dispatch({
+                type: "update:payment.wechatpay.mch_id",
+                value: e.target.value,
+              })
+            }
+            placeholder="商户号"
+          />
+        </ParagraphItem>
+        <ParagraphItem>
+          <Label>APIv3 密钥</Label>
           <Input
             type="password"
-            value={data.stripe.secret_key}
+            value={data.wechatpay.api_v3_key}
             onChange={(e) =>
               dispatch({
-                type: "update:payment.stripe.secret_key",
+                type: "update:payment.wechatpay.api_v3_key",
                 value: e.target.value,
               })
             }
-            placeholder="sk_live_..."
+            placeholder="APIv3 密钥"
           />
         </ParagraphItem>
         <ParagraphItem>
-          <Label>Webhook Secret</Label>
+          <Label>证书序列号</Label>
+          <Input
+            value={data.wechatpay.mch_cert_serial_no}
+            onChange={(e) =>
+              dispatch({
+                type: "update:payment.wechatpay.mch_cert_serial_no",
+                value: e.target.value,
+              })
+            }
+            placeholder="证书序列号"
+          />
+        </ParagraphItem>
+        <ParagraphItem>
+          <Label>商户私钥</Label>
           <Input
             type="password"
-            value={data.stripe.webhook_secret}
+            value={data.wechatpay.mch_private_key}
             onChange={(e) =>
               dispatch({
-                type: "update:payment.stripe.webhook_secret",
+                type: "update:payment.wechatpay.mch_private_key",
                 value: e.target.value,
               })
             }
-            placeholder="whsec_..."
-          />
-        </ParagraphItem>
-        <ParagraphItem>
-          <Label>币种</Label>
-          <Input
-            value={data.stripe.currency}
-            onChange={(e) =>
-              dispatch({
-                type: "update:payment.stripe.currency",
-                value: e.target.value.toLowerCase(),
-              })
-            }
-            placeholder="usd"
+            placeholder="商户私钥"
           />
         </ParagraphItem>
         <ParagraphFooter>
           <div className={`grow`} />
           <Button size={`sm`} loading={true} onClick={async () => onChange()}>
             保存
-          </Button>
-        </ParagraphFooter>
-      </Paragraph>
-
-      <Paragraph
-        title={t("admin.system.epayTitle")}
-        configParagraph={true}
-        isCollapsed={true}
-      >
-        <ParagraphDescription border>
-          {t("admin.system.epayTip")}
-        </ParagraphDescription>
-        <ParagraphItem>
-          <Label>{t("admin.system.epayEnabled")}</Label>
-          <Switch
-            checked={data.epay.enabled}
-            onCheckedChange={(value) => {
-              dispatch({ type: "update:payment.epay.enabled", value });
-            }}
-          />
-        </ParagraphItem>
-        <ParagraphItem>
-          <Label>{t("admin.system.epayDomain")}</Label>
-          <Input
-            value={data.epay.domain}
-            onChange={(e) =>
-              dispatch({
-                type: "update:payment.epay.domain",
-                value: e.target.value,
-              })
-            }
-            placeholder={t("admin.system.epayDomainPlaceholder")}
-          />
-        </ParagraphItem>
-        <ParagraphItem>
-          <Label>{t("admin.system.epayBusinessId")}</Label>
-          <Input
-            value={data.epay.business_id}
-            onChange={(e) =>
-              dispatch({
-                type: "update:payment.epay.business_id",
-                value: e.target.value,
-              })
-            }
-            placeholder={t("admin.system.epayBusinessIdPlaceholder")}
-          />
-        </ParagraphItem>
-        <ParagraphItem>
-          <Label>{t("admin.system.epayBusinessKey")}</Label>
-          <Input
-            type="password"
-            value={data.epay.business_key}
-            onChange={(e) =>
-              dispatch({
-                type: "update:payment.epay.business_key",
-                value: e.target.value,
-              })
-            }
-            placeholder={t("admin.system.epayBusinessKeyPlaceholder")}
-          />
-        </ParagraphItem>
-        <ParagraphItem>
-          <Label>{t("admin.system.epayMethods")}</Label>
-          <MultiCombobox
-            value={data.epay.methods}
-            list={ePayMethods}
-            listTranslate="payment"
-            disabled={data.epay.aggregation}
-            disabledSearch
-            onChange={(value) => {
-              dispatch({ type: "update:payment.epay.methods", value });
-            }}
-            placeholder={t("admin.system.epayMethodsPlaceholder", {
-              length: data.epay.methods.length,
-            })}
-          />
-        </ParagraphItem>
-        <ParagraphItem>
-          <Label className={`flex flex-row items-center`}>
-            {t("admin.system.epayAggregation")}
-            <Tips content={t("admin.system.epayAggregationTip")} />
-          </Label>
-          <Switch
-            checked={data.epay.aggregation}
-            onCheckedChange={(value) => {
-              dispatch({ type: "update:payment.epay.aggregation", value });
-            }}
-          />
-        </ParagraphItem>
-        <ParagraphFooter>
-          <div className={`grow`} />
-          <Button size={`sm`} loading={true} onClick={async () => onChange()}>
-            {t("admin.system.save")}
           </Button>
         </ParagraphFooter>
       </Paragraph>

@@ -71,50 +71,20 @@ export type SecurityState = {
 };
 
 export type PaymentState = {
-  paypal: {
+  alipay: {
     enabled: boolean;
-    mode: "sandbox" | "live";
-    client_id: string;
-    secret: string;
-    currency: string;
+    is_prod: boolean;
+    app_id: string;
+    private_key: string;
+    alipay_public_key: string;
   };
-  stripe: {
-    enabled: boolean;
-    public_key: string;
-    secret_key: string;
-    webhook_secret: string;
-    currency: string;
-  };
-  epay: {
-    domain: string;
-    business_id: string;
-    business_key: string;
-    enabled: boolean;
-    methods: string[];
-    aggregation: boolean;
-  };
-  wechatpay?: {
+  wechatpay: {
     enabled: boolean;
     app_id: string;
     mch_id: string;
-    serial_no: string;
-    apiv3_key: string;
-    wechatcertificate: string;
-  };
-  xunhupay?: {
-    wechat_enabled: boolean;
-    alipay_enabled: boolean;
-    wechat_app_id: string;
-    wechat_app_secret: string;
-    alipay_app_id: string;
-    alipay_app_secret: string;
-    endpoint: string;
-  };
-  affiliate?: {
-    enabled: boolean;
-    commission_rate: number;
-    min_withdraw: number;
-    allow_existing_bind: boolean;
+    api_v3_key: string;
+    mch_cert_serial_no: string;
+    mch_private_key: string;
   };
 };
 
@@ -243,33 +213,20 @@ export const initialSystemState: SystemProps = {
     image_store: false,
   },
   payment: {
-    paypal: {
+    alipay: {
       enabled: false,
-      mode: "sandbox",
-      client_id: "",
-      secret: "",
-      currency: "USD",
+      is_prod: false,
+      app_id: "",
+      private_key: "",
+      alipay_public_key: "",
     },
-    stripe: {
+    wechatpay: {
       enabled: false,
-      public_key: "",
-      secret_key: "",
-      webhook_secret: "",
-      currency: "usd",
-    },
-    epay: {
-      domain: "",
-      business_id: "",
-      business_key: "",
-      enabled: false,
-      methods: [],
-      aggregation: false,
-    },
-    affiliate: {
-      enabled: false,
-      commission_rate: 0.1,
-      min_withdraw: 10,
-      allow_existing_bind: false,
+      app_id: "",
+      mch_id: "",
+      api_v3_key: "",
+      mch_cert_serial_no: "",
+      mch_private_key: "",
     },
   },
   security: {
@@ -317,22 +274,12 @@ export async function getConfig(): Promise<SystemResponse> {
 
       data.data.site.currency = data.data.site.currency || "cny";
       data.data.payment = data.data.payment || initialSystemState.payment;
-      data.data.payment.paypal = data.data.payment.paypal || {
-        ...initialSystemState.payment.paypal,
+      data.data.payment.alipay = data.data.payment.alipay || {
+        ...initialSystemState.payment.alipay,
       };
-      data.data.payment.paypal.mode =
-        data.data.payment.paypal.mode === "live" ? "live" : "sandbox";
-      data.data.payment.paypal.currency =
-        data.data.payment.paypal.currency || "USD";
-      data.data.payment.stripe = data.data.payment.stripe || {
-        ...initialSystemState.payment.stripe,
+      data.data.payment.wechatpay = data.data.payment.wechatpay || {
+        ...initialSystemState.payment.wechatpay,
       };
-      data.data.payment.stripe.currency =
-        data.data.payment.stripe.currency || "usd";
-      data.data.payment.epay = data.data.payment.epay || {
-        ...initialSystemState.payment.epay,
-      };
-      data.data.payment.epay.methods = data.data.payment.epay.methods || [];
 
       if (
         !data.data.common.group ||
