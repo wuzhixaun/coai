@@ -83,13 +83,33 @@ type commonState struct {
 	PromptStore bool     `json:"prompt_store" mapstructure:"promptstore"`
 }
 
-type alipayState struct{ Enabled bool `json:"enabled" mapstructure:"enabled"` }
-type wechatPayState struct{ Enabled bool `json:"enabled" mapstructure:"enabled"` }
+type alipayState struct {
+	Enabled         bool   `json:"enabled" mapstructure:"enabled"`
+	AppID           string `json:"app_id" mapstructure:"appid"`
+	PrivateKey      string `json:"private_key" mapstructure:"privatekey"`
+	AlipayPublicKey string `json:"alipay_public_key" mapstructure:"alipaypublickey"`
+	IsProd          bool   `json:"is_prod" mapstructure:"isprod"`
+}
 
-func (s alipayState) IsValid() bool    { return s.Enabled }
-func (s wechatPayState) IsValid() bool { return s.Enabled }
-func (s *alipayState) Normalize()      {}
-func (s *wechatPayState) Normalize()   {}
+func (s alipayState) IsValid() bool {
+	return s.Enabled && s.AppID != "" && s.PrivateKey != "" && s.AlipayPublicKey != ""
+}
+func (s *alipayState) Normalize() {}
+
+type wechatPayState struct {
+	Enabled         bool   `json:"enabled" mapstructure:"enabled"`
+	AppID           string `json:"app_id" mapstructure:"appid"`
+	MchID           string `json:"mch_id" mapstructure:"mchid"`
+	APIv3Key        string `json:"api_v3_key" mapstructure:"apiv3key"`
+	MchCertSerialNo string `json:"mch_cert_serial_no" mapstructure:"mchcertserialno"`
+	MchPrivateKey   string `json:"mch_private_key" mapstructure:"mchprivatekey"`
+}
+
+func (s wechatPayState) IsValid() bool {
+	return s.Enabled && s.AppID != "" && s.MchID != "" && s.APIv3Key != "" &&
+		s.MchCertSerialNo != "" && s.MchPrivateKey != ""
+}
+func (s *wechatPayState) Normalize() {}
 
 type paymentState struct {
 	Alipay    alipayState    `json:"alipay" mapstructure:"alipay"`

@@ -30,4 +30,17 @@ system:
   search:
     endpoint: https://duckduckgo-api.vercel.app
     query: 5
-  payment: {}
+  payment:
+    alipay:
+      enabled: false
+      appid: ""
+      privatekey: ""        # 应用私钥 (RSA2, PKCS8, 无 PEM 头)
+      alipaypublickey: ""   # 支付宝公钥
+      isprod: false
+    wechatpay:
+      enabled: false
+      appid: ""
+      mchid: ""
+      apiv3key: ""
+      mchcertserialno: ""
+      mchprivatekey: ""     # 商户 API 私钥 (apiclient_key.pem 内容)
