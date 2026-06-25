@@ -1,41 +1,66 @@
+# ============================================================================
+# CoAI.Dev 配置模板（config.example.yaml）
+# ----------------------------------------------------------------------------
+# 用法：
+#   - 首次启动时，若 config/config.yaml 不存在，程序会自动复制本模板生成它。
+#   - 真实运行配置是 config/config.yaml（含密钥，已被 .gitignore 忽略，请勿提交）。
+#   - 本模板会提交进 git，仅作占位示例，请勿在此填写真实密钥。
+#
+# 配置来源说明：
+#   - mysql / redis / secret / serve_static / server：启动引导项，必须在文件里预先填好，
+#     程序连库之前就要用，不能在线修改。
+#   - channel / charge / market / subscription / system：可在「管理后台」中在线维护，
+#     后台保存时会自动写回 config/config.yaml（viper.WriteConfigAs），本文件中的示例仅供参考。
+#   - storage / image：图片链路的运维参数，默认值即可工作，按需在文件里覆盖。
+# ============================================================================
+
+# ====== 数据库（MySQL）======
+# 启动引导项。host 留空时程序会回退到本地 SQLite(./db/chatnio.db)，仅供试用，生产请用 MySQL。
 mysql:
-  db: chatnio
   host: localhost
-  password: chatnio123456
   port: 3306
   user: root
-  tls: false
+  password: chatnio123456
+  db: chatnio
+  tls: false                  # 是否对 MySQL 连接启用 TLS
 
+# ====== 缓存（Redis）======
+# 启动引导项。用于会话、限流、以及「数据分析」面板的请求量/模型/计费等实时计数器。
 redis:
   host: localhost
   port: 6379
   db: 0
   password: ""
 
+# 签发登录 token 的密钥。生产环境务必改成一串随机字符串，切勿沿用默认值（否则 token 可被伪造）。
+secret: please-change-me-to-a-random-string
 
-secret: secret
+# 是否由本服务托管前端静态文件（单二进制部署设 true，此时 API 路由挂在 /api 下）。
 serve_static: true
 
+# ====== HTTP 服务 ======
 server:
-  port: 8094
+  port: 8094                  # 后端监听端口
+
+# ====== 系统设置（可在「管理后台 → 系统设置」在线修改）======
 system:
   general:
-    backend: ""
-  mail:
+    backend: ""               # 后端对外地址（用于回调/拼接绝对 URL），留空则按请求自动推断
+  mail:                       # 邮件服务（找回密码、验证码等）
     host: ""
     port: 465
     username: ""
     password: ""
     from: ""
-  search:
+  search:                     # 联网搜索服务
     endpoint: https://duckduckgo-api.vercel.app
     query: 5
-  payment:
+  payment:                    # 在线支付（充值）
     alipay:
       enabled: false
       appid: ""
-      privatekey: ""        # 应用私钥 (RSA2, PKCS8, 无 PEM 头)
-      alipaypublickey: ""   # 支付宝公钥
+      privatekey: ""          # 应用私钥 (RSA2, PKCS8, 无 PEM 头)
+      alipaypublickey: ""     # 支付宝公钥
       isprod: false
     wechatpay:
       enabled: false
@@ -43,9 +68,102 @@ system:
       mchid: ""
       apiv3key: ""
       mchcertserialno: ""
-      mchprivatekey: ""     # 商户 API 私钥 (apiclient_key.pem 内容)
+      mchprivatekey: ""       # 商户 API 私钥 (apiclient_key.pem 内容)
 
-# 图片/文件存储与清理配置（生成结果、上传文件落地与磁盘保护）。
+# ====== 订阅套餐（可在「管理后台 → 订阅管理」在线修改）======
+subscription:
+  enabled: true
+  plans:
+    - level: 1                # 套餐等级
+      price: 10               # 月价（站内点数/货币）
+      items: []               # 套餐内权益项（模型额度等）
+    - level: 2
+      price: 100
+      items: []
+    - level: 3
+      price: 1000
+      items: []
+
+# ====== 模型渠道（可在「管理后台 → 渠道设置」在线维护，下面仅为结构示例）======
+# secret 多行时一行一个，组成密钥池，请求时随机选取负载。请勿在本模板填真实密钥。
+channel:
+  # 示例 1：OpenAI 兼容的聊天渠道
+  - id: 1
+    name: 示例-聊天渠道
+    type: openai                       # 渠道类型：openai / claude / jimeng-api 等
+    models:                            # 该渠道支持的模型 id
+      - gpt-4o-mini
+    endpoint: https://api.openai.com   # 接入点
+    secret: "<your-api-key>"           # 密钥（格式随渠道类型而定）
+    priority: 0                        # 优先级（大者优先）
+    weight: 1                          # 同优先级内的负载权重
+    retry: 3                           # 失败重试次数
+    group: [anonymous, normal, basic, standard, pro]   # 可用用户组
+    state: true                        # 是否启用
+
+  # 示例 2：火山即梦官方 API（图片生成/编辑/视频）
+  - id: 11
+    name: 火山即梦官方 API
+    type: jimeng-api
+    models:
+      - jimeng-seedream-4.6            # 文生图 / 图生图 4.6（scale 整数 1-100）
+      - jimeng-seedream-4.0            # 文生图 / 图生图 4.0（scale 小数 0-1）
+      - jimeng-superres                # 智能超清(4k/8k)
+      - jimeng-outpaint                # 智能扩图
+      - jimeng-inpaint                 # 局部重绘(需源图+灰度 mask)
+      - jimeng-material-extract        # 素材提取
+      - jimeng-product-extract         # 商品提取
+      - jimeng-video                   # 图生视频
+    endpoint: https://visual.volcengineapi.com   # 后端固定 Region=cn-north-1、Service=cv 签名
+    secret: "<access-key>|<secret-key>"          # 火山 AK|SK（竖线分隔，可多行组成密钥池）
+    priority: 1
+    weight: 1
+    retry: 1
+    group: [normal, basic, standard, pro]
+    state: true
+
+# ====== 计费规则（可在「管理后台 → 价格设定」在线维护）======
+# type 取值：non-billing(不计费) / token-billing(按 token) / times-billing(按次) / image-billing(按张)
+charge:
+  # 示例 1：按 token 计费（输入/输出各自单价）
+  - id: 1
+    type: token-billing
+    models: [gpt-4o-mini]
+    input: 1                  # 每 1k 输入 token 单价
+    output: 1                 # 每 1k 输出 token 单价
+    anonymous: false          # 是否允许匿名用户使用
+    unset: false
+  # 示例 2：图片按张计费（output 为单张点数）
+  - id: 2
+    type: image-billing
+    models:
+      - jimeng-seedream-4.6
+      - jimeng-seedream-4.0
+    input: 0
+    output: 0.22              # 每张图片扣 0.22 点
+    anonymous: false
+    unset: false
+
+# ====== 模型市场（可在「管理后台 → 模型市场」在线维护，决定前端模型列表与图片页下拉）======
+# 注意：Photo 图片页的「生图模型」下拉只展示打了 image-generation 标签的模型。
+market:
+  - id: gpt-4o-mini
+    name: GPT-4o mini
+    description: ""
+    tag: []
+    default: true
+    highcontext: false
+    avatar: ""
+  - id: jimeng-seedream-4.6
+    name: 即梦 Seedream 4.6
+    description: 火山引擎即梦官方图片生成 4.6（Seedream），支持文生图与图生图编辑。
+    tag:
+      - image-generation     # 打上此标签才会出现在 Photo 页的生图模型下拉
+    default: false
+    highcontext: false
+    avatar: ""
+
+# ====== 图片/文件存储与清理（运维参数，默认值即可工作）======
 # 默认 ttl_hours / max_size_mb 为 0 = 关闭清理（仅存不删），生产环境建议按磁盘容量开启。
 storage:
   result_dir: storage/results          # 生成结果（图片/视频）落地目录
@@ -54,13 +172,8 @@ storage:
   max_size_mb: 0                       # 结果+上传目录总容量上限(MB)，超过按最旧优先删除；0=不限制
   cleanup_interval_minutes: 60         # 清理任务执行间隔(分钟)
 
-# 图片生成相关限制与超时。
+# ====== 图片生成限制与超时 ======
 image:
   max_concurrent_tasks_per_user: 0     # 单用户同时进行中的图片任务上限(pending+processing)；0=不限制
   task_timeout_minutes: 10             # 单个图片/视频任务的轮询最长等待(分钟)；<=0 回退默认 10
   poll_interval_seconds: 10            # 即梦任务状态轮询间隔(秒)；<=0 回退默认 10
-
-# 即梦官方 API 渠道说明（渠道在「管理后台 → 渠道」中维护，不在本文件配置）：
-#   类型选择 "即梦官方 API"(jimeng-api)，密钥格式为 火山 AK|SK（竖线分隔，支持多行密钥池），
-#   接入点默认 https://visual.volcengineapi.com（后端固定 Region=cn-north-1、Service=cv 签名）。
-#   生成结果会把火山 24h 临时图片 URL 转存到上面的 storage.result_dir。

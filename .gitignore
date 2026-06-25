@@ -26,7 +26,8 @@ access/*.json
 
 db
 redis
-config
+config/*
+!config/prompts.json
 presets
 
 key/*

@@ -1,0 +1,181 @@
+{
+  "_说明": "所有提示词模板集中管理，修改后重启后端即生效。{english_only} 等占位符会被自动替换。每个 feature 的 channel_type 指定默认使用的 AI 渠道。",
+
+  "defaults": {
+    "english_only": "all visible text must be in English only"
+  },
+
+  "features": {
+    "white_bg": {
+      "channel_type": "jimeng-api",
+      "model": "jimeng-seedream-4.6",
+      "system_prompt": "product on pure white background (#FFFFFF), professional studio lighting, product 100% unchanged, no shadow on background, {english_only}"
+    },
+    "scene_gen": {
+      "channel_type": "jimeng-api",
+      "model": "jimeng-seedream-4.6",
+      "system_prompt": "{user_prompt}, {english_only}, professional product photography",
+      "templates": [
+        { "label": "现代简约客厅", "prompt": "modern minimalist living room, warm natural light, clean interior design, professional product photography" },
+        { "label": "北欧风卧室", "prompt": "Scandinavian style bedroom, soft morning light, cozy textile textures, lifestyle product shot" },
+        { "label": "大理石桌面", "prompt": "white marble tabletop surface, elegant studio lighting, luxury product presentation, shallow depth of field" },
+        { "label": "户外自然光", "prompt": "outdoor natural sunlight, green botanical background, fresh organic atmosphere, lifestyle photography" },
+        { "label": "工业风水呢", "prompt": "concrete floor industrial loft, dramatic window light, modern urban aesthetic, editorial product shot" },
+        { "label": "木纹桌面", "prompt": "warm wooden table surface, soft window light, natural home decor setting, product flat lay" },
+        { "label": "纯白工作室", "prompt": "pure white studio background, professional softbox lighting, clean commercial product shot" },
+        { "label": "复古书桌", "prompt": "vintage wooden desk, warm ambient light, antique brass accessories, moody product photography" }
+      ]
+    },
+    "image_erase": {
+      "channel_type": "jimeng-api",
+      "model": "jimeng-seedream-4.6",
+      "system_prompt": "remove watermarks, text, and blemishes; clean and seamless background fill",
+      "templates": [
+        { "label": "移除水印", "prompt": "remove all watermarks while keeping the background natural and seamless" },
+        { "label": "去除文字", "prompt": "remove all visible text and logos, fill the area with matching background" },
+        { "label": "消除瑕疵", "prompt": "remove blemishes, scratches, and dust spots, restore clean surface" },
+        { "label": "清除背景杂物", "prompt": "remove background clutter and unwanted objects, keep main subject intact" }
+      ]
+    },
+    "color_change": {
+      "channel_type": "jimeng-api",
+      "model": "jimeng-seedream-4.6",
+      "system_prompt": "change the product color to {target_color}, keep everything else identical",
+      "colors": [
+        { "value": "red", "label": "红色" },
+        { "value": "blue", "label": "蓝色" },
+        { "value": "green", "label": "绿色" },
+        { "value": "black", "label": "黑色" },
+        { "value": "white", "label": "白色" },
+        { "value": "yellow", "label": "黄色" },
+        { "value": "purple", "label": "紫色" },
+        { "value": "pink", "label": "粉色" },
+        { "value": "orange", "label": "橙色" },
+        { "value": "gray", "label": "灰色" }
+      ]
+    },
+    "marketing": {
+      "channel_type": "jimeng-api",
+      "model": "jimeng-seedream-4.6",
+      "system_prompt": "e-commerce product marketing poster, highlight key product advantages: {selling_point}, bold promotional text in English only, professional design with eye-catching layout",
+      "selling_points": [
+        { "value": "Premium Quality - superior materials, exquisite craftsmanship, built to last", "label": "高端品质" },
+        { "value": "New Arrival - latest design, trending style, cutting-edge innovation", "label": "新品首发" },
+        { "value": "Best Seller - top rated, customer favorite, proven performance", "label": "爆款热销" },
+        { "value": "Eco-Friendly - sustainable materials, environmentally conscious, green production", "label": "环保材质" },
+        { "value": "Limited Edition - exclusive design, rare materials, collectible value", "label": "限量精品" },
+        { "value": "Multi-Functional - versatile use, smart design, maximizes convenience", "label": "多功能" },
+        { "value": "Lightweight & Portable - easy to carry, compact design, travel friendly", "label": "轻便便携" },
+        { "value": "Professional Grade - industry standard, trusted by experts, reliable performance", "label": "专业级" }
+      ]
+    },
+    "image_translate": {
+      "channel_type": "jimeng-api",
+      "model": "jimeng-seedream-4.6",
+      "system_prompt": "translate all visible text in the image to {target_lang}, keep the original style and layout",
+      "languages": [
+        { "value": "en", "label": "English" },
+        { "value": "zh", "label": "中文" },
+        { "value": "ja", "label": "日本語" },
+        { "value": "ko", "label": "한국어" },
+        { "value": "fr", "label": "Français" },
+        { "value": "de", "label": "Deutsch" },
+        { "value": "es", "label": "Español" }
+      ]
+    },
+    "hd_upscale": {
+      "channel_type": "jimeng-api",
+      "model": "jimeng-superres",
+      "system_prompt": ""
+    },
+    "model_image": {
+      "channel_type": "jimeng-api",
+      "model": "jimeng-seedream-4.6",
+      "system_prompt": "fashion model wearing the product, studio photography, professional lighting, {english_only}",
+      "templates": [
+        { "label": "时尚女装", "prompt": "fashion female model wearing the product, studio photography, professional lighting, full body shot" },
+        { "label": "休闲男装", "prompt": "casual male model wearing the product, outdoor urban setting, natural pose, lifestyle photography" },
+        { "label": "运动风格", "prompt": "athletic model in dynamic pose, sporty background, energetic lighting, action product shot" }
+      ]
+    },
+    "material_change": {
+      "channel_type": "jimeng-api",
+      "model": "jimeng-seedream-4.6",
+      "system_prompt": "replace the material of the product with the reference material texture, keep product shape, {english_only}"
+    },
+    "instruction_gen": {
+      "channel_type": "jimeng-api",
+      "model": "jimeng-seedream-4.6",
+      "system_prompt": "{user_prompt}, {english_only}",
+      "templates": [
+        { "label": "添加背景", "prompt": "add a clean and professional background to the product, keep the product unchanged" },
+        { "label": "增强光影", "prompt": "enhance lighting and shadows, make the product look more three-dimensional and premium" },
+        { "label": "风格转换", "prompt": "transform to watercolor illustration style, keep the product recognizable" },
+        { "label": "添加倒影", "prompt": "add a natural mirror reflection below the product, studio lighting, clean background" }
+      ]
+    },
+    "detail_image": {
+      "channel_type": "jimeng-api",
+      "model": "jimeng-seedream-4.6",
+      "system_prompt": "extreme close-up macro detail shot of the product, highlight material texture, stitching, surface finish and craftsmanship, ultra-sharp focus, shallow depth of field, professional studio product photography, keep the product authentic and unchanged, {english_only}"
+    },
+    "logo_custom": {
+      "channel_type": "jimeng-api",
+      "model": "jimeng-seedream-4.6",
+      "system_prompt": "composite the brand logo from the second image onto the product in the first image, place it at the {position} area, follow the product surface perspective, curvature and lighting so the logo looks naturally printed, keep logo proportions and the product itself unchanged, clean professional result, {english_only}"
+    },
+    "production_flow": {
+      "channel_type": "jimeng-api",
+      "model": "jimeng-seedream-4.6",
+      "system_prompt": "analyze this product and generate a visual production process flow chart, show key manufacturing steps, all labels and text in English only"
+    },
+    "resize": {
+      "channel_type": "jimeng-api",
+      "model": "jimeng-outpaint",
+      "system_prompt": "expand the image canvas to {target_ratio} aspect ratio, intelligently fill the extended areas to match the original scene seamlessly, keep the original content centered and unchanged, {english_only}",
+      "sizes": [
+        { "value": "1:1", "label": "1:1 正方形" },
+        { "value": "16:9", "label": "16:9 横屏" },
+        { "value": "4:3", "label": "4:3 标准" },
+        { "value": "3:4", "label": "3:4 竖屏" },
+        { "value": "9:16", "label": "9:16 全屏" }
+      ]
+    },
+    "material_extract": {
+      "channel_type": "jimeng-api",
+      "model": "jimeng-material-extract",
+      "system_prompt": "{category}",
+      "categories": [
+        { "value": "提取图案", "label": "图案" },
+        { "value": "提取包装", "label": "包装" },
+        { "value": "提取logo", "label": "Logo" },
+        { "value": "提取纹理", "label": "纹理" }
+      ]
+    },
+    "product_extract": {
+      "channel_type": "jimeng-api",
+      "model": "jimeng-product-extract",
+      "system_prompt": "提取商品主体：{category}",
+      "categories": [
+        { "value": "服装", "label": "服装" },
+        { "value": "鞋靴", "label": "鞋靴" },
+        { "value": "箱包", "label": "箱包" },
+        { "value": "家具", "label": "家具" },
+        { "value": "日用品", "label": "日用品" },
+        { "value": "饰品", "label": "饰品" }
+      ]
+    },
+    "video_gen": {
+      "channel_type": "jimeng",
+      "model": "jimeng-video",
+      "system_prompt": "根据参考图自动推理商品特性，生成商品功能使用与细节展示视频：{user_prompt}。展示商品各角度细节、材质特写、使用场景切换，运镜平顺专业，{english_only}",
+      "templates": [
+        { "label": "智能推理（推荐）", "prompt": "" },
+        { "label": "商品细节展示", "prompt": "showcase product details and craftsmanship, macro close-up shots, smooth camera movement" },
+        { "label": "功能使用演示", "prompt": "demonstrate how to use the product step by step, clean instructional style" },
+        { "label": "旋转全景展示", "prompt": "product 360 degree rotation displaying all angles, studio lighting" },
+        { "label": "场景穿搭展示", "prompt": "transition between different styling scenes with the product, lifestyle showcase" }
+      ]
+    }
+  }
+}
