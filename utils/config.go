@@ -22,6 +22,10 @@ var redirectRoutes = []string{
 	"/v1",
 	"/mj",
 	"/attachments",
+	// serve_static=true 时 API 挂在 /api 下，photo 的静态目录也随之变成
+	// /api/storage/*，但前端 <img> 与生成的 markdown 用的是 /storage/*（无 /api）。
+	// 这里把 /storage 重写到 /api/storage，让生成图/上传图能正常访问。
+	"/storage",
 }
 
 func SaveConfig(key string, value interface{}) error {
