@@ -1,13 +1,12 @@
 import { Button } from "./ui/button.tsx";
 import { useConversationActions, useMessages } from "@/store/chat.ts";
 import { MessageSquarePlus } from "lucide-react";
-import Github from "@/components/ui/icons/Github.tsx";
-import { openWindow } from "@/utils/device.ts";
 
 function ProjectLink() {
   const messages = useMessages();
   const { toggle } = useConversationActions();
 
+  // 有消息时显示「新建对话」按钮；无消息时不再显示 GitHub 项目入口图标。
   return messages.length > 0 ? (
     <Button
       variant="outline"
@@ -17,16 +16,7 @@ function ProjectLink() {
     >
       <MessageSquarePlus className={`h-4 w-4`} />
     </Button>
-  ) : (
-    <Button
-      variant="outline"
-      size="icon-md"
-      className="rounded-full overflow-hidden"
-      onClick={() => openWindow("https://github.com/coaidev/coai")}
-    >
-      <Github className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100" />
-    </Button>
-  );
+  ) : null;
 }
 
 export default ProjectLink;
