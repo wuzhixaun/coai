@@ -1,82 +1,34 @@
 # ============================================================================
-# 阿里云生产部署 compose
+# 阿里云生产部署 compose（单容器，沿用外部 MySQL/Redis）
 # ----------------------------------------------------------------------------
-# 用法（在阿里云服务器上）：
-#   1. 准备 .env（复制 .env.prod.example 改写 COAI_IMAGE 为你的 ACR 镜像地址）
-#   2. 准备 config/config.yaml（含密钥，不进镜像，单独上传；注意改 serve_static/host）
+# 用法（在阿里云服务器 /opt/coai 下）：
+#   1. 准备 .env（复制 .env.prod.example，填 COAI_IMAGE / HOST_PORT）
+#   2. 上传 config/config.yaml（含外部 DB 连接与密钥，不进镜像，单独传）
 #   3. docker compose -f docker-compose.prod.yaml --env-file .env up -d
 #
 # 说明：
-#   - chatnio 服务用你自己构建并推送到阿里云 ACR 的镜像（非官方镜像）。
-#   - 数据库/缓存用本 compose 自带的 mysql + redis 容器，数据落在 ./db、./redis。
-#   - 若改用外部已有 DB，删掉 mysql/redis 两个 service 及 depends_on/links，
-#     并把 config/config.yaml 里的 mysql.host / redis.host 指向外部地址。
+#   - 只跑 coai 一个容器；MySQL/Redis 沿用 config/config.yaml 里的外部地址
+#     （与现有项目一致，当前为 120.76.157.51），本 compose 不再自带 db/redis。
+#   - 仅用环境变量强制 serve_static=true，保证单容器同时托管前端静态文件+API；
+#     mysql/redis 等连接完全交给 config/config.yaml，不做覆盖。
+#   - 挂载 ./storage 持久化图片：生成图(storage/results) + 上传图(storage/uploads)。
 # ============================================================================
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: coai-db
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      TZ: Asia/Shanghai
-    expose:
-      - "3306"
-    volumes:
-      - ./db:/var/lib/mysql
-    networks:
-      - coai-network
-
-  redis:
-    image: redis:7-alpine
-    container_name: coai-redis
-    restart: always
-    expose:
-      - "6379"
-    volumes:
-      - ./redis:/data
-    networks:
-      - coai-network
-
   chatnio:
     image: ${COAI_IMAGE}
     container_name: coai
     restart: always
     ports:
       - "${HOST_PORT:-8000}:8094"
-    depends_on:
-      - mysql
-      - redis
-    links:
-      - mysql
-      - redis
     ulimits:
       nofile:
         soft: 65535
         hard: 65535
-    # 这些环境变量会通过 viper.AutomaticEnv 覆盖 config/config.yaml 里的同名启动项，
-    # 确保单容器部署下 DB 指向本 compose 的容器、且前端由后端托管，无需改 config.yaml。
+    # 只覆盖 serve_static（config.yaml 里是 false，单容器部署需 true）。
+    # mysql/redis 连接不在这里设置，沿用 config/config.yaml 的外部地址。
     environment:
-      MYSQL_HOST: mysql
-      MYSQL_PORT: 3306
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      MYSQL_DB: ${MYSQL_DATABASE}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ""
-      REDIS_DB: 0
       SERVE_STATIC: "true"
     volumes:
-      - ./config:/config
-      - ./logs:/logs
-      - ./storage:/storage
-    networks:
-      - coai-network
-
-networks:
-  coai-network:
-    driver: bridge
+      - ./config:/config       # 运行配置（含外部 DB 连接、密钥）
+      - ./logs:/logs           # 日志
+      - ./storage:/storage     # 图片持久化：storage/results(生成) + storage/uploads(上传)
