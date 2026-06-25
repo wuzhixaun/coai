@@ -206,6 +206,49 @@ func IsJimengImageGenerationModel(model string) bool {
 	return in(model, JimengImageGenerationModels)
 }
 
+// JimengImageModels 即梦全部图片相关模型（文生图/图生图/超清/扩图/inpaint/提取）。
+var JimengImageModels = []string{
+	JimengSeedream46, JimengSeedream40, JimengSuperres,
+	JimengOutpaint, JimengInpaint, JimengMaterialExtract, JimengProductExtract,
+}
+
+// IsImageGenerationModel 统一判断模型是否「会产出图片」的生成类模型（即梦文生图/图生图、DALLE、Imagen），
+// 用于计费默认与能力判定。注意：不同模型内部走不同适配器路径，路由判定仍各自使用专用函数
+// （如即梦走图片工厂、DALLE 走聊天适配器），切勿用本函数直接决定路由。
+func IsImageGenerationModel(model string) bool {
+	return IsJimengImageGenerationModel(model) || IsOpenAIDalleModel(model) || IsGoogleImagenModel(model)
+}
+
+// ImageCapability 图片模型能力（粗粒度）。详细参数规格以各适配器为准（如 jimengapi.GetModelSpec）。
+type ImageCapability string
+
+const (
+	ImageCapNone     ImageCapability = ""
+	ImageCapGenerate ImageCapability = "generate" // 文生图 / 图生图
+	ImageCapUpscale  ImageCapability = "upscale"  // 超清放大
+	ImageCapOutpaint ImageCapability = "outpaint" // 画布扩展
+	ImageCapInpaint  ImageCapability = "inpaint"  // 局部重绘
+	ImageCapExtract  ImageCapability = "extract"  // 材料 / 商品提取
+)
+
+// GetImageModelCapability 返回图片模型的粗粒度能力，非图片模型返回 ImageCapNone。
+func GetImageModelCapability(model string) ImageCapability {
+	switch {
+	case in(model, []string{JimengSuperres}):
+		return ImageCapUpscale
+	case in(model, []string{JimengOutpaint}):
+		return ImageCapOutpaint
+	case in(model, []string{JimengInpaint}):
+		return ImageCapInpaint
+	case in(model, []string{JimengMaterialExtract, JimengProductExtract}):
+		return ImageCapExtract
+	case IsImageGenerationModel(model):
+		return ImageCapGenerate
+	default:
+		return ImageCapNone
+	}
+}
+
 func IsVisionModel(model string) bool {
 	return in(model, VisionModels) && !in(model, VisionSkipModels)
 }

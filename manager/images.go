@@ -233,6 +233,7 @@ func createRelayImageObject(c *gin.Context, form RelayImageForm, prompt string, 
 		auth.RevertSubscriptionUsage(db, cache, user, form.Model)
 		globals.Warn(fmt.Sprintf("error from chat request api: %s (instance: %s, client: %s)", err, form.Model, c.ClientIP()))
 
+		recordImageGeneration(db, user, ImageSourceAPI, form.Model, buffer, 0, err)
 		sendErrorResponse(c, err)
 		return
 	}
@@ -243,10 +244,12 @@ func createRelayImageObject(c *gin.Context, form RelayImageForm, prompt string, 
 
 	data := getImageDataListFromBuffer(buffer)
 	if len(data) == 0 {
+		recordImageGeneration(db, user, ImageSourceAPI, form.Model, buffer, 0, fmt.Errorf("no image generated"))
 		sendErrorResponse(c, fmt.Errorf("no image generated"), "image_generation_error")
 		return
 	}
 
+	recordImageGeneration(db, user, ImageSourceAPI, form.Model, buffer, len(data), nil)
 	c.JSON(http.StatusOK, RelayImageResponse{
 		Created: created,
 		Data:    data,
@@ -279,6 +282,7 @@ func createRelayJimengImageObject(c *gin.Context, form RelayImageForm, prompt st
 		auth.RevertSubscriptionUsage(db, utils.GetCacheFromContext(c), user, form.Model)
 		globals.Warn(fmt.Sprintf("error from image generation api: %s (instance: %s, client: %s)", err, form.Model, c.ClientIP()))
 
+		recordImageGeneration(db, user, ImageSourceAPI, form.Model, buffer, 0, err)
 		sendErrorResponse(c, err)
 		return
 	}
@@ -287,10 +291,12 @@ func createRelayJimengImageObject(c *gin.Context, form RelayImageForm, prompt st
 
 	data := getImageDataListFromBuffer(buffer)
 	if len(data) == 0 {
+		recordImageGeneration(db, user, ImageSourceAPI, form.Model, buffer, 0, fmt.Errorf("no image generated"))
 		sendErrorResponse(c, fmt.Errorf("no image generated"), "image_generation_error")
 		return
 	}
 
+	recordImageGeneration(db, user, ImageSourceAPI, form.Model, buffer, len(data), nil)
 	c.JSON(http.StatusOK, RelayImageResponse{
 		Created: created,
 		Data:    data,

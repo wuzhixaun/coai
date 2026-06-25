@@ -17,6 +17,9 @@ func Register(app *gin.RouterGroup) {
 	app.GET("/admin/record/list", RecordListAPI)
 	app.POST("/admin/record/stats", RecordStatsAPI)
 
+	app.GET("/admin/image-record/list", ImageRecordListAPI)
+	app.POST("/admin/image-record/stats", ImageRecordStatsAPI)
+
 	app.GET("/admin/payment/view", PaymentListAPI)
 	app.GET("/admin/payment/recheck", PaymentRecheckAPI)
 

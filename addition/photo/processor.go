@@ -13,6 +13,7 @@ import (
 	adaptercommon "chat/adapter/common"
 	"chat/channel"
 	"chat/globals"
+	"chat/manager"
 	"chat/utils"
 )
 
@@ -27,7 +28,7 @@ func ResolveImagePaths(db *sql.DB, imageIDs []string, userID int64) ([]string, e
 			return nil, fmt.Errorf("图片 %s 不存在: %w", id, err)
 		}
 		filename := filepath.Base(img.Url)
-		diskPath := filepath.Join(UploadDir, filename)
+		diskPath := filepath.Join(UploadDir(), filename)
 		paths = append(paths, diskPath)
 	}
 	return paths, nil
@@ -543,6 +544,25 @@ func ProcessTask(ctx context.Context, db *sql.DB, taskID, feature string, imageP
 			processed_images = ?, processed_videos = ?, completed_at = ? WHERE task_id = ?`,
 			TaskStatusSuccess, resultJSON, processedImages, processedVideos, now, taskID)
 	}
+
+	recordPhotoGeneration(db, taskID, feature, channelOverride, len(resultURLs), err)
+}
+
+// recordPhotoGeneration 将 Photo 流水线的一次生成落入 image_generation 观测表，
+// 与聊天 / API 入口共用同一张表，便于后台统一统计图片用量与排查失败。
+func recordPhotoGeneration(db *sql.DB, taskID, feature, channelOverride string, imageCount int, genErr error) {
+	if db == nil {
+		return
+	}
+	var userID int64
+	var username string
+	if err := db.QueryRow("SELECT user_id FROM photo_tasks WHERE task_id = ?", taskID).Scan(&userID); err != nil {
+		return
+	}
+	if userID > 0 {
+		_ = db.QueryRow("SELECT username FROM auth WHERE id = ?", userID).Scan(&username)
+	}
+	manager.RecordImageOutcome(db, userID, username, manager.ImageSourcePhoto, resolveModel(feature, channelOverride), 0, "jimeng-api", imageCount, 0, 0, genErr)
 }
 
 func handleResult(resultURLs *[]string, url string, err error) {

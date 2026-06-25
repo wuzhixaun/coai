@@ -17,8 +17,6 @@ import (
 	"time"
 )
 
-const resultDir = "storage/results"
-
 func (c *ImageGenerator) CreateImageGenerationRequest(props *adaptercommon.ImageGenerationProps, hook globals.Hook) error {
 	spec, ok := GetModelSpec(props.Model)
 	if !ok {
@@ -40,7 +38,7 @@ func (c *ImageGenerator) CreateImageGenerationRequest(props *adaptercommon.Image
 			return err
 		}
 
-		resultResp, err := c.Poll(ctx, spec.ReqKey, submitResp.Data.TaskID, 10*time.Minute, 10*time.Second)
+		resultResp, err := c.Poll(ctx, spec.ReqKey, submitResp.Data.TaskID, globals.ImageTaskTimeout(), globals.ImagePollInterval())
 		if err != nil {
 			return err
 		}
@@ -98,11 +96,12 @@ func resultFilename(source string, ext string) string {
 	if len(hash) > 10 {
 		hash = hash[:10]
 	}
-	return fmt.Sprintf("jimeng_%d_%s%s", time.Now().UnixNano(), hash, ext)
+	// 追加随机串，消除「同源 + 同纳秒时间戳」高并发下的文件名碰撞风险。
+	return fmt.Sprintf("jimeng_%d_%s_%s%s", time.Now().UnixNano(), hash, utils.GenerateChar(6), ext)
 }
 
 func publicResultURL(filename string) string {
-	return "/storage/results/" + filename
+	return globals.ResultPublicURL(filename)
 }
 
 func (c *ImageGenerator) storeImageURL(imageURL string) (string, error) {
@@ -125,12 +124,12 @@ func (c *ImageGenerator) storeImageURL(imageURL string) (string, error) {
 		ext = ".png"
 	}
 
-	if err := os.MkdirAll(resultDir, 0755); err != nil {
+	if err := os.MkdirAll(globals.StorageResultDir, 0755); err != nil {
 		return "", err
 	}
 
 	filename := resultFilename(imageURL, ext)
-	savePath := filepath.Join(resultDir, filename)
+	savePath := filepath.Join(globals.StorageResultDir, filename)
 
 	req, err := http.NewRequest(http.MethodGet, imageURL, nil)
 	if err != nil {
@@ -182,12 +181,12 @@ func storeBase64Image(raw string) (string, error) {
 		return "", fmt.Errorf("decode jimeng base64 image failed: %w", err)
 	}
 
-	if err := os.MkdirAll(resultDir, 0755); err != nil {
+	if err := os.MkdirAll(globals.StorageResultDir, 0755); err != nil {
 		return "", err
 	}
 
 	filename := resultFilename(raw, ext)
-	savePath := filepath.Join(resultDir, filename)
+	savePath := filepath.Join(globals.StorageResultDir, filename)
 	if err := os.WriteFile(savePath, decoded, 0644); err != nil {
 		return "", err
 	}

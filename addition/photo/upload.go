@@ -1,6 +1,7 @@
 package photo
 
 import (
+	"chat/globals"
 	"crypto/rand"
 	"database/sql"
 	"fmt"
@@ -14,12 +15,15 @@ import (
 // ── 上传配置 ────────────────────────────────────────────────
 
 const (
-	MaxUploadSize   = 50 * 1024 * 1024 // 50MB
-	StorageBase     = "storage"
-	UploadDir       = "storage/uploads"
-	ResultDir       = "storage/results"
-	MaxImageWidth   = 2048
+	MaxUploadSize = 50 * 1024 * 1024 // 50MB
+	StorageBase   = "storage"
+	MaxImageWidth = 2048
 )
+
+// 存储目录统一引用 globals（可经 config.yaml 覆盖），与即梦适配器、静态路由、清理任务保持一致。
+// 通过函数在调用时读取全局变量，避免包初始化早于配置加载导致拿到旧默认值。
+func UploadDir() string { return globals.StorageUploadDir }
+func ResultDir() string { return globals.StorageResultDir }
 
 var AllowedExtensions = map[string]bool{
 	".png":  true,
@@ -80,7 +84,7 @@ func SaveUploadFile(file *multipart.FileHeader, db *sql.DB, userID int64, folder
 	}
 
 	// 2. 确保目录存在
-	if err := ensureStorageDir(UploadDir); err != nil {
+	if err := ensureStorageDir(UploadDir()); err != nil {
 		return nil, fmt.Errorf("创建上传目录失败: %w", err)
 	}
 
@@ -93,7 +97,7 @@ func SaveUploadFile(file *multipart.FileHeader, db *sql.DB, userID int64, folder
 
 	// 4. 生成唯一文件名
 	saveName := generateFilename(file.Filename)
-	savePath := filepath.Join(UploadDir, saveName)
+	savePath := filepath.Join(UploadDir(), saveName)
 
 	// 5. 写入磁盘
 	dst, err := os.Create(savePath)
@@ -109,7 +113,7 @@ func SaveUploadFile(file *multipart.FileHeader, db *sql.DB, userID int64, folder
 
 	// 6. 生成图片ID + URL
 	imageID := generateImageID()
-	url := "/storage/uploads/" + saveName
+	url := globals.UploadPublicURL(saveName)
 
 	// 7. 写入数据库
 	absPath, _ := filepath.Abs(savePath)

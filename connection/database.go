@@ -94,6 +94,7 @@ func ConnectDatabase() *sql.DB {
 	CreatePaymentTable(db)
 	CreatePhotoImagesTable(db)
 	CreatePhotoTasksTable(db)
+	CreateImageGenerationTable(db)
 
 	if err := doMigration(db); err != nil {
 		fmt.Println(fmt.Sprintf("migration error: %s", err))
@@ -391,6 +392,39 @@ func CreatePhotoImagesTable(db *sql.DB) {
 		  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		  INDEX idx_user (user_id),
 		  INDEX idx_folder (folder_name)
+		);
+	`)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+// CreateImageGenerationTable 图片生成观测表：记录三条入口（chat/api/photo）的图片任务，
+// 保存张数、计费、火山 task_id/request_id/code 与失败原因，供后台用量统计与售后排查。
+func CreateImageGenerationTable(db *sql.DB) {
+	_, err := globals.ExecDb(db, `
+		CREATE TABLE IF NOT EXISTS image_generation (
+		  id INT PRIMARY KEY AUTO_INCREMENT,
+		  user_id INT,
+		  username VARCHAR(24),
+		  source VARCHAR(16) DEFAULT 'api',
+		  model VARCHAR(255),
+		  channel INT DEFAULT 0,
+		  channel_name VARCHAR(255),
+		  image_count INT DEFAULT 0,
+		  quota DECIMAL(16, 4) DEFAULT 0,
+		  duration DECIMAL(10, 2) DEFAULT 0,
+		  status VARCHAR(16) DEFAULT 'success',
+		  task_id VARCHAR(255),
+		  request_id VARCHAR(255),
+		  code INT DEFAULT 0,
+		  message VARCHAR(512),
+		  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		  INDEX idx_user (user_id),
+		  INDEX idx_model (model),
+		  INDEX idx_status (status),
+		  INDEX idx_source (source),
+		  INDEX idx_created_at (created_at)
 		);
 	`)
 	if err != nil {

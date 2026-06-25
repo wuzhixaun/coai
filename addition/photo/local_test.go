@@ -27,18 +27,18 @@ func createTestImage(path string, w, h int, c color.Color) error {
 }
 
 func TestEnsureStorageDir(t *testing.T) {
-	if err := ensureStorageDir(ResultDir); err != nil {
+	if err := ensureStorageDir(ResultDir()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(ResultDir); os.IsNotExist(err) {
+	if _, err := os.Stat(ResultDir()); os.IsNotExist(err) {
 		t.Fatal("ResultDir was not created")
 	}
 }
 
 func TestSmartCropCenter(t *testing.T) {
 	// 创建 1200x800 测试图片
-	inputPath := filepath.Join(UploadDir, "test_crop_input.png")
-	if err := ensureStorageDir(UploadDir); err != nil {
+	inputPath := filepath.Join(UploadDir(), "test_crop_input.png")
+	if err := ensureStorageDir(UploadDir()); err != nil {
 		t.Fatal(err)
 	}
 	if err := createTestImage(inputPath, 1200, 800, color.RGBA{100, 150, 200, 255}); err != nil {
@@ -46,7 +46,7 @@ func TestSmartCropCenter(t *testing.T) {
 	}
 	defer os.Remove(inputPath)
 
-	outputPath := filepath.Join(ResultDir, "test_crop_output.png")
+	outputPath := filepath.Join(ResultDir(), "test_crop_output.png")
 	defer os.Remove(outputPath)
 
 	if err := SmartCropCenter(inputPath, outputPath, 800, 800); err != nil {
@@ -67,16 +67,16 @@ func TestSmartCropCenter(t *testing.T) {
 
 func TestCompositeLogo(t *testing.T) {
 	// 基准图 800x600
-	basePath := filepath.Join(UploadDir, "test_base.png")
+	basePath := filepath.Join(UploadDir(), "test_base.png")
 	createTestImage(basePath, 800, 600, color.RGBA{255, 255, 255, 255})
 	defer os.Remove(basePath)
 
 	// Logo 200x100 (红色)
-	logoPath := filepath.Join(UploadDir, "test_logo.png")
+	logoPath := filepath.Join(UploadDir(), "test_logo.png")
 	createTestImage(logoPath, 200, 100, color.RGBA{255, 0, 0, 200})
 	defer os.Remove(logoPath)
 
-	outputPath := filepath.Join(ResultDir, "test_composite.png")
+	outputPath := filepath.Join(ResultDir(), "test_composite.png")
 	defer os.Remove(outputPath)
 
 	// 测试右下角叠加
@@ -94,16 +94,16 @@ func TestCompositeLogo(t *testing.T) {
 func TestAllPositions(t *testing.T) {
 	positions := []string{"top-left", "top-right", "bottom-left", "bottom-right", "center"}
 
-	basePath := filepath.Join(UploadDir, "test_base2.png")
+	basePath := filepath.Join(UploadDir(), "test_base2.png")
 	createTestImage(basePath, 600, 400, color.RGBA{200, 200, 200, 255})
 	defer os.Remove(basePath)
 
-	logoPath := filepath.Join(UploadDir, "test_logo2.png")
+	logoPath := filepath.Join(UploadDir(), "test_logo2.png")
 	createTestImage(logoPath, 100, 50, color.RGBA{0, 255, 0, 200})
 	defer os.Remove(logoPath)
 
 	for _, pos := range positions {
-		outputPath := filepath.Join(ResultDir, "test_"+pos+".png")
+		outputPath := filepath.Join(ResultDir(), "test_"+pos+".png")
 		defer os.Remove(outputPath)
 
 		err := CompositeLogo(basePath, logoPath, outputPath, pos)
@@ -121,7 +121,7 @@ func TestAllPositions(t *testing.T) {
 }
 
 func TestProcessDetailImage(t *testing.T) {
-	inputPath := filepath.Join(UploadDir, "test_detail.png")
+	inputPath := filepath.Join(UploadDir(), "test_detail.png")
 	createTestImage(inputPath, 1200, 900, color.RGBA{50, 100, 150, 255})
 	defer os.Remove(inputPath)
 
@@ -132,7 +132,7 @@ func TestProcessDetailImage(t *testing.T) {
 	t.Logf("Detail image URL: %s", url)
 
 	// 验证文件存在
-	path := filepath.Join(ResultDir, filepath.Base(url))
+	path := filepath.Join(ResultDir(), filepath.Base(url))
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		t.Fatal("detail image file not created")
 	}

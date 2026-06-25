@@ -34,7 +34,10 @@ func (c *ChatInstance) CreateImageRequest(props ImageProps) (string, string, err
 			N: 1,
 		}, props.Proxy)
 	if err != nil || res == nil {
-		return "", "", fmt.Errorf(err.Error())
+		if err != nil {
+			return "", "", fmt.Errorf("openai image request failed: %s", err.Error())
+		}
+		return "", "", fmt.Errorf("openai image request failed: empty response")
 	}
 
 	data := utils.MapToStruct[ImageResponse](res)
@@ -60,8 +63,10 @@ func (c *ChatInstance) CreateImage(props *adaptercommon.ChatProps) (string, erro
 		Proxy:  props.Proxy,
 	})
 	if err != nil {
+		// 内容被安全系统拒绝时，返回明确错误而非把错误文本当作图片内容返回，
+		// 避免被计为成功生成并产生扣费（CollectQuota 在 err != nil 时不扣费）。
 		if strings.Contains(err.Error(), "safety") {
-			return err.Error(), nil
+			return "", fmt.Errorf("content rejected by safety system: %s", err.Error())
 		}
 		return "", err
 	}

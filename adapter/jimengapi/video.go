@@ -109,11 +109,11 @@ func (c *ImageGenerator) storeVideoURL(videoURL string) (string, error) {
 		ext = ".mp4"
 	}
 
-	if err := os.MkdirAll(resultDir, 0755); err != nil {
+	if err := os.MkdirAll(globals.StorageResultDir, 0755); err != nil {
 		return "", err
 	}
 	filename := resultFilename(videoURL, ext)
-	savePath := filepath.Join(resultDir, filename)
+	savePath := filepath.Join(globals.StorageResultDir, filename)
 
 	req, err := http.NewRequest(http.MethodGet, videoURL, nil)
 	if err != nil {

@@ -12,7 +12,6 @@ import (
 	_ "image/png"  // 注册 png 解码器
 	"strconv"
 	"strings"
-	"time"
 )
 
 // classifyImageInputs 把 Photo / OpenAI 传入的图片列表区分为 http(s) URL 与原始 base64。
@@ -54,7 +53,7 @@ func (c *ImageGenerator) runTaskAndEmit(reqKey string, req SubmitTaskRequest, ho
 		return err
 	}
 
-	resultResp, err := c.Poll(ctx, reqKey, submitResp.Data.TaskID, 10*time.Minute, 10*time.Second)
+	resultResp, err := c.Poll(ctx, reqKey, submitResp.Data.TaskID, globals.ImageTaskTimeout(), globals.ImagePollInterval())
 	if err != nil {
 		return err
 	}

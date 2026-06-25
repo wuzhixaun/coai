@@ -104,6 +104,23 @@ function validator(state: Channel): boolean {
   );
 }
 
+// AK|SK 格式校验：每个非空行须形如 <access-key>|<secret-key>（恰一个竖线、两侧非空）。
+// 用于即梦官方 API(jimeng-api) 等火山系渠道，返回不合格的行号（从 1 起）。
+function akSkInvalidLines(secret: string): number[] {
+  const bad: number[] = [];
+  secret
+    .split("\n")
+    .map((line) => line.trim())
+    .forEach((line, idx) => {
+      if (line === "") return;
+      const parts = line.split("|");
+      if (parts.length !== 2 || parts[0].trim() === "" || parts[1].trim() === "") {
+        bad.push(idx + 1);
+      }
+    });
+  return bad;
+}
+
 function handler(data: Channel): Channel {
   data.models = data.models.filter((model) => model.trim() !== "");
   data.name = data.name.trim();
@@ -169,6 +186,12 @@ function ChannelEditor({
     );
   }, [channelModels, edit.models]);
   const enabled = useMemo(() => validator(edit), [edit]);
+
+  // 即梦官方 API 密钥须为 AK|SK 格式，给出软提示（不阻断保存，仅引导填写）。
+  const akSkBadLines = useMemo(
+    () => (edit.type === "jimeng-api" ? akSkInvalidLines(edit.secret) : []),
+    [edit.type, edit.secret],
+  );
 
   const [loading, setLoading] = useState(false);
 
@@ -398,6 +421,19 @@ function ChannelEditor({
                 dispatch({ type: "secret", value: e.target.value })
               }
             />
+            {edit.type === "jimeng-api" && (
+              <p
+                className={`text-xs mt-1 ${
+                  akSkBadLines.length > 0 ? "text-destructive" : "text-muted-foreground"
+                }`}
+              >
+                {akSkBadLines.length > 0
+                  ? t("admin.channels.jimeng-aksk-invalid", {
+                      lines: akSkBadLines.join(", "),
+                    })
+                  : t("admin.channels.jimeng-aksk-hint")}
+              </p>
+            )}
           </div>
           <div className={`channel-row`}>
             <div className={`channel-content`}>

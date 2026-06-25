@@ -4,6 +4,7 @@ import {
   ChargeProps,
   chargeTypes,
   defaultChargeType,
+  imageBilling,
   nonBilling,
   timesBilling,
   tokenBilling,
@@ -143,6 +144,10 @@ function preflight(state: ChargeProps): ChargeProps {
       state.output = 0;
       break;
     case timesBilling:
+      state.input = 0;
+      state.anonymous = false;
+      break;
+    case imageBilling:
       state.input = 0;
       state.anonymous = false;
       break;
@@ -572,6 +577,23 @@ function ChargeEditor({
         <div className={`flex flex-row w-full h-max items-center`}>
           <Cloud className={`w-4 h-4 mr-2`} />
           <Label className={`grow`}>{t("admin.charge.time-count")}</Label>
+          <NumberInput
+            value={form.output}
+            onValueChange={(value) =>
+              dispatch({ type: "set-output", payload: value })
+            }
+            acceptNegative={false}
+            className={`w-20`}
+            min={0}
+            max={99999}
+          />
+        </div>
+      )}
+
+      {form.type === imageBilling && (
+        <div className={`flex flex-row w-full h-max items-center`}>
+          <Cloud className={`w-4 h-4 mr-2`} />
+          <Label className={`grow`}>{t("admin.charge.image-count")}</Label>
           <NumberInput
             value={form.output}
             onValueChange={(value) =>

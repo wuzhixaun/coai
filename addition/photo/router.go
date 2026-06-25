@@ -1,14 +1,17 @@
 package photo
 
 import (
+	"chat/globals"
+
 	"github.com/gin-gonic/gin"
 )
 
 // Register 注册图片处理相关的全部 API 路由
 func Register(app *gin.RouterGroup) {
-	// 静态文件服务：/storage/uploads/* → 本地 storage/uploads/ 目录
-	app.Static("/storage/uploads", "./storage/uploads")
-	app.Static("/storage/results", "./storage/results")
+	// 静态文件服务：挂载点固定为 /storage/uploads、/storage/results，
+	// 底层目录引用 globals（可经 config.yaml 覆盖），与生成/清理逻辑保持一致。
+	app.Static("/storage/uploads", globals.StorageUploadDir)
+	app.Static("/storage/results", globals.StorageResultDir)
 
 	group := app.Group("/photo")
 

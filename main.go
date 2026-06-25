@@ -65,6 +65,8 @@ func main() {
 	worker := middleware.RegisterMiddleware(app)
 	defer worker()
 
+	utils.StartStorageCleanup()
+
 	utils.RegisterStaticRoute(app)
 	registerApiRouter(app)
 	readCorsOrigins()

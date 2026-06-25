@@ -54,7 +54,8 @@
       "add": "ワークベンチを追加",
       "remove": "ワークベンチを削除",
       "plan-included": "サブスクリプションに含まれるもの",
-      "plan-included-tip": "サブスクリプションにはすでにこのモデルが含まれています。サブスクリプションクレジットが最初に使用されます"
+      "plan-included-tip": "サブスクリプションにはすでにこのモデルが含まれています。サブスクリプションクレジットが最初に使用されます",
+      "image-billing": "{{price }}/シート"
     }
   },
   "market": {
@@ -583,7 +584,9 @@
       "first-message-as-user-desc": "一部のモデル(DeepSeekなど)は、アシスタントロールとしての最初のメッセージをサポートしていません。このオプションをオンにすると、アシスタントロールの最初のメッセージがユーザーロールに変換されます。",
       "merge-consecutive-user-messages": "継続的なユーザーメッセージをマージする",
       "merge-consecutive-user-messages-tip": "オンの場合、両方の連続したメッセージがユーザーメッセージである場合、は1つのメッセージにマージされます",
-      "merge-consecutive-user-messages-desc": "DeepSeekなどの一部のモデルでは、2つの連続したユーザーメッセージをサポートしていません。このオプションを有効にすると、2つの連続したユーザーメッセージを1つのメッセージに結合できます。"
+      "merge-consecutive-user-messages-desc": "DeepSeekなどの一部のモデルでは、2つの連続したユーザーメッセージをサポートしていません。このオプションを有効にすると、2つの連続したユーザーメッセージを1つのメッセージに結合できます。",
+      "jimeng-aksk-hint": "すなわち、Dreamの公式APIキーフォーマットはvolcano AK | SK （垂直線分離）であり、複数のキーが1つずつキープールを形成します。",
+      "jimeng-aksk-invalid": "行{{lines}}は有効なAK | SK形式ではありません（垂直バーの両側が空ではなく、アクセスキー|秘密キーである必要があります）。"
     },
     "charge": {
       "id": "ID",
@@ -630,7 +633,9 @@
       "new-group-buy-price": "購入レート",
       "new-group-consume-price": "消費比率",
       "new-group-description": "説明",
-      "update-group": "ユーザーグループを更新する"
+      "update-group": "ユーザーグループを更新する",
+      "image-billing": "ごとに請求されます",
+      "image-count": "単一の画像ポイント"
     },
     "system": {
       "general": "全般設定",
@@ -1344,7 +1349,35 @@
     "rpm-tips": "現在のRPM （ 1分あたりのリクエスト数）",
     "tpm-tips": "現在のTPM （ 1分あたりのトークン数）",
     "query": "レコードのクエリ",
-    "channel": "チャネル"
+    "channel": "チャネル",
+    "image": {
+      "tab": "画像の使用状況",
+      "general-tab": "一般的なレコード",
+      "images-today": "今日の写真",
+      "images-month": "今月のプロット",
+      "billing-today": "本日の画像消費量",
+      "billing-month": "今月の画像消費量",
+      "success-today": "今日の成功",
+      "failed-today": "今日の失敗",
+      "top-models": "人気モデル（今月）",
+      "source": "ソース",
+      "count": "用紙枚数",
+      "status": "コンディション",
+      "request-id": "リクエストID",
+      "message": "エラーメッセージ",
+      "empty": "画像生成の記録がありません",
+      "sources": {
+        "chat": "チャット",
+        "api": "API",
+        "photo": "画像ページ",
+        "all": "すべて"
+      },
+      "status-values": {
+        "success": "成功",
+        "failed": "失敗した",
+        "all": "すべて"
+      }
+    }
   },
   "date": {
     "pick": "日付を選択",
@@ -1695,6 +1728,113 @@
       "earnings": "累計売り上げ",
       "pending": "決済待ち",
       "rate": "リベート率"
+    }
+  },
+  "photo": {
+    "tabs": {
+      "images": "写真",
+      "feature": "機能",
+      "task": "クエスト"
+    },
+    "upload": {
+      "hint": "画像のアップロードを貼り付けるには、クリック、ドラッグ、またはCtrl + Vキーを押します",
+      "hint-drop": "リリースしてアップロード",
+      "formats": "PNG/JPG/WebP/BMP、最大50 MBの単一ファイル",
+      "folder": "アップロードするフォルダを選択",
+      "uploading": "アップロードしています...",
+      "uploading-count": "({{count}})をアップロードしています…",
+      "progress": "Percent:",
+      "select-all": "すべて選択",
+      "clear-selection": "キャンセル",
+      "clear-all": "リセット",
+      "selected": "{{total}}件中{{selected}}件を選択済み",
+      "bad-type": "{{count}}ファイル形式はサポートされていません（ PNG/JPG/WebP/BMP/TIFFのみ）",
+      "too-big": "50 MBを超える{{count}}個のファイル、スキップ",
+      "success": "{{count}}枚の画像が正常にアップロードされました",
+      "failed": "画像のアップロードに失敗しました: {{reason}}",
+      "failed-retry": "もう一度お試しください"
+    },
+    "feature": {
+      "title": "AI画像処理機能",
+      "model": "生のダイアグラムモデル",
+      "count": "建造数量",
+      "count-hint": "ビルドクラス機能のみが有効になります。HD、サイズ変更、ビデオ、およびローカル処理は繰り返されません。",
+      "process": "処理を開始({{count}}個の機能)",
+      "processing": "処理中…",
+      "params-title": "{{feature}}パラメータ設定",
+      "templates": "クイックテンプレート",
+      "prompt": "プロンプト",
+      "prompt-ph": "プロンプトを入力してください...",
+      "video-prompt": "動画の説明（任意）",
+      "video-prompt-ph": "AI自動推論の場合は空白のままにします",
+      "video-duration": "動画の再生時間",
+      "seconds": "{{n}}秒",
+      "target-color": "ターゲットカラー",
+      "target-lang": "目的原語",
+      "selling-point": "販売のマーケティングポイント",
+      "selling-point-ph": "マーケティングの販売時点を入力してください",
+      "logo-image": "ロゴ画像",
+      "logo-uploading": "アップロードしています...",
+      "logo-reupload": "ロゴを再アップロード",
+      "logo-upload": "ロゴをアップロード",
+      "logo-uploaded": "アップロード済み",
+      "logo-hint": "ブランドロゴ画像をアップロードしてください（透明なPNGを推奨）",
+      "position": "位置",
+      "category": "カテゴリを抽出",
+      "target-size": "ターゲットサイズ",
+      "cancel": "キャンセル",
+      "start": "処理を開始"
+    },
+    "task": {
+      "active": "現在の処理中({{count}})",
+      "history": "履歴({{count}})",
+      "refresh": "更新",
+      "empty-active": "進行中のタスクはありません",
+      "empty-history": "過去のミッションはまだありません",
+      "error": "エラー：{{ msg}}",
+      "source-files": "ソースファイル: {{files}}",
+      "zip-download": "パッケージ化されたダウンロード({{count}})",
+      "result": "結果{{n}}",
+      "video": "ビデオ{{n}}",
+      "copy-link": "リンクをコピー",
+      "open-window": "新しいウィンドウを開く",
+      "download": "ダウンロード",
+      "cancel-task": "ジョブをキャンセル",
+      "cancel": "キャンセル",
+      "retry": "リトライ",
+      "delete": "デリート"
+    },
+    "features": {
+      "white_bg": "ホワイトベースチャート",
+      "scene_gen": "シーン図",
+      "image_erase": "消去",
+      "color_change": "色を変更する",
+      "marketing": "マーケティングチャート",
+      "image_translate": "翻訳",
+      "hd_upscale": "カオタン",
+      "model_image": "モデルダイアグラム",
+      "material_change": "素材を変更する",
+      "instruction_gen": "命令生成図",
+      "detail_image": "詳細",
+      "logo_custom": "ロゴのカスタマイズ",
+      "production_flow": "フローチャート",
+      "resize": "サイズ変更",
+      "material_extract": "原料抽出",
+      "product_extract": "商品のお持ち帰り",
+      "video_gen": "動画"
+    },
+    "status": {
+      "pending": "並んで",
+      "processing": "処理中",
+      "success": "完了済み",
+      "failed": "失敗した"
+    },
+    "errors": {
+      "video-not-supported": "ビデオ機能はこのチャンネルではまだ利用できません。管理者に連絡してインスタントビデオモデルを設定してください",
+      "no-channel": "利用可能なチャンネルがありません。管理者に連絡して、モデル/チャンネル構成を確認してください",
+      "timeout": "処理がタイムアウトしました。しばらくしてからもう一度お試しください（画像/ビデオの生成が遅くなるまでお待ちください）",
+      "need-image": "処理する前に参照画像をアップロードしてください",
+      "insufficient": "クォータが不足しています。チャージしてもう一度お試しください"
     }
   }
 }

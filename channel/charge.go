@@ -281,6 +281,9 @@ func (c *Charge) GetLimit() float32 {
 		return 0
 	case globals.TimesBilling:
 		return c.GetOutput()
+	case globals.ImageBilling:
+		// 单张图片单价；实际费用 = 单价 × 生成张数（在 buffer 计费时按张数相乘）。
+		return c.GetOutput()
 	case globals.TokenBilling:
 		// 1k input tokens + 1k output tokens
 		return c.GetInput() + c.GetOutput()

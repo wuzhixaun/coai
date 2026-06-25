@@ -248,6 +248,8 @@ func (b *Buffer) ToChargeInfo() string {
 		)
 	case globals.TimesBilling:
 		return fmt.Sprintf("%f quota per request\n", b.Charge.GetLimit())
+	case globals.ImageBilling:
+		return fmt.Sprintf("%f quota per image\n", b.Charge.GetLimit())
 	case globals.NonBilling:
 		return "no cost"
 	}
@@ -287,6 +289,12 @@ func (b *Buffer) CountInputToken() int {
 }
 
 func (b *Buffer) CountOutputToken(running bool) int {
+	if b.Charge.IsBillingType(globals.ImageBilling) {
+		// 按张计费：计费单位是生成的图片张数。每张图片以一个 markdown chunk 写入 buffer，
+		// 因此 b.Times 即图片张数；running/最终阶段都返回张数，保证扣费与记录一致。
+		return b.Times
+	}
+
 	if running {
 		// performance optimization:
 		// if the buffer is still running, the output token counted using the times instead

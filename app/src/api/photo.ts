@@ -28,18 +28,41 @@ export interface PromptsConfig {
   defaults: Record<string, string>;
 }
 
-export async function uploadImages(files: File[], folderName = ""): Promise<PhotoImage[]> {
+export async function uploadImages(
+  files: File[],
+  folderName = "",
+  onProgress?: (percent: number) => void,
+): Promise<PhotoImage[]> {
   const fd = new FormData();
   files.forEach((f) => fd.append("files", f));
   if (folderName) fd.append("folder_name", folderName);
   const token = axios.defaults.headers.common["Authorization"];
-  const res = await fetch(`/api/photo/upload`, {
-    method: "POST",
-    body: fd,
-    headers: token ? { Authorization: String(token) } : {},
+
+  // 用 XHR 取代 fetch，以获得上传进度事件（fetch 不支持 upload progress）。
+  // 保持与原实现完全一致的字面量 URL 与鉴权头，不引入 axios baseURL 以免改变路径解析。
+  return new Promise<PhotoImage[]>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `/api/photo/upload`);
+    if (token) xhr.setRequestHeader("Authorization", String(token));
+    xhr.upload.onprogress = (e) => {
+      if (onProgress && e.lengthComputable) {
+        onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText) as PhotoImage[]);
+        } catch {
+          reject(new Error("upload response parse error"));
+        }
+      } else {
+        reject(new Error(`Upload failed: ${xhr.status}`));
+      }
+    };
+    xhr.onerror = () => reject(new Error("upload network error"));
+    xhr.send(fd);
   });
-  if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
-  return res.json();
 }
 
 export async function listImages(): Promise<PhotoImage[]> {

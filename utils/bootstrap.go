@@ -37,6 +37,8 @@ func ReadConf() {
 		globals.HttpMaxTimeout = time.Second * time.Duration(timeout)
 		globals.Debug(fmt.Sprintf("[service] http client timeout set to %ds from env", timeout))
 	}
+
+	ApplyStorageConfig()
 }
 
 func NewEngine() *gin.Engine {

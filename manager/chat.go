@@ -327,6 +327,9 @@ func ChatHandler(conn *Connection, user *auth.User, instance *conversation.Conve
 		globals.Warn(fmt.Sprintf("%s (model: %s, client: %s)", err, model, conn.GetCtx().ClientIP()))
 
 		auth.RevertSubscriptionUsage(db, cache, user, model)
+		if globals.IsImageGenerationModel(model) {
+			recordImageGeneration(db, user, ImageSourceChat, model, buffer, 0, err)
+		}
 		conn.Send(globals.ChatSegmentResponse{
 			Message: err.Error(),
 			End:     true,
@@ -342,6 +345,14 @@ func ChatHandler(conn *Connection, user *auth.User, instance *conversation.Conve
 		chargedQuota = 0
 	}
 	SaveUsageRecord(db, user, buffer, chargedQuota, "")
+
+	if globals.IsImageGenerationModel(model) {
+		count := buffer.ReadTimes()
+		if count == 0 && !buffer.IsEmpty() {
+			count = 1
+		}
+		recordImageGeneration(db, user, ImageSourceChat, model, buffer, count, nil)
+	}
 
 	if buffer.IsEmpty() {
 		conn.Send(globals.ChatSegmentResponse{

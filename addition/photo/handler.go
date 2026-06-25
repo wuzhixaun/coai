@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"chat/auth"
+	"chat/globals"
 	"chat/manager"
 	"chat/utils"
 
@@ -148,6 +149,23 @@ func ProcessAPI(c *gin.Context) {
 
 	db := getDBFromCtx(c)
 	userID := getUserID(c)
+
+	// 单用户在途任务并发限制：防止同一用户批量提交（图片数×功能数×生成数）压垮后端。
+	// 上限为 0 表示不限制。
+	if limit := globals.ImageMaxConcurrentPerUser; limit > 0 {
+		var inflight int64
+		_ = db.QueryRow(
+			`SELECT COUNT(*) FROM photo_tasks WHERE user_id = ? AND status IN ('pending','processing')`,
+			userID,
+		).Scan(&inflight)
+		if inflight+int64(len(req.Features)) > limit {
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"status":  "error",
+				"message": "当前进行中的图片任务过多，请等待部分任务完成后再试",
+			})
+			return
+		}
+	}
 
 	// 获取用户 group（用于渠道匹配）
 	user := manager.ParseAuth(c, c.GetHeader("Authorization"))
@@ -285,7 +303,7 @@ func DeleteTaskAPI(c *gin.Context) {
 	var urlsNS sql.NullString
 	db.QueryRow("SELECT result_urls FROM photo_tasks WHERE task_id = ?", taskID).Scan(&urlsNS)
 	for _, url := range parseJSONStringArray(nullToString(urlsNS)) {
-		os.Remove(filepath.Join(ResultDir, filepath.Base(url)))
+		os.Remove(filepath.Join(ResultDir(), filepath.Base(url)))
 	}
 
 	if _, err := db.Exec("DELETE FROM photo_tasks WHERE task_id = ?", taskID); err != nil {

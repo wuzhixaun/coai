@@ -44,3 +44,23 @@ system:
       apiv3key: ""
       mchcertserialno: ""
       mchprivatekey: ""     # 商户 API 私钥 (apiclient_key.pem 内容)
+
+# 图片/文件存储与清理配置（生成结果、上传文件落地与磁盘保护）。
+# 默认 ttl_hours / max_size_mb 为 0 = 关闭清理（仅存不删），生产环境建议按磁盘容量开启。
+storage:
+  result_dir: storage/results          # 生成结果（图片/视频）落地目录
+  upload_dir: storage/uploads          # 用户上传文件落地目录
+  ttl_hours: 0                         # 文件保留小时数，超过即清理；0=永久保留
+  max_size_mb: 0                       # 结果+上传目录总容量上限(MB)，超过按最旧优先删除；0=不限制
+  cleanup_interval_minutes: 60         # 清理任务执行间隔(分钟)
+
+# 图片生成相关限制与超时。
+image:
+  max_concurrent_tasks_per_user: 0     # 单用户同时进行中的图片任务上限(pending+processing)；0=不限制
+  task_timeout_minutes: 10             # 单个图片/视频任务的轮询最长等待(分钟)；<=0 回退默认 10
+  poll_interval_seconds: 10            # 即梦任务状态轮询间隔(秒)；<=0 回退默认 10
+
+# 即梦官方 API 渠道说明（渠道在「管理后台 → 渠道」中维护，不在本文件配置）：
+#   类型选择 "即梦官方 API"(jimeng-api)，密钥格式为 火山 AK|SK（竖线分隔，支持多行密钥池），
+#   接入点默认 https://visual.volcengineapi.com（后端固定 Region=cn-north-1、Service=cv 签名）。
+#   生成结果会把火山 24h 临时图片 URL 转存到上面的 storage.result_dir。

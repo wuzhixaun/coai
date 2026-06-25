@@ -104,6 +104,9 @@ func CountOutputToken(charge Charge, token int) float32 {
 		return float32(token) / 1000 * charge.GetOutput()
 	case globals.TimesBilling:
 		return charge.GetOutput()
+	case globals.ImageBilling:
+		// 按张计费：token 此处代表生成的图片张数（见 Buffer.CountOutputToken）。
+		return charge.GetOutput() * float32(token)
 	default:
 		return 0
 	}

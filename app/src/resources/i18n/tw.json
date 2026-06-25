@@ -127,7 +127,8 @@
       "add": "新增工作台",
       "remove": "移除工作台",
       "plan-included": "訂閱包含",
-      "plan-included-tip": "您的訂閱已包含此模型，將優先使用訂閱內額度"
+      "plan-included-tip": "您的訂閱已包含此模型，將優先使用訂閱內額度",
+      "image-billing": "{{price}} / 張"
     }
   },
   "market": {
@@ -787,7 +788,9 @@
       "first-message-as-user-desc": "某些模型（如DeepSeek）不支援第一則訊息為assistant 角色，開啟此選項可將第一個assistant 角色的訊息轉換為user 角色。",
       "merge-consecutive-user-messages": "合併連續用戶訊息",
       "merge-consecutive-user-messages-tip": "若開啟，連續兩則訊息均為使用者訊息時，將會合併為一則訊息",
-      "merge-consecutive-user-messages-desc": "某些模型（如DeepSeek）不支援連續兩個用戶訊息，開啟此選項可以將連續兩個用戶訊息合併為一則訊息。"
+      "merge-consecutive-user-messages-desc": "某些模型（如DeepSeek）不支援連續兩個用戶訊息，開啟此選項可以將連續兩個用戶訊息合併為一則訊息。",
+      "jimeng-aksk-hint": "即夢官方API 金鑰格式為火山AK|SK（垂直線分隔），多個金鑰一行一個組成金鑰池。",
+      "jimeng-aksk-invalid": "第{{lines}} 行不是有效的AK|SK 格式（應為access-key|secret-key，垂直線兩側皆非空）。"
     },
     "charge": {
       "id": "ID",
@@ -834,7 +837,9 @@
       "add-new-group": "新增用戶群組",
       "new-group-buy-price": "購買倍率",
       "new-group-consume-price": "消費倍率",
-      "new-group-description": "描述"
+      "new-group-description": "描述",
+      "image-billing": "按張計費",
+      "image-count": "單張圖片點數"
     },
     "system": {
       "general": "一般設定",
@@ -1445,6 +1450,34 @@
       "end_time": "結束時間:",
       "username": "指定使用者名稱",
       "username-placeholder": "請輸入使用者名"
+    },
+    "image": {
+      "tab": "圖片用量",
+      "general-tab": "通用記錄",
+      "images-today": "今日出圖",
+      "images-month": "本月出圖",
+      "billing-today": "今日圖片消費",
+      "billing-month": "本月圖片消費",
+      "success-today": "今日成功",
+      "failed-today": "今日失敗",
+      "top-models": "熱門模型(本月)",
+      "source": "來源",
+      "count": "張數",
+      "status": "狀態",
+      "request-id": "請求ID",
+      "message": "，錯誤信息：",
+      "empty": "暫無圖片產生記錄",
+      "sources": {
+        "chat": "聊天",
+        "api": "API",
+        "photo": "圖片頁",
+        "all": "全部"
+      },
+      "status-values": {
+        "success": "成功",
+        "failed": "失敗",
+        "all": "全部"
+      }
     }
   },
   "payment": {
@@ -1697,6 +1730,113 @@
       "earnings": "累計收益",
       "pending": "待結算",
       "rate": "返傭率"
+    }
+  },
+  "photo": {
+    "tabs": {
+      "images": "圖片",
+      "feature": "功能",
+      "task": "任務"
+    },
+    "upload": {
+      "hint": "點擊、拖曳或Ctrl+V 貼上圖片上傳",
+      "hint-drop": "放開即可上傳",
+      "formats": "PNG / JPG / WebP / BMP，單一檔案最大50MB",
+      "folder": "選擇資料夾上傳",
+      "uploading": "上傳中…",
+      "uploading-count": "上傳中({{count}} 張)…",
+      "progress": "{{percent}}%",
+      "select-all": "全選",
+      "clear-selection": "取消",
+      "clear-all": "清空",
+      "selected": "已選{{selected}}/{{total}}",
+      "bad-type": "{{count}} 個檔案格式不支援（僅PNG/JPG/WebP/BMP/TIFF）",
+      "too-big": "{{count}} 個檔案超過50MB，已跳過",
+      "success": "成功上傳{{count}} 張圖片",
+      "failed": "圖片上傳失敗：{{reason}}",
+      "failed-retry": "請重試。"
+    },
+    "feature": {
+      "title": "AI 圖片處理功能",
+      "model": "生圖模型",
+      "count": "生成數量",
+      "count-hint": "僅產生類別功能生效；高清、改尺寸、影片和本地處理不會重複執行。",
+      "process": "開始處理({{count}} 功能)",
+      "processing": "處理中…",
+      "params-title": "{{feature}} 參數設定",
+      "templates": "快速模板",
+      "prompt": "提示詞",
+      "prompt-ph": "輸入提示詞…",
+      "video-prompt": "影片描述（可選）",
+      "video-prompt-ph": "留空則AI自動推理",
+      "video-duration": "影片時長",
+      "seconds": "{{n}} 秒",
+      "target-color": "目標顏色",
+      "target-lang": "目標語言",
+      "selling-point": "行銷賣點",
+      "selling-point-ph": "輸入行銷賣點",
+      "logo-image": "Logo 圖片",
+      "logo-uploading": "上傳中…",
+      "logo-reupload": "重新上傳Logo",
+      "logo-upload": "上傳Logo",
+      "logo-uploaded": "已上傳",
+      "logo-hint": "請上傳品牌Logo 圖片（建議透明PNG）",
+      "position": "位置",
+      "category": "提取類別",
+      "target-size": "目標尺寸",
+      "cancel": "取消",
+      "start": "開始處理"
+    },
+    "task": {
+      "active": "目前處理({{count}})",
+      "history": "歷史記錄({{count}})",
+      "refresh": "刷新",
+      "empty-active": "暫無進行中任務",
+      "empty-history": "暫無歷史任務",
+      "error": "錯誤: {{msg}}",
+      "source-files": "原始檔: {{files}}",
+      "zip-download": "打包下載({{count}})",
+      "result": "結果{{n}}",
+      "video": "影片{{n}}",
+      "copy-link": "複製連結",
+      "open-window": "新視窗打開",
+      "download": "下載",
+      "cancel-task": "取消任務",
+      "cancel": "取消",
+      "retry": "重試",
+      "delete": "刪除"
+    },
+    "features": {
+      "white_bg": "白底圖",
+      "scene_gen": "場景圖",
+      "image_erase": "擦除",
+      "color_change": "換色",
+      "marketing": "行銷圖",
+      "image_translate": "翻譯",
+      "hd_upscale": "高清",
+      "model_image": "模特兒圖",
+      "material_change": "換材質",
+      "instruction_gen": "指令生圖",
+      "detail_image": "細部圖",
+      "logo_custom": "Logo定制",
+      "production_flow": "流程圖",
+      "resize": "改尺寸",
+      "material_extract": "素材擷取",
+      "product_extract": "商品提取",
+      "video_gen": "影片"
+    },
+    "status": {
+      "pending": "排隊中",
+      "processing": "處理中",
+      "success": "已完成",
+      "failed": "失敗"
+    },
+    "errors": {
+      "video-not-supported": "視訊功能暫未在該頻道開通，請聯絡管理員配置即夢視訊模型",
+      "no-channel": "暫無可用管道，請聯絡管理員檢查模型/頻道配置",
+      "timeout": "處理超時，請稍後重試（圖片/影片產生較慢時可多等一會）",
+      "need-image": "請先上傳參考圖後再處理",
+      "insufficient": "額度不足，請充值後重試"
     }
   }
 }

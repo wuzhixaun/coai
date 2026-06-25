@@ -1,9 +1,20 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { Download, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog.tsx";
+import { Copy, Download, Eye, Link, Package, RefreshCw, RotateCcw, Trash2, X } from "lucide-react";
 import type { PhotoTask } from "@/api/photo";
-import { getDownloadFileUrl } from "@/api/photo";
+import { getDownloadFileUrl, getDownloadZipUrl } from "@/api/photo";
+import { useClipboard } from "@/utils/dom.ts";
+import { openWindow } from "@/utils/device.ts";
 
 interface Props {
   tasks: PhotoTask[];
@@ -13,105 +24,171 @@ interface Props {
   onRefreshAll: () => void;
 }
 
-const STATUS_MAP: Record<string, { label: string; color: "default" | "secondary" | "destructive" | "outline" }> = {
-  pending: { label: "排队中", color: "secondary" },
-  processing: { label: "处理中", color: "default" },
-  success: { label: "已完成", color: "default" },
-  failed: { label: "失败", color: "destructive" },
+const STATUS_COLOR: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  pending: "secondary",
+  processing: "default",
+  success: "default",
+  failed: "destructive",
 };
 
-const FEATURE_LABEL: Record<string, string> = {
-  white_bg: "白底图", scene_gen: "场景图", image_erase: "擦除", color_change: "换色",
-  marketing: "营销图", image_translate: "翻译", hd_upscale: "高清", model_image: "模特图",
-  material_change: "换材质", instruction_gen: "指令生图", detail_image: "细节图",
-  logo_custom: "Logo定制", production_flow: "流程图", resize: "改尺寸", video_gen: "视频",
-};
-
-// 把后端/上游的英文报错映射成电商同事看得懂的中文提示
-function friendlyError(raw: string): string {
+// 把后端/上游的英文报错映射成用户看得懂的本地化提示
+function friendlyError(raw: string, t: TFunction): string {
   if (!raw) return "";
   const lower = raw.toLowerCase();
   if (lower.includes("video not supported") || lower.includes("不是视频模型"))
-    return "视频功能暂未在该渠道开通，请联系管理员配置即梦视频模型";
+    return t("photo.errors.video-not-supported");
   if (lower.includes("channels are exhausted") || lower.includes("unknown channel type"))
-    return "暂无可用渠道，请联系管理员检查模型/渠道配置";
+    return t("photo.errors.no-channel");
   if (lower.includes("timeout") || lower.includes("超时"))
-    return "处理超时，请稍后重试（图片/视频生成较慢时可多等一会）";
+    return t("photo.errors.timeout");
   if (lower.includes("at least") || lower.includes("需要至少") || lower.includes("参考图"))
-    return "请先上传参考图后再处理";
+    return t("photo.errors.need-image");
   if (lower.includes("quota") || lower.includes("insufficient") || lower.includes("余额") || lower.includes("积分"))
-    return "额度不足，请充值后重试";
+    return t("photo.errors.insufficient");
   return raw;
 }
 
-const TaskRow: React.FC<{ task: PhotoTask; onDelete: (id: string) => void; onRetry: (id: string) => void; onRefresh: (id: string) => void }> =
-  ({ task, onDelete, onRetry, onRefresh }) => {
-  const [expanded, setExpanded] = React.useState(false);
-  const st = STATUS_MAP[task.status] || { label: task.status, color: "secondary" as const };
+const isVideoUrl = (url: string) => url.endsWith(".mp4") || url.endsWith(".webm");
+
+// 结果项：缩略图点击后弹出大图/视频预览，支持复制链接、新窗口打开、下载
+const ResultPreview: React.FC<{ url: string; index: number }> = ({ url, index }) => {
+  const { t } = useTranslation();
+  const copy = useClipboard();
+  const video = isVideoUrl(url);
+  const label = video ? t("photo.task.video", { n: index + 1 }) : t("photo.task.result", { n: index + 1 });
 
   return (
-    <div className="border rounded mb-2 bg-white">
+    <div className="border rounded-md overflow-hidden w-40 bg-card">
+      <Dialog>
+        <DialogTrigger asChild>
+          <div className="cursor-pointer group relative">
+            {video ? (
+              <video src={url} className="w-full h-28 object-cover bg-muted" />
+            ) : (
+              <img src={url} alt={label} className="w-full h-28 object-contain bg-muted" />
+            )}
+            <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors">
+              <Eye className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+          </div>
+        </DialogTrigger>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center text-base">
+              <Eye className="h-4 w-4 mr-1.5" /> {label}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 mb-2">
+            <Button size="icon" variant="outline" onClick={() => copy(url)} title={t("photo.task.copy-link")}>
+              <Copy className="h-4 w-4" />
+            </Button>
+            <Button size="icon" variant="outline" onClick={() => openWindow(url)} title={t("photo.task.open-window")}>
+              <Link className="h-4 w-4" />
+            </Button>
+            <a href={getDownloadFileUrl(url)} download>
+              <Button size="icon" variant="outline" title={t("photo.task.download")}>
+                <Download className="h-4 w-4" />
+              </Button>
+            </a>
+          </div>
+          <div className="flex justify-center max-h-[70vh] overflow-auto">
+            {video ? (
+              <video src={url} controls className="max-w-full rounded-md" />
+            ) : (
+              <img src={url} alt={label} className="max-w-full rounded-md object-contain" />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+      <div className="flex justify-between items-center p-1">
+        <span className="text-xs text-muted-foreground">{label}</span>
+        <a href={getDownloadFileUrl(url)} download className="text-primary" title={t("photo.task.download")}>
+          <Download className="h-3 w-3" />
+        </a>
+      </div>
+    </div>
+  );
+};
+
+const TaskRow: React.FC<{
+  task: PhotoTask;
+  onDelete: (id: string) => void;
+  onRetry: (id: string) => void;
+  onRefresh: (id: string) => void;
+}> = ({ task, onDelete, onRetry, onRefresh }) => {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = React.useState(false);
+  const stColor = STATUS_COLOR[task.status] || "secondary";
+  const stLabel = t(`photo.status.${task.status}`, task.status);
+  const isActive = ["pending", "processing"].includes(task.status);
+  const results = task.result_urls ?? [];
+
+  return (
+    <div className="border rounded-md mb-2 bg-card">
       <div className="flex items-center p-3 gap-3 cursor-pointer" onClick={() => setExpanded(!expanded)}>
-        <span className="font-mono text-xs text-gray-500 w-20 truncate">{task.task_id}</span>
-        <span className="text-sm w-16">{FEATURE_LABEL[task.feature] || task.feature}</span>
-        <Badge variant={st.color}>{st.label}</Badge>
+        <span className="font-mono text-xs text-muted-foreground w-20 truncate">{task.task_id}</span>
+        <span className="text-sm w-16">{t(`photo.features.${task.feature}`, task.feature)}</span>
+        <Badge variant={stColor}>{stLabel}</Badge>
         <div className="flex-1 mx-2">
-          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div className={`h-full rounded-full transition-all ${task.status === "failed" ? "bg-red-500" : "bg-primary"}`}
+          <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <div className={`h-full rounded-full transition-all ${task.status === "failed" ? "bg-destructive" : "bg-primary"}`}
               style={{ width: `${task.progress}%` }} />
           </div>
         </div>
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-muted-foreground">
           {task.processed_images}/{task.total_images}
           {task.total_videos > 0 && ` +${task.processed_videos}V`}
         </span>
-        <span className="text-xs text-gray-400">{task.created_at?.slice(0, 16)}</span>
+        <span className="text-xs text-muted-foreground hidden sm:inline">{task.created_at?.slice(0, 16)}</span>
 
         <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-          {["pending", "processing"].includes(task.status) && (
-            <Button size="sm" variant="ghost" onClick={() => onRefresh(task.task_id)}>
-              <RefreshCw className="h-3 w-3" />
-            </Button>
+          {isActive && (
+            <>
+              <Button size="sm" variant="ghost" onClick={() => onRefresh(task.task_id)} title={t("photo.task.refresh")}>
+                <RefreshCw className="h-3 w-3" />
+              </Button>
+              <Button size="sm" variant="ghost" className="text-destructive" onClick={() => onDelete(task.task_id)} title={t("photo.task.cancel-task")}>
+                <X className="h-3 w-3 mr-1" />{t("photo.task.cancel")}
+              </Button>
+            </>
           )}
           {task.status === "failed" && (
             <Button size="sm" variant="default" onClick={() => onRetry(task.task_id)}>
-              <RotateCcw className="h-3 w-3 mr-1" />重试
+              <RotateCcw className="h-3 w-3 mr-1" />{t("photo.task.retry")}
             </Button>
           )}
-          <Button size="sm" variant="ghost" className="text-red-500" onClick={() => onDelete(task.task_id)}>
-            <Trash2 className="h-3 w-3" />
-          </Button>
+          {!isActive && (
+            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => onDelete(task.task_id)} title={t("photo.task.delete")}>
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Expanded row */}
       {expanded && (
         <div className="px-4 pb-3 border-t pt-2">
-          {task.error_message && <p className="text-red-500 text-sm mb-2">错误: {friendlyError(task.error_message)}</p>}
+          {task.error_message && <p className="text-destructive text-sm mb-2">{t("photo.task.error", { msg: friendlyError(task.error_message, t) })}</p>}
           {(task.source_filenames?.length ?? 0) > 0 && (
-            <p className="text-gray-500 text-xs mb-2">源文件: {task.source_filenames.join(", ")}</p>
+            <p className="text-muted-foreground text-xs mb-2">{t("photo.task.source-files", { files: task.source_filenames.join(", ") })}</p>
           )}
-          {(task.result_urls?.length ?? 0) > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {task.result_urls.map((url, i) => {
-                const isVideo = url.endsWith(".mp4") || url.endsWith(".webm");
-                return (
-                  <div key={i} className="border rounded overflow-hidden w-40">
-                    {isVideo ? (
-                      <video src={url} controls className="w-full h-24 object-cover" />
-                    ) : (
-                      <img src={url} alt={`结果${i + 1}`} className="w-full h-24 object-contain bg-gray-100" />
-                    )}
-                    <div className="flex justify-between items-center p-1">
-                      <span className="text-xs">{isVideo ? "视频" : "结果"} {i + 1}</span>
-                      <a href={getDownloadFileUrl(url)} download className="text-primary">
-                        <Download className="h-3 w-3" />
-                      </a>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+          {results.length > 0 && (
+            <>
+              {results.length > 1 && (
+                <div className="flex justify-end mb-2">
+                  <a href={getDownloadZipUrl(results)} download>
+                    <Button size="sm" variant="outline">
+                      <Package className="h-3 w-3 mr-1" />{t("photo.task.zip-download", { count: results.length })}
+                    </Button>
+                  </a>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {results.map((url, i) => (
+                  <ResultPreview key={i} url={url} index={i} />
+                ))}
+              </div>
+            </>
           )}
         </div>
       )}
@@ -120,10 +197,11 @@ const TaskRow: React.FC<{ task: PhotoTask; onDelete: (id: string) => void; onRet
 };
 
 const TaskTable: React.FC<Props> = ({ tasks, onDelete, onRetry, onRefreshTask, onRefreshAll }) => {
+  const { t } = useTranslation();
   const [tab, setTab] = React.useState<"active" | "history">("active");
 
-  const activeTasks = tasks.filter((t) => ["pending", "processing"].includes(t.status));
-  const historyTasks = tasks.filter((t) => ["success", "failed"].includes(t.status));
+  const activeTasks = tasks.filter((tk) => ["pending", "processing"].includes(tk.status));
+  const historyTasks = tasks.filter((tk) => ["success", "failed"].includes(tk.status));
 
   const list = tab === "active" ? activeTasks : historyTasks;
 
@@ -133,20 +211,20 @@ const TaskTable: React.FC<Props> = ({ tasks, onDelete, onRetry, onRefreshTask, o
         <div className="flex gap-2">
           <Button size="sm" variant={tab === "active" ? "default" : "outline"}
             onClick={() => setTab("active")}>
-            当前处理 ({activeTasks.length})
+            {t("photo.task.active", { count: activeTasks.length })}
           </Button>
           <Button size="sm" variant={tab === "history" ? "default" : "outline"}
             onClick={() => setTab("history")}>
-            历史记录 ({historyTasks.length})
+            {t("photo.task.history", { count: historyTasks.length })}
           </Button>
         </div>
         <Button size="sm" variant="ghost" onClick={onRefreshAll}>
-          <RefreshCw className="h-3 w-3 mr-1" />刷新
+          <RefreshCw className="h-3 w-3 mr-1" />{t("photo.task.refresh")}
         </Button>
       </div>
 
       {list.length === 0 ? (
-        <p className="text-center text-gray-400 py-8">暂无{tab === "active" ? "进行中" : "历史"}任务</p>
+        <p className="text-center text-muted-foreground py-8">{tab === "active" ? t("photo.task.empty-active") : t("photo.task.empty-history")}</p>
       ) : (
         list.map((task) => (
           <TaskRow key={task.task_id} task={task}

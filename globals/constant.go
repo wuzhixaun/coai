@@ -41,6 +41,8 @@ const (
 	NonBilling   = "non-billing"
 	TimesBilling = "times-billing"
 	TokenBilling = "token-billing"
+	// ImageBilling 按生成图片张数计费：每张消耗 GetOutput() 额度，区别于 TimesBilling 的「每请求固定费」。
+	ImageBilling = "image-billing"
 )
 
 const (

@@ -2,6 +2,7 @@ package photo
 
 import (
 	"bytes"
+	"chat/globals"
 	"encoding/base64"
 	"fmt"
 	"image"
@@ -106,9 +107,9 @@ func SmartCropCenter(inputPath, outputPath string, targetW, targetH int) error {
 
 // ProcessDetailImage 细节图：中心裁剪 800x800
 func ProcessDetailImage(inputPath string) (string, error) {
-	outputPath := filepath.Join(ResultDir, fmt.Sprintf("detail_%s", filepath.Base(inputPath)))
+	outputPath := filepath.Join(ResultDir(), fmt.Sprintf("detail_%s", filepath.Base(inputPath)))
 
-	if err := ensureStorageDir(ResultDir); err != nil {
+	if err := ensureStorageDir(ResultDir()); err != nil {
 		return "", err
 	}
 
@@ -116,7 +117,7 @@ func ProcessDetailImage(inputPath string) (string, error) {
 		return "", err
 	}
 
-	return "/storage/results/" + filepath.Base(outputPath), nil
+	return globals.ResultPublicURL(filepath.Base(outputPath)), nil
 }
 
 // ── Logo 叠加 ────────────────────────────────────────────────
@@ -191,18 +192,18 @@ func CompositeLogo(basePath, logoPath, outputPath, position string) error {
 
 // ProcessLogoCustom Logo定制入口
 func ProcessLogoCustom(basePath, logoPath, position string) (string, error) {
-	if err := ensureStorageDir(ResultDir); err != nil {
+	if err := ensureStorageDir(ResultDir()); err != nil {
 		return "", err
 	}
 
 	outputName := fmt.Sprintf("logo_%s", filepath.Base(basePath))
-	outputPath := filepath.Join(ResultDir, outputName)
+	outputPath := filepath.Join(ResultDir(), outputName)
 
 	if err := CompositeLogo(basePath, logoPath, outputPath, position); err != nil {
 		return "", err
 	}
 
-	return "/storage/results/" + filepath.Base(outputPath), nil
+	return globals.ResultPublicURL(filepath.Base(outputPath)), nil
 }
 
 // ── 图片工具 ────────────────────────────────────────────────

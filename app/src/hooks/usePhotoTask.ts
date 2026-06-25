@@ -1,15 +1,19 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import type { PhotoImage, PhotoTask } from "@/api/photo";
 import * as api from "@/api/photo";
 
 const POLL_INTERVAL = 10_000;
 
 export function usePhotoTask() {
+  const { t } = useTranslation();
   const [images, setImages] = useState<PhotoImage[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [tasks, setTasks] = useState<PhotoTask[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const pollingRef = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
   const initialized = useRef(false);
 
@@ -52,13 +56,22 @@ export function usePhotoTask() {
 
   const upload = useCallback(async (files: File[], folderName = "") => {
     setUploading(true);
+    setUploadProgress(0);
     try {
-      const data = await api.uploadImages(files, folderName);
+      const data = await api.uploadImages(files, folderName, setUploadProgress);
       setImages((prev) => [...prev, ...data]);
+      if (Array.isArray(data) && data.length > 0) {
+        toast.success(t("photo.upload.success", { count: data.length }));
+      }
       return data;
-    } catch (e) { console.error("Upload failed:", e); }
-    finally { setUploading(false); }
-  }, []);
+    } catch (e) {
+      console.error("Upload failed:", e);
+      toast.error(t("photo.upload.failed", { reason: e instanceof Error ? e.message : t("photo.upload.failed-retry") }));
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+    }
+  }, [t]);
 
   const uploadFolder = useCallback(async (files: File[], folderName: string) => {
     return upload(files, folderName);
@@ -124,7 +137,7 @@ export function usePhotoTask() {
     } catch (e) { /* ignore */ }
   }, []);
 
-  return { images, selectedIds, tasks, loading, uploading, upload, uploadFolder,
+  return { images, selectedIds, tasks, loading, uploading, uploadProgress, upload, uploadFolder,
     toggleSelect, selectAll, clearSelection, removeImage, clearAll, process,
     retryAction, deleteAction, refreshTask, refreshAll };
 }

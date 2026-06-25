@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog.tsx";
@@ -14,24 +15,25 @@ interface Props {
   onProcess: (features: string[], paramsMap: Record<string, Record<string, unknown>>, model: string) => void;
 }
 
-const FEATURES: { key: string; label: string; icon: string }[] = [
-  { key: "white_bg", label: "白底图", icon: "⚪" },
-  { key: "scene_gen", label: "场景图", icon: "🏞️" },
-  { key: "image_erase", label: "擦除", icon: "🧹" },
-  { key: "color_change", label: "换色", icon: "🎨" },
-  { key: "marketing", label: "营销图", icon: "📢" },
-  { key: "image_translate", label: "翻译", icon: "🌐" },
-  { key: "hd_upscale", label: "高清", icon: "✨" },
-  { key: "model_image", label: "模特图", icon: "👤" },
-  { key: "material_change", label: "换材质", icon: "🪨" },
-  { key: "instruction_gen", label: "指令生图", icon: "📝" },
-  { key: "detail_image", label: "细节图", icon: "🔍" },
-  { key: "logo_custom", label: "Logo定制", icon: "🏷️" },
-  { key: "production_flow", label: "流程图", icon: "📊" },
-  { key: "resize", label: "改尺寸", icon: "📐" },
-  { key: "material_extract", label: "素材提取", icon: "🧩" },
-  { key: "product_extract", label: "商品提取", icon: "📦" },
-  { key: "video_gen", label: "视频", icon: "🎬" },
+// 功能标签文案走 i18n（photo.features.<key>），这里仅保留 key 与图标
+const FEATURES: { key: string; icon: string }[] = [
+  { key: "white_bg", icon: "⚪" },
+  { key: "scene_gen", icon: "🏞️" },
+  { key: "image_erase", icon: "🧹" },
+  { key: "color_change", icon: "🎨" },
+  { key: "marketing", icon: "📢" },
+  { key: "image_translate", icon: "🌐" },
+  { key: "hd_upscale", icon: "✨" },
+  { key: "model_image", icon: "👤" },
+  { key: "material_change", icon: "🪨" },
+  { key: "instruction_gen", icon: "📝" },
+  { key: "detail_image", icon: "🔍" },
+  { key: "logo_custom", icon: "🏷️" },
+  { key: "production_flow", icon: "📊" },
+  { key: "resize", icon: "📐" },
+  { key: "material_extract", icon: "🧩" },
+  { key: "product_extract", icon: "📦" },
+  { key: "video_gen", icon: "🎬" },
 ];
 
 const NEEDS_PARAM: Record<string, string[]> = {
@@ -55,6 +57,7 @@ const SIZE_OPTS = ["1:1", "16:9", "4:3", "3:4", "9:16"];
 const IMAGE_GEN_TAG = "image-generation";
 
 const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) => {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [dialogKey, setDialogKey] = useState<string | null>(null);
   const [params, setParams] = useState<Record<string, Record<string, unknown>>>({});
@@ -161,11 +164,11 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
 
   return (
     <div className="p-4">
-      <h3 className="font-medium mb-3">AI 图片处理功能</h3>
+      <h3 className="font-medium mb-3">{t("photo.feature.title")}</h3>
 
       {/* Model Selector */}
       <div className="mb-3">
-        <Label>生图模型</Label>
+        <Label>{t("photo.feature.model")}</Label>
         <select className="w-full border rounded p-2 mt-1 text-sm bg-background"
           value={chosenModel}
           onChange={(e) => setChosenModel(e.target.value)}>
@@ -176,7 +179,7 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
       </div>
 
       <div className="mb-3">
-        <Label>生成数量</Label>
+        <Label>{t("photo.feature.count")}</Label>
         <Input
           className="mt-1"
           type="number"
@@ -186,7 +189,7 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
           onChange={(e) => setImageCount(Number(e.target.value))}
         />
         <p className="text-xs text-muted-foreground mt-1">
-          仅生成类功能生效；高清、改尺寸、视频和本地处理不会重复执行。
+          {t("photo.feature.count-hint")}
         </p>
       </div>
 
@@ -194,26 +197,26 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
         {FEATURES.map((f) => (
           <Button key={f.key} size="sm" variant={selected.has(f.key) ? "default" : "outline"}
             onClick={() => toggle(f.key)}>
-            {f.icon} {f.label}
+            {f.icon} {t(`photo.features.${f.key}`)}
           </Button>
         ))}
       </div>
 
       <Button className="w-full" onClick={handleBatchProcess}
         disabled={selectedCount === 0 || selected.size === 0 || loading}>
-        {loading ? "处理中..." : `开始处理 (${selected.size} 功能)`}
+        {loading ? t("photo.feature.processing") : t("photo.feature.process", { count: selected.size })}
       </Button>
 
       <Dialog open={!!dialogKey} onOpenChange={(open) => { if (!open) setDialogKey(null); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{dialogKey ? FEATURES.find((f) => f.key === dialogKey)?.label : ""} 参数设置</DialogTitle>
+            <DialogTitle>{t("photo.feature.params-title", { feature: dialogKey ? t(`photo.features.${dialogKey}`) : "" })}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3" style={{ maxHeight: "60vh", overflow: "auto" }}>
             {/* Templates */}
             {(cfg?.templates?.length ?? 0) > 0 && (
               <div>
-                <Label>快捷模板</Label>
+                <Label>{t("photo.feature.templates")}</Label>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {cfg!.templates!.map((t, i) => (
                     <Badge key={i} variant="secondary" className="cursor-pointer"
@@ -226,22 +229,22 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
             {/* Prompt input */}
             {dialogKey && ["scene_gen", "image_erase", "model_image", "instruction_gen", "video_gen"].includes(dialogKey) && (
               <div>
-                <Label>{dialogKey === "video_gen" ? "视频描述（可选）" : "提示词"}</Label>
+                <Label>{dialogKey === "video_gen" ? t("photo.feature.video-prompt") : t("photo.feature.prompt")}</Label>
                 <Input value={(p.prompt as string) || ""}
                   onChange={(e) => setParam("prompt", e.target.value)}
-                  placeholder={dialogKey === "video_gen" ? "留空则AI自动推理" : "输入提示词..."} />
+                  placeholder={dialogKey === "video_gen" ? t("photo.feature.video-prompt-ph") : t("photo.feature.prompt-ph")} />
               </div>
             )}
 
             {/* 视频时长 */}
             {dialogKey === "video_gen" && (
               <div>
-                <Label>视频时长</Label>
+                <Label>{t("photo.feature.video-duration")}</Label>
                 <div className="flex gap-1 mt-1">
                   {[5, 10].map((sec) => (
                     <Badge key={sec} variant={(Number(p.duration) || 5) === sec ? "default" : "outline"}
                       className="cursor-pointer"
-                      onClick={() => setParam("duration", sec)}>{sec} 秒</Badge>
+                      onClick={() => setParam("duration", sec)}>{t("photo.feature.seconds", { n: sec })}</Badge>
                   ))}
                 </div>
               </div>
@@ -250,7 +253,7 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
             {/* Color picker */}
             {dialogKey === "color_change" && (
               <div>
-                <Label>目标颜色</Label>
+                <Label>{t("photo.feature.target-color")}</Label>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {COLOR_OPTS.map((c) => (
                     <Badge key={c} variant={p.target_color === c ? "default" : "outline"} className="cursor-pointer"
@@ -263,7 +266,7 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
             {/* Language picker */}
             {dialogKey === "image_translate" && (
               <div>
-                <Label>目标语言</Label>
+                <Label>{t("photo.feature.target-lang")}</Label>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {LANG_OPTS.map((l) => (
                     <Badge key={l} variant={p.target_lang === l ? "default" : "outline"} className="cursor-pointer"
@@ -276,9 +279,9 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
             {/* Selling point */}
             {dialogKey === "marketing" && (
               <div>
-                <Label>营销卖点</Label>
+                <Label>{t("photo.feature.selling-point")}</Label>
                 <Input value={(p.selling_point as string) || ""}
-                  onChange={(e) => setParam("selling_point", e.target.value)} placeholder="输入营销卖点" />
+                  onChange={(e) => setParam("selling_point", e.target.value)} placeholder={t("photo.feature.selling-point-ph")} />
               </div>
             )}
 
@@ -286,25 +289,25 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
             {dialogKey === "logo_custom" && (
               <>
                 <div>
-                  <Label>Logo 图片</Label>
+                  <Label>{t("photo.feature.logo-image")}</Label>
                   <input ref={logoInputRef} type="file" accept="image/*" className="hidden"
                     onChange={(e) => handleLogoUpload(e.target.files?.[0])} />
                   <div className="flex items-center gap-2 mt-1">
                     <Button type="button" variant="outline" size="sm" disabled={logoUploading}
                       onClick={() => logoInputRef.current?.click()}>
-                      {logoUploading ? "上传中…" : (p.logo_image_id ? "重新上传 Logo" : "上传 Logo")}
+                      {logoUploading ? t("photo.feature.logo-uploading") : (p.logo_image_id ? t("photo.feature.logo-reupload") : t("photo.feature.logo-upload"))}
                     </Button>
                     {p.logo_image_id ? (
                       <span className="text-xs text-green-600 truncate max-w-[180px]">
-                        ✓ {logoName || "已上传"}
+                        ✓ {logoName || t("photo.feature.logo-uploaded")}
                       </span>
                     ) : (
-                      <span className="text-xs text-muted-foreground">请上传品牌 Logo 图片（建议透明 PNG）</span>
+                      <span className="text-xs text-muted-foreground">{t("photo.feature.logo-hint")}</span>
                     )}
                   </div>
                 </div>
                 <div>
-                  <Label>位置</Label>
+                  <Label>{t("photo.feature.position")}</Label>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {POS_OPTS.map((pos) => (
                       <Badge key={pos} variant={p.position === pos ? "default" : "outline"} className="cursor-pointer"
@@ -318,7 +321,7 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
             {/* Category picker (素材/商品提取) */}
             {dialogKey && ["material_extract", "product_extract"].includes(dialogKey) && (
               <div>
-                <Label>提取类别</Label>
+                <Label>{t("photo.feature.category")}</Label>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {(cfg?.categories ?? []).map((opt) => (
                     <Badge key={opt.value} variant={p.category === opt.value ? "default" : "outline"} className="cursor-pointer"
@@ -331,7 +334,7 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
             {/* Size picker */}
             {dialogKey === "resize" && (
               <div>
-                <Label>目标尺寸</Label>
+                <Label>{t("photo.feature.target-size")}</Label>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {SIZE_OPTS.map((s) => {
                     const cur = (p.target_sizes as string[]) || [];
@@ -348,10 +351,10 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogKey(null)}>取消</Button>
+            <Button variant="outline" onClick={() => setDialogKey(null)}>{t("photo.feature.cancel")}</Button>
             <Button onClick={handleDialogOk}
               disabled={logoUploading || (dialogKey === "logo_custom" && !p.logo_image_id)}>
-              开始处理
+              {t("photo.feature.start")}
             </Button>
           </DialogFooter>
         </DialogContent>

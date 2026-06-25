@@ -45,15 +45,13 @@ func TestGetSystemPromptWithKwargs(t *testing.T) {
 }
 
 func TestGetChannelType(t *testing.T) {
-	// 编辑类功能已切换到官方 jimeng-api 渠道（见 config/prompts.json）。
-	if ct := GetChannelType("white_bg"); ct != "jimeng-api" {
-		t.Errorf("white_bg channel_type: got %s, want jimeng-api", ct)
-	}
-	if ct := GetChannelType("detail_image"); ct != "local" {
-		t.Errorf("detail_image channel_type: got %s, want local", ct)
-	}
-	if ct := GetChannelType("logo_custom"); ct != "local" {
-		t.Errorf("logo_custom channel_type: got %s, want local", ct)
+	// channel_type 仅为信息字段（实际派发在 processor.go 中按功能硬编码）。
+	// 全部编辑类功能已切换到官方 jimeng-api 渠道（见 config/prompts.json），
+	// detail_image / logo_custom 的本地实现（local.go）为迁移前遗留，不再参与派发。
+	for _, feature := range []string{"white_bg", "detail_image", "logo_custom"} {
+		if ct := GetChannelType(feature); ct != "jimeng-api" {
+			t.Errorf("%s channel_type: got %s, want jimeng-api", feature, ct)
+		}
 	}
 	// 视频生成仍走 CLI jimeng 渠道，本阶段未接入官方视频模型。
 	if ct := GetChannelType("video_gen"); ct != "jimeng" {
