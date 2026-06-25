@@ -37,3 +37,21 @@ func AnalyseRequest(model string, buffer *utils.Buffer, err error) {
 	IncrRequest(instance)
 	IncrModelRequest(instance, model, int64(buffer.CountToken()))
 }
+
+// AnalyseImageRequest 把一次图片生成（Photo 链路，无 buffer）计入与聊天/API 一致的分析计数器：
+// 失败计入错误数；成功计入请求量与模型用量（以图片张数作为模型用量度量）。
+// 这样「数据分析」面板的请求量/模型使用/错误统计也能反映 Photo 图片处理活动。
+func AnalyseImageRequest(model string, imageCount int, err error) {
+	instance := connection.Cache
+
+	if err != nil {
+		IncrErrorRequest(instance)
+		return
+	}
+
+	IncrRequest(instance)
+	if imageCount < 1 {
+		imageCount = 1
+	}
+	IncrModelRequest(instance, model, int64(imageCount))
+}

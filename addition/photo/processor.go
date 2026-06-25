@@ -11,6 +11,7 @@ import (
 	"time"
 
 	adaptercommon "chat/adapter/common"
+	"chat/admin"
 	"chat/channel"
 	"chat/globals"
 	"chat/manager"
@@ -548,12 +549,21 @@ func ProcessTask(ctx context.Context, db *sql.DB, taskID, feature string, imageP
 	recordPhotoGeneration(db, taskID, feature, channelOverride, len(resultURLs), err)
 }
 
-// recordPhotoGeneration 将 Photo 流水线的一次生成落入 image_generation 观测表，
-// 与聊天 / API 入口共用同一张表，便于后台统一统计图片用量与排查失败。
+// recordPhotoGeneration 把 Photo 流水线的一次生成同时计入两处：
+//  1. image_generation 观测表（与聊天 / API 入口共用，便于后台「图片用量」统计与排查）。
+//  2. 与聊天 / API 一致的分析计数器（请求量/模型使用/错误），使「数据分析」面板能反映图片处理活动。
+//
+// 之前 Photo 链路两者都未接入，导致 6/24 有 25 条记录但数据分析页请求量仍为 0。
 func recordPhotoGeneration(db *sql.DB, taskID, feature, channelOverride string, imageCount int, genErr error) {
 	if db == nil {
 		return
 	}
+
+	model := resolveModel(feature, channelOverride)
+
+	// 分析计数器不依赖用户信息，独立先行，避免用户查询失败时漏统计。
+	admin.AnalyseImageRequest(model, imageCount, genErr)
+
 	var userID int64
 	var username string
 	if err := db.QueryRow("SELECT user_id FROM photo_tasks WHERE task_id = ?", taskID).Scan(&userID); err != nil {
@@ -562,7 +572,7 @@ func recordPhotoGeneration(db *sql.DB, taskID, feature, channelOverride string, 
 	if userID > 0 {
 		_ = db.QueryRow("SELECT username FROM auth WHERE id = ?", userID).Scan(&username)
 	}
-	manager.RecordImageOutcome(db, userID, username, manager.ImageSourcePhoto, resolveModel(feature, channelOverride), 0, "jimeng-api", imageCount, 0, 0, genErr)
+	manager.RecordImageOutcome(db, userID, username, manager.ImageSourcePhoto, model, 0, "jimeng-api", imageCount, 0, 0, genErr)
 }
 
 func handleResult(resultURLs *[]string, url string, err error) {
