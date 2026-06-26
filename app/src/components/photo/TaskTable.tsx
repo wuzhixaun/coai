@@ -193,13 +193,26 @@ const TaskRow: React.FC<{
   const results = task.result_urls ?? [];
   // 对比用源图：优先按索引配对，单源/数量不匹配时回退到首张源图
   const sourceFor = (i: number) => sourceUrls[i] ?? sourceUrls[0];
+  // 部分成功：后端任一图出错即把整任务标记 failed，但已成功的结果仍写入 result_urls。
+  // 期望产出数 = total_videos 优先（视频），否则 total_images。
+  const expected = task.total_videos > 0 ? task.total_videos : task.total_images;
+  const succeeded = results.length;
+  const isPartial = task.status === "failed" && succeeded > 0;
 
   return (
-    <div className="border rounded-md mb-2 bg-card">
+    <div className={`border rounded-md mb-2 bg-card ${
+      task.status === "failed" ? (isPartial ? "border-amber-500/50" : "border-destructive/50") : ""
+    }`}>
       <div className="flex items-center p-3 gap-3 cursor-pointer" onClick={() => setExpanded(!expanded)}>
         <span className="font-mono text-xs text-muted-foreground w-20 truncate">{task.task_id}</span>
         <span className="text-sm w-16">{t(`photo.features.${task.feature}`, task.feature)}</span>
-        <Badge variant={stColor}>{stLabel}</Badge>
+        {isPartial ? (
+          <Badge variant="outline" className="border-amber-500 text-amber-600">
+            {t("photo.task.partial", { done: succeeded, total: expected })}
+          </Badge>
+        ) : (
+          <Badge variant={stColor}>{stLabel}</Badge>
+        )}
         <div className="flex-1 mx-2">
           <div className="h-2 bg-muted rounded-full overflow-hidden">
             <div className={`h-full rounded-full transition-all ${task.status === "failed" ? "bg-destructive" : "bg-primary"}`}
@@ -223,8 +236,8 @@ const TaskRow: React.FC<{
         </span>
         <span className="text-xs text-muted-foreground hidden sm:inline">{task.created_at?.slice(0, 16)}</span>
 
-        {/* 行内结果缩略图：成功任务无需展开即可预览（窄屏隐藏，避免溢出） */}
-        {task.status === "success" && results.length > 0 && (
+        {/* 行内结果缩略图：成功/部分成功无需展开即可预览（窄屏隐藏，避免溢出） */}
+        {!isActive && results.length > 0 && (
           <div className="hidden md:flex items-center gap-1">
             {results.slice(0, 3).map((url, i) => (
               <InlineThumb key={i} url={url} index={i} sourceUrl={sourceFor(i)} />
@@ -248,11 +261,12 @@ const TaskRow: React.FC<{
           )}
           {task.status === "failed" && (
             <Button size="sm" variant="default" onClick={() => onRetry(task.task_id)}>
-              <RotateCcw className="h-3 w-3 mr-1" />{t("photo.task.retry")}
+              <RotateCcw className="h-3 w-3 mr-1" />{isPartial ? t("photo.task.retry-missing") : t("photo.task.retry")}
             </Button>
           )}
           {!isActive && (
-            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => onDelete(task.task_id)} title={t("photo.task.delete")}>
+            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => onDelete(task.task_id)}
+              title={task.status === "failed" ? t("photo.task.dismiss") : t("photo.task.delete")}>
               <Trash2 className="h-3 w-3" />
             </Button>
           )}
@@ -304,7 +318,10 @@ const TaskTable: React.FC<Props> = ({ tasks, images = [], onDelete, onRetry, onR
     (task.image_ids ?? []).map((id) => urlById.get(id)).filter((u): u is string => !!u);
 
   const activeTasks = tasks.filter((tk) => ["pending", "processing"].includes(tk.status));
-  const historyTasks = tasks.filter((tk) => ["success", "failed"].includes(tk.status));
+  // 历史：失败（含部分成功）置顶，便于优先干预；同组内保持后端的时间倒序
+  const historyTasks = tasks
+    .filter((tk) => ["success", "failed"].includes(tk.status))
+    .sort((a, b) => (a.status === "failed" ? 0 : 1) - (b.status === "failed" ? 0 : 1));
 
   const list = tab === "active" ? activeTasks : historyTasks;
 

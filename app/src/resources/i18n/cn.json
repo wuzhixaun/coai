@@ -755,7 +755,10 @@
       "compare": "对比原图",
       "result-only": "仅看结果",
       "progress-detail": "正在{{feature}} · 第 {{done}}/{{total}} 张",
-      "progress-detail-video": "正在生成视频 · 第 {{done}}/{{total}} 个"
+      "progress-detail-video": "正在生成视频 · 第 {{done}}/{{total}} 个",
+      "partial": "部分成功 {{done}}/{{total}}",
+      "retry-missing": "重试失败项",
+      "dismiss": "移除"
     },
     "features": {
       "white_bg": "白底图",

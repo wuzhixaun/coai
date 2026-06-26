@@ -1455,7 +1455,10 @@
       "compare": "Compare original",
       "result-only": "Result only",
       "progress-detail": "{{feature}} · {{done}}/{{total}}",
-      "progress-detail-video": "Generating video · {{done}}/{{total}}"
+      "progress-detail-video": "Generating video · {{done}}/{{total}}",
+      "partial": "Partial {{done}}/{{total}}",
+      "retry-missing": "Retry failed",
+      "dismiss": "Dismiss"
     },
     "features": {
       "white_bg": "White BG",
