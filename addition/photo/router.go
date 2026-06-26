@@ -31,6 +31,9 @@ func Register(app *gin.RouterGroup) {
 	// 处理功能 (统一入口)
 	group.POST("/process", ProcessAPI)
 
+	// 画布内局部重绘
+	group.POST("/inpaint", InpaintAPI)
+
 	// 一键成套素材工作流
 	group.GET("/workflow/templates", ListWorkflowTemplatesAPI)
 	group.POST("/workflow", WorkflowAPI)
