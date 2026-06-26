@@ -9,6 +9,7 @@ const POLL_INTERVAL = 10_000;
 export function usePhotoTask() {
   const { t } = useTranslation();
   const [images, setImages] = useState<PhotoImage[]>([]);
+  const [imagesLoading, setImagesLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [tasks, setTasks] = useState<PhotoTask[]>([]);
   const [loading, setLoading] = useState(false);
@@ -39,7 +40,8 @@ export function usePhotoTask() {
     pollingRef.current.set(taskId, setInterval(poll, POLL_INTERVAL));
   }, [stopPolling]);
 
-  // Init: load tasks once, restore polling for active ones
+  // Init: 并发拉取任务与图库，并对在途任务恢复轮询。
+  // 此前只拉 tasks，刷新页面后图库（images）丢失，已上传图无法再选中处理。
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
@@ -50,6 +52,9 @@ export function usePhotoTask() {
         if (t.status === "pending" || t.status === "processing") startPolling(t.task_id);
       });
     }).catch(() => {});
+    api.listImages().then((data) => {
+      if (Array.isArray(data)) setImages(data);
+    }).catch(() => {}).finally(() => setImagesLoading(false));
     return () => { pollingRef.current.forEach((t) => clearInterval(t)); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -137,7 +142,7 @@ export function usePhotoTask() {
     } catch (e) { /* ignore */ }
   }, []);
 
-  return { images, selectedIds, tasks, loading, uploading, uploadProgress, upload, uploadFolder,
+  return { images, imagesLoading, selectedIds, tasks, loading, uploading, uploadProgress, upload, uploadFolder,
     toggleSelect, selectAll, clearSelection, removeImage, clearAll, process,
     retryAction, deleteAction, refreshTask, refreshAll };
 }

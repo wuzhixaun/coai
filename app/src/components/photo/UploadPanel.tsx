@@ -10,6 +10,7 @@ import type { PhotoImage } from "@/api/photo";
 
 interface Props {
   images: PhotoImage[];
+  imagesLoading?: boolean;
   selectedIds: string[];
   uploading: boolean;
   uploadProgress: number;
@@ -41,7 +42,7 @@ function filterValid(files: File[], t: TFunction): File[] {
 }
 
 const UploadPanel: React.FC<Props> = ({
-  images, selectedIds, uploading, uploadProgress, onUpload, onUploadFolder,
+  images, imagesLoading, selectedIds, uploading, uploadProgress, onUpload, onUploadFolder,
   onToggleSelect, onSelectAll, onClearSelection, onRemove, onClearAll,
 }) => {
   const { t } = useTranslation();
@@ -143,6 +144,15 @@ const UploadPanel: React.FC<Props> = ({
           <Button size="sm" variant="ghost" onClick={onClearSelection}>{t("photo.upload.clear-selection")}</Button>
           <Button size="sm" variant="ghost" className="text-destructive" onClick={onClearAll}><Trash2 className="h-3 w-3 mr-1" />{t("photo.upload.clear-all")}</Button>
           <span className="ml-auto text-muted-foreground">{t("photo.upload.selected", { selected: selectedIds.length, total: images.length })}</span>
+        </div>
+      )}
+
+      {/* 初始加载图库时的骨架占位（刷新页面后并发拉取 images 期间） */}
+      {imagesLoading && images.length === 0 && !uploading && (
+        <div className="grid grid-cols-3 gap-2 mt-2 overflow-auto flex-1 content-start items-start auto-rows-min">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={`init-sk-${i}`} className="w-full h-24 rounded" />
+          ))}
         </div>
       )}
 

@@ -12,7 +12,7 @@ type MobileTab = "upload" | "feature" | "task";
 const Photo: React.FC = () => {
   const { t } = useTranslation();
   const {
-    images, selectedIds, tasks, loading, uploading, uploadProgress,
+    images, imagesLoading, selectedIds, tasks, loading, uploading, uploadProgress,
     upload, uploadFolder, toggleSelect, selectAll, clearSelection,
     removeImage, clearAll, process, retryAction, deleteAction,
     refreshTask, refreshAll,
@@ -66,7 +66,7 @@ const Photo: React.FC = () => {
         )}
       >
         <UploadPanel
-          images={images} selectedIds={selectedIds} uploading={uploading} uploadProgress={uploadProgress}
+          images={images} imagesLoading={imagesLoading} selectedIds={selectedIds} uploading={uploading} uploadProgress={uploadProgress}
           onUpload={upload} onUploadFolder={uploadFolder}
           onToggleSelect={toggleSelect} onSelectAll={selectAll}
           onClearSelection={clearSelection} onRemove={removeImage} onClearAll={clearAll}
