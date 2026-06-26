@@ -771,6 +771,8 @@
       "category": "提取类别",
       "target-size": "目标尺寸",
       "platforms": "多平台预设（只扩不裁）",
+      "config-param": "配置参数",
+      "save-param": "保存配置",
       "cancel": "取消",
       "start": "开始处理"
     },

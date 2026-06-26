@@ -70,6 +70,21 @@ const PLATFORM_PRESETS: { name: string; ratio: string }[] = [
 // 避免电商同事误选。
 const IMAGE_GEN_TAG = "image-generation";
 
+// 各需参功能的默认参数（批量整批套用时用作未配置项的兜底）
+function defaultParams(key: string): Record<string, unknown> {
+  switch (key) {
+    case "color_change": return { target_color: "red" };
+    case "image_translate": return { target_lang: "en" };
+    case "marketing": return { selling_point: "Premium Quality" };
+    case "resize": return { target_sizes: ["1:1", "16:9"] };
+    case "logo_custom": return { position: "bottom-right" };
+    case "material_extract": return { category: "提取图案" };
+    case "product_extract": return { category: "服装" };
+    case "video_gen": return { duration: 5 };
+    default: return {};
+  }
+}
+
 const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess, onSaveRecipe }) => {
   const { t } = useTranslation();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -107,31 +122,22 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess, onSa
     return next;
   });
 
-  const handleFeatureClick = (key: string) => {
-    if (selectedCount === 0) return;
-    if (!NEEDS_PARAM[key]) { onProcess([key], withImageCount([key]), chosenModel); return; }
+  // 打开某功能的参数配置（配置持久化于 params，不立即处理）
+  const openConfig = (key: string) => {
     setDialogKey(key);
     setShowAdvanced(false);
-    if (!params[key]) {
-      const init: Record<string, unknown> = {};
-      if (key === "color_change") init.target_color = "red";
-      if (key === "image_translate") init.target_lang = "en";
-      if (key === "marketing") init.selling_point = "Premium Quality";
-      if (key === "resize") init.target_sizes = ["1:1", "16:9"];
-      if (key === "logo_custom") init.position = "bottom-right";
-      if (key === "material_extract") init.category = "提取图案";
-      if (key === "product_extract") init.category = "服装";
-      if (key === "video_gen") init.duration = 5;
-      setParams((p) => ({ ...p, [key]: init }));
-    }
+    if (!params[key]) setParams((p) => ({ ...p, [key]: defaultParams(key) }));
   };
 
+  // 整批处理：一次性处理全部已选功能；需参功能用已配置参数、未配置则用默认（配置一次整批套用）
   const handleBatchProcess = () => {
     if (selectedCount === 0 || selected.size === 0) return;
-    const needParams = Array.from(selected).filter((k) => NEEDS_PARAM[k]);
-    if (needParams.length > 0) { handleFeatureClick(needParams[0]); return; }
     const features = Array.from(selected);
-    onProcess(features, withImageCount(features), chosenModel);
+    const effective: Record<string, Record<string, unknown>> = {};
+    features.forEach((f) => {
+      effective[f] = NEEDS_PARAM[f] ? (params[f] || defaultParams(f)) : (params[f] || {});
+    });
+    onProcess(features, withImageCount(features, effective), chosenModel);
     setSelected(new Set());
   };
 
@@ -144,11 +150,8 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess, onSa
     setRecipeName("");
   };
 
-  const handleDialogOk = () => {
-    if (!dialogKey) return;
-    onProcess([dialogKey], withImageCount([dialogKey], { [dialogKey]: params[dialogKey] || {} }), chosenModel);
-    setDialogKey(null);
-  };
+  // 参数对话框确认：保存配置并关闭（不立即处理，统一由「整批处理」触发）
+  const handleDialogOk = () => setDialogKey(null);
 
   const setParam = (field: string, value: unknown) => {
     if (!dialogKey) return;
@@ -226,10 +229,20 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess, onSa
             <p className="text-[11px] font-medium text-muted-foreground mb-1.5">{t(`photo.feature.group.${grp.group}`)}</p>
             <div className="flex flex-wrap gap-2">
               {grp.items.map((f) => (
-                <Button key={f.key} size="sm" variant={selected.has(f.key) ? "default" : "outline"}
-                  onClick={() => toggle(f.key)}>
-                  {f.icon} {t(`photo.features.${f.key}`)}
-                </Button>
+                <span key={f.key} className="inline-flex items-center">
+                  <Button size="sm" variant={selected.has(f.key) ? "default" : "outline"}
+                    onClick={() => toggle(f.key)}>
+                    {f.icon} {t(`photo.features.${f.key}`)}
+                  </Button>
+                  {/* 已选且需参的功能：齿轮按钮单独配置参数（配置一次，整批套用） */}
+                  {selected.has(f.key) && NEEDS_PARAM[f.key] && (
+                    <button type="button" title={t("photo.feature.config-param")}
+                      onClick={() => openConfig(f.key)}
+                      className="ml-0.5 text-muted-foreground hover:text-foreground text-sm">
+                      ⚙
+                    </button>
+                  )}
+                </span>
               ))}
             </div>
           </div>
@@ -440,7 +453,7 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess, onSa
             <Button variant="outline" onClick={() => setDialogKey(null)}>{t("photo.feature.cancel")}</Button>
             <Button onClick={handleDialogOk}
               disabled={logoUploading || (dialogKey === "logo_custom" && !p.logo_image_id)}>
-              {t("photo.feature.start")}
+              {t("photo.feature.save-param")}
             </Button>
           </DialogFooter>
         </DialogContent>
