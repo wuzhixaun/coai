@@ -30,6 +30,9 @@ const IdentityPanel: React.FC<Props> = ({
   const [type, setType] = useState<"product" | "model">("product");
   const [subject, setSubject] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [filter, setFilter] = useState<"all" | "product" | "model">("all");
+
+  const visibleIdentities = identities.filter((it) => filter === "all" || it.type === filter);
 
   const handleCreate = async () => {
     if (selectedImageIds.length === 0) {
@@ -58,6 +61,24 @@ const IdentityPanel: React.FC<Props> = ({
           <Fingerprint className="h-3.5 w-3.5" /> {t("photo.identity.title")}
         </span>
 
+        {/* 类型筛选：全部 / 商品 / 模特 */}
+        {identities.length > 0 && (
+          <div className="flex items-center gap-0.5 rounded-md border p-0.5">
+            {(["all", "product", "model"] as const).map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setFilter(f)}
+                className={`rounded px-1.5 py-0.5 text-[11px] transition-colors ${
+                  filter === f ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/40"
+                }`}
+              >
+                {f === "all" ? t("photo.identity.all") : f === "product" ? t("photo.identity.type-product") : t("photo.identity.type-model")}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* 不应用 */}
         <button
           type="button"
@@ -70,7 +91,7 @@ const IdentityPanel: React.FC<Props> = ({
         </button>
 
         {/* 身份芯片 */}
-        {identities.map((it) => (
+        {visibleIdentities.map((it) => (
           <span
             key={it.id}
             className={`group flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
