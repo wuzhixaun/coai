@@ -50,17 +50,59 @@ function friendlyError(raw: string, t: TFunction): string {
 
 const isVideoUrl = (url: string) => url.endsWith(".mp4") || url.endsWith(".webm");
 
-// 结果项：缩略图点击后弹出大图/视频预览，支持复制链接、新窗口打开、下载
-const ResultPreview: React.FC<{ url: string; index: number }> = ({ url, index }) => {
+// 灯箱：包裹任意 trigger，点击后弹出大图/视频预览，支持复制链接、新窗口打开、下载
+const ResultLightbox: React.FC<{ url: string; index: number; trigger: React.ReactNode }> = ({ url, index, trigger }) => {
   const { t } = useTranslation();
   const copy = useClipboard();
   const video = isVideoUrl(url);
   const label = video ? t("photo.task.video", { n: index + 1 }) : t("photo.task.result", { n: index + 1 });
 
   return (
+    <Dialog>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center text-base">
+            <Eye className="h-4 w-4 mr-1.5" /> {label}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="flex justify-end gap-2 mb-2">
+          <Button size="icon" variant="outline" onClick={() => copy(url)} title={t("photo.task.copy-link")}>
+            <Copy className="h-4 w-4" />
+          </Button>
+          <Button size="icon" variant="outline" onClick={() => openWindow(url)} title={t("photo.task.open-window")}>
+            <Link className="h-4 w-4" />
+          </Button>
+          <a href={getDownloadFileUrl(url)} download>
+            <Button size="icon" variant="outline" title={t("photo.task.download")}>
+              <Download className="h-4 w-4" />
+            </Button>
+          </a>
+        </div>
+        <div className="flex justify-center max-h-[70vh] overflow-auto">
+          {video ? (
+            <video src={url} controls className="max-w-full rounded-md" />
+          ) : (
+            <img src={url} alt={label} className="max-w-full rounded-md object-contain" />
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// 结果项（展开区）：卡片缩略图 + 文件名 + 下载，点击进灯箱
+const ResultPreview: React.FC<{ url: string; index: number }> = ({ url, index }) => {
+  const { t } = useTranslation();
+  const video = isVideoUrl(url);
+  const label = video ? t("photo.task.video", { n: index + 1 }) : t("photo.task.result", { n: index + 1 });
+
+  return (
     <div className="border rounded-md overflow-hidden w-40 bg-card">
-      <Dialog>
-        <DialogTrigger asChild>
+      <ResultLightbox
+        url={url}
+        index={index}
+        trigger={
           <div className="cursor-pointer group relative">
             {video ? (
               <video src={url} className="w-full h-28 object-cover bg-muted" />
@@ -71,35 +113,8 @@ const ResultPreview: React.FC<{ url: string; index: number }> = ({ url, index })
               <Eye className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           </div>
-        </DialogTrigger>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center text-base">
-              <Eye className="h-4 w-4 mr-1.5" /> {label}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex justify-end gap-2 mb-2">
-            <Button size="icon" variant="outline" onClick={() => copy(url)} title={t("photo.task.copy-link")}>
-              <Copy className="h-4 w-4" />
-            </Button>
-            <Button size="icon" variant="outline" onClick={() => openWindow(url)} title={t("photo.task.open-window")}>
-              <Link className="h-4 w-4" />
-            </Button>
-            <a href={getDownloadFileUrl(url)} download>
-              <Button size="icon" variant="outline" title={t("photo.task.download")}>
-                <Download className="h-4 w-4" />
-              </Button>
-            </a>
-          </div>
-          <div className="flex justify-center max-h-[70vh] overflow-auto">
-            {video ? (
-              <video src={url} controls className="max-w-full rounded-md" />
-            ) : (
-              <img src={url} alt={label} className="max-w-full rounded-md object-contain" />
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+        }
+      />
       <div className="flex justify-between items-center p-1">
         <span className="text-xs text-muted-foreground">{label}</span>
         <a href={getDownloadFileUrl(url)} download className="text-primary" title={t("photo.task.download")}>
@@ -107,6 +122,42 @@ const ResultPreview: React.FC<{ url: string; index: number }> = ({ url, index })
         </a>
       </div>
     </div>
+  );
+};
+
+// 行内缩略图：成功任务无需展开即可看到结果；悬停浮层放大，点击进灯箱
+const InlineThumb: React.FC<{ url: string; index: number }> = ({ url, index }) => {
+  const video = isVideoUrl(url);
+  return (
+    <ResultLightbox
+      url={url}
+      index={index}
+      trigger={
+        <button
+          type="button"
+          className="relative group/thumb h-10 w-10 shrink-0"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <span className="block h-10 w-10 overflow-hidden rounded border bg-muted">
+            {video ? (
+              <video src={url} className="h-full w-full object-cover" />
+            ) : (
+              <img src={url} alt="" className="h-full w-full object-cover" />
+            )}
+          </span>
+          {/* 悬停浮层放大预览 */}
+          <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1 hidden -translate-x-1/2 group-hover/thumb:block">
+            <span className="block rounded-md border bg-popover p-1 shadow-lg">
+              {video ? (
+                <video src={url} className="h-36 w-36 object-contain" />
+              ) : (
+                <img src={url} alt="" className="h-36 w-36 object-contain" />
+              )}
+            </span>
+          </span>
+        </button>
+      }
+    />
   );
 };
 
@@ -140,6 +191,18 @@ const TaskRow: React.FC<{
           {task.total_videos > 0 && ` +${task.processed_videos}V`}
         </span>
         <span className="text-xs text-muted-foreground hidden sm:inline">{task.created_at?.slice(0, 16)}</span>
+
+        {/* 行内结果缩略图：成功任务无需展开即可预览（窄屏隐藏，避免溢出） */}
+        {task.status === "success" && results.length > 0 && (
+          <div className="hidden md:flex items-center gap-1">
+            {results.slice(0, 3).map((url, i) => (
+              <InlineThumb key={i} url={url} index={i} />
+            ))}
+            {results.length > 3 && (
+              <span className="text-xs text-muted-foreground">+{results.length - 3}</span>
+            )}
+          </div>
+        )}
 
         <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
           {isActive && (
