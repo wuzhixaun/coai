@@ -153,6 +153,13 @@ export function usePhotoTask() {
     } catch (e) { console.error("Delete identity failed:", e); }
   }, []);
 
+  // 收藏：把单张图片一键收藏为可复用的商品身份（参考图资产化）
+  const favoriteImage = useCallback(async (img: PhotoImage) => {
+    try {
+      await createIdentityAction({ type: "product", name: img.filename || "参考图", ref_image_ids: [img.id] });
+    } catch (e) { console.error("Favorite image failed:", e); }
+  }, [createIdentityAction]);
+
   const retryAction = useCallback(async (taskId: string) => {
     try {
       const task = await api.retryTask(taskId);
@@ -188,5 +195,5 @@ export function usePhotoTask() {
     retryAction, deleteAction, refreshTask, refreshAll,
     identities, selectedIdentityId, setSelectedIdentityId,
     selectedBrandKitId, setSelectedBrandKitId,
-    refreshIdentities, createIdentityAction, deleteIdentityAction };
+    refreshIdentities, createIdentityAction, deleteIdentityAction, favoriteImage };
 }

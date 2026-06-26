@@ -706,7 +706,8 @@
       "empty-desc": "选一个常见场景，点击上传你的图片即可开始",
       "starter-white_bg": "一键白底图",
       "starter-model": "AI 模特换装",
-      "starter-watermark": "批量去水印/擦除"
+      "starter-watermark": "批量去水印/擦除",
+      "favorite": "收藏为参考身份"
     },
     "identity": {
       "title": "一致性身份",

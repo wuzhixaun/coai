@@ -19,7 +19,7 @@ const Photo: React.FC = () => {
     refreshTask, refreshAll,
     identities, selectedIdentityId, setSelectedIdentityId,
     selectedBrandKitId, setSelectedBrandKitId,
-    createIdentityAction, deleteIdentityAction,
+    createIdentityAction, deleteIdentityAction, favoriteImage,
   } = usePhotoTask();
 
   const [mobileTab, setMobileTab] = useState<MobileTab>("upload");
@@ -74,6 +74,7 @@ const Photo: React.FC = () => {
           onUpload={upload} onUploadFolder={uploadFolder}
           onToggleSelect={toggleSelect} onSelectAll={selectAll}
           onClearSelection={clearSelection} onRemove={removeImage} onClearAll={clearAll}
+          onFavorite={favoriteImage}
         />
       </div>
 

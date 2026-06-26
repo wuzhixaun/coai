@@ -4,7 +4,7 @@ import type { TFunction } from "i18next";
 import { Button } from "@/components/ui/button.tsx";
 import { Progress } from "@/components/ui/progress.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { Upload, FolderOpen, Trash2, ImageOff, Shirt, Eraser } from "lucide-react";
+import { Upload, FolderOpen, Trash2, ImageOff, Shirt, Eraser, Star } from "lucide-react";
 import { toast } from "sonner";
 import type { PhotoImage } from "@/api/photo";
 
@@ -21,6 +21,7 @@ interface Props {
   onClearSelection: () => void;
   onRemove: (id: string) => void;
   onClearAll: () => void;
+  onFavorite?: (img: PhotoImage) => void;
 }
 
 const ALLOWED = ["image/png", "image/jpeg", "image/webp", "image/bmp", "image/tiff"];
@@ -43,7 +44,7 @@ function filterValid(files: File[], t: TFunction): File[] {
 
 const UploadPanel: React.FC<Props> = ({
   images, imagesLoading, selectedIds, uploading, uploadProgress, onUpload, onUploadFolder,
-  onToggleSelect, onSelectAll, onClearSelection, onRemove, onClearAll,
+  onToggleSelect, onSelectAll, onClearSelection, onRemove, onClearAll, onFavorite,
 }) => {
   const { t } = useTranslation();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -196,6 +197,13 @@ const UploadPanel: React.FC<Props> = ({
               )}
               <button className="absolute top-1 left-1 bg-destructive text-destructive-foreground rounded-full w-4 h-4 flex items-center justify-center text-[10px]"
                 onClick={(e) => { e.stopPropagation(); onRemove(img.id); }}>×</button>
+              {onFavorite && (
+                <button title={t("photo.upload.favorite")}
+                  className="absolute bottom-5 right-1 bg-background/80 text-amber-500 rounded-full w-5 h-5 flex items-center justify-center hover:bg-background"
+                  onClick={(e) => { e.stopPropagation(); onFavorite(img); }}>
+                  <Star className="h-3 w-3" />
+                </button>
+              )}
             </div>
           ))}
           {/* Skeleton placeholders while uploading */}

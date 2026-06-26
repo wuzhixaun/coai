@@ -1406,7 +1406,8 @@
       "empty-desc": "Pick a common scenario and click to upload your image",
       "starter-white_bg": "White background",
       "starter-model": "AI model try-on",
-      "starter-watermark": "Batch erase / watermark removal"
+      "starter-watermark": "Batch erase / watermark removal",
+      "favorite": "Save as reference identity"
     },
     "identity": {
       "title": "Consistency identity",

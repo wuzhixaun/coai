@@ -1759,7 +1759,8 @@
       "empty-desc": "選一個常見場景，點擊上傳你的圖片即可開始",
       "starter-white_bg": "一鍵白底圖",
       "starter-model": "AI 模特兒換裝",
-      "starter-watermark": "批量去浮水印/擦除"
+      "starter-watermark": "批量去浮水印/擦除",
+      "favorite": "收藏為參考身份"
     },
     "feature": {
       "title": "AI 圖片處理功能",
@@ -1869,7 +1870,13 @@
       "cancel": "取消",
       "created": "已建立身分認同“{{name}}”",
       "delete": "刪除",
-      "manage": "管理身份"
+      "manage": "管理身份",
+      "type-brandkit": "品牌",
+      "all": "全部",
+      "brand-title": "品牌資產",
+      "brand-new": "新品牌",
+      "color": "主色",
+      "logo": "Logo（取已選第一張）"
     }
   }
 }

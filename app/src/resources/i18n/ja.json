@@ -1757,7 +1757,8 @@
       "empty-desc": "一般的なシナリオを選択し、[画像をアップロード]をクリックして開始します",
       "starter-white_bg": "ワンクリックの白い背景グラフ",
       "starter-model": "AIモデルのドレスアップ",
-      "starter-watermark": "透かし/消去の一括処理"
+      "starter-watermark": "透かし/消去の一括処理",
+      "favorite": "参照IDとしてのコレクション"
     },
     "feature": {
       "title": "AI画像処理機能",
@@ -1867,7 +1868,13 @@
       "cancel": "キャンセル",
       "created": "ID「{{ name }}」を作成しました",
       "delete": "デリート",
-      "manage": "IDを管理する"
+      "manage": "IDを管理する",
+      "type-brandkit": "品牌",
+      "all": "すべて",
+      "brand-title": "ブランドアセット",
+      "brand-new": "新しいブランド",
+      "color": "メインカラー",
+      "logo": "ロゴ（最初に選択したものを使用）"
     }
   }
 }
