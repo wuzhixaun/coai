@@ -15,25 +15,28 @@ interface Props {
   onProcess: (features: string[], paramsMap: Record<string, Record<string, unknown>>, model: string) => void;
 }
 
-// 功能标签文案走 i18n（photo.features.<key>），这里仅保留 key 与图标
-const FEATURES: { key: string; icon: string }[] = [
-  { key: "white_bg", icon: "⚪" },
-  { key: "scene_gen", icon: "🏞️" },
-  { key: "image_erase", icon: "🧹" },
-  { key: "color_change", icon: "🎨" },
-  { key: "marketing", icon: "📢" },
-  { key: "image_translate", icon: "🌐" },
-  { key: "hd_upscale", icon: "✨" },
-  { key: "model_image", icon: "👤" },
-  { key: "material_change", icon: "🪨" },
-  { key: "instruction_gen", icon: "📝" },
-  { key: "detail_image", icon: "🔍" },
-  { key: "logo_custom", icon: "🏷️" },
-  { key: "production_flow", icon: "📊" },
-  { key: "resize", icon: "📐" },
-  { key: "material_extract", icon: "🧩" },
-  { key: "product_extract", icon: "📦" },
-  { key: "video_gen", icon: "🎬" },
+// 功能标签文案走 i18n（photo.features.<key>），这里仅保留 key 与图标。
+// 按场景分组：基础处理 / 场景营销 / 模特商品 / 提取翻译 / 视频。
+const FEATURE_GROUPS: { group: string; items: { key: string; icon: string }[] }[] = [
+  { group: "basic", items: [
+    { key: "white_bg", icon: "⚪" }, { key: "image_erase", icon: "🧹" },
+    { key: "color_change", icon: "🎨" }, { key: "material_change", icon: "🪨" },
+    { key: "hd_upscale", icon: "✨" }, { key: "resize", icon: "📐" },
+  ] },
+  { group: "scene", items: [
+    { key: "scene_gen", icon: "🏞️" }, { key: "marketing", icon: "📢" },
+    { key: "instruction_gen", icon: "📝" }, { key: "production_flow", icon: "📊" },
+  ] },
+  { group: "model", items: [
+    { key: "model_image", icon: "👤" }, { key: "logo_custom", icon: "🏷️" },
+  ] },
+  { group: "extract", items: [
+    { key: "detail_image", icon: "🔍" }, { key: "material_extract", icon: "🧩" },
+    { key: "product_extract", icon: "📦" }, { key: "image_translate", icon: "🌐" },
+  ] },
+  { group: "video", items: [
+    { key: "video_gen", icon: "🎬" },
+  ] },
 ];
 
 const NEEDS_PARAM: Record<string, string[]> = {
@@ -193,12 +196,19 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-4">
-        {FEATURES.map((f) => (
-          <Button key={f.key} size="sm" variant={selected.has(f.key) ? "default" : "outline"}
-            onClick={() => toggle(f.key)}>
-            {f.icon} {t(`photo.features.${f.key}`)}
-          </Button>
+      <div className="space-y-3 mb-4">
+        {FEATURE_GROUPS.map((grp) => (
+          <div key={grp.group}>
+            <p className="text-[11px] font-medium text-muted-foreground mb-1.5">{t(`photo.feature.group.${grp.group}`)}</p>
+            <div className="flex flex-wrap gap-2">
+              {grp.items.map((f) => (
+                <Button key={f.key} size="sm" variant={selected.has(f.key) ? "default" : "outline"}
+                  onClick={() => toggle(f.key)}>
+                  {f.icon} {t(`photo.features.${f.key}`)}
+                </Button>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
 

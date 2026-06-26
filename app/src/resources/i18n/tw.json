@@ -1791,7 +1791,14 @@
       "category": "提取類別",
       "target-size": "目標尺寸",
       "cancel": "取消",
-      "start": "開始處理"
+      "start": "開始處理",
+      "group": {
+        "basic": "基礎處理",
+        "scene": "場景行銷",
+        "model": "模特兒商品",
+        "extract": "提取翻譯",
+        "video": "影片"
+      }
     },
     "task": {
       "active": "目前處理({{count}})",
@@ -1837,7 +1844,8 @@
       "resize": "改尺寸",
       "material_extract": "素材擷取",
       "product_extract": "商品提取",
-      "video_gen": "影片"
+      "video_gen": "影片",
+      "workflow": "成套套件"
     },
     "status": {
       "pending": "排隊中",
@@ -1877,6 +1885,11 @@
       "brand-new": "新品牌",
       "color": "主色",
       "logo": "Logo（取已選第一張）"
+    },
+    "workflow": {
+      "title": "一鍵成套",
+      "hint": "選好圖片後點模板，自動串列產出整套素材",
+      "run": "一鍵生成"
     }
   }
 }

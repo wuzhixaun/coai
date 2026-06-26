@@ -1436,6 +1436,13 @@
       "manage": "Manage identities"
     },
     "feature": {
+      "group": {
+        "basic": "Basic",
+        "scene": "Scene & Marketing",
+        "model": "Model & Product",
+        "extract": "Extract & Translate",
+        "video": "Video"
+      },
       "title": "AI Image Tools",
       "model": "Image Model",
       "count": "Count",

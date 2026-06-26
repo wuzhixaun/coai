@@ -1789,7 +1789,14 @@
       "category": "カテゴリを抽出",
       "target-size": "ターゲットサイズ",
       "cancel": "キャンセル",
-      "start": "処理を開始"
+      "start": "処理を開始",
+      "group": {
+        "basic": "基本的な処理",
+        "scene": "シナリオマーケティング",
+        "model": "モデル商品",
+        "extract": "翻訳の抽出",
+        "video": "動画"
+      }
     },
     "task": {
       "active": "現在の処理中({{count}})",
@@ -1835,7 +1842,8 @@
       "resize": "サイズ変更",
       "material_extract": "原料抽出",
       "product_extract": "商品のお持ち帰り",
-      "video_gen": "動画"
+      "video_gen": "動画",
+      "workflow": "キット"
     },
     "status": {
       "pending": "並んで",
@@ -1875,6 +1883,11 @@
       "brand-new": "新しいブランド",
       "color": "メインカラー",
       "logo": "ロゴ（最初に選択したものを使用）"
+    },
+    "workflow": {
+      "title": "ワンクリックスイート",
+      "hint": "画像を選択し、テンプレートをクリックすると、マテリアルのセット全体が自動的にシリアライズされます",
+      "run": "ワンクリック生成"
     }
   }
 }

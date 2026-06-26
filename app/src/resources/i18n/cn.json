@@ -736,6 +736,13 @@
       "manage": "管理身份"
     },
     "feature": {
+      "group": {
+        "basic": "基础处理",
+        "scene": "场景营销",
+        "model": "模特商品",
+        "extract": "提取翻译",
+        "video": "视频"
+      },
       "title": "AI 图片处理功能",
       "model": "生图模型",
       "count": "生成数量",
