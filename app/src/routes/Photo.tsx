@@ -97,6 +97,7 @@ const Photo: React.FC = () => {
       >
         <TaskTable
           tasks={tasks}
+          images={images}
           onDelete={deleteAction}
           onRetry={retryAction}
           onRefreshTask={refreshTask}

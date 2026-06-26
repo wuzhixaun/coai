@@ -10,14 +10,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog.tsx";
-import { Copy, Download, Eye, Link, Package, RefreshCw, RotateCcw, Trash2, X } from "lucide-react";
-import type { PhotoTask } from "@/api/photo";
+import { Columns2, Copy, Download, Eye, Image as ImageIcon, Link, Package, RefreshCw, RotateCcw, Trash2, X } from "lucide-react";
+import type { PhotoImage, PhotoTask } from "@/api/photo";
 import { getDownloadFileUrl, getDownloadZipUrl } from "@/api/photo";
 import { useClipboard } from "@/utils/dom.ts";
 import { openWindow } from "@/utils/device.ts";
+import BeforeAfterSlider from "./BeforeAfterSlider";
 
 interface Props {
   tasks: PhotoTask[];
+  images?: PhotoImage[];
   onDelete: (taskId: string) => void;
   onRetry: (taskId: string) => void;
   onRefreshTask: (taskId: string) => void;
@@ -50,15 +52,18 @@ function friendlyError(raw: string, t: TFunction): string {
 
 const isVideoUrl = (url: string) => url.endsWith(".mp4") || url.endsWith(".webm");
 
-// 灯箱：包裹任意 trigger，点击后弹出大图/视频预览，支持复制链接、新窗口打开、下载
-const ResultLightbox: React.FC<{ url: string; index: number; trigger: React.ReactNode }> = ({ url, index, trigger }) => {
+// 灯箱：包裹任意 trigger，点击后弹出大图/视频预览，支持复制链接、新窗口打开、下载；
+// 传入 sourceUrl（且非视频）时提供「对比原图 / 仅看结果」切换。
+const ResultLightbox: React.FC<{ url: string; index: number; trigger: React.ReactNode; sourceUrl?: string }> = ({ url, index, trigger, sourceUrl }) => {
   const { t } = useTranslation();
   const copy = useClipboard();
   const video = isVideoUrl(url);
   const label = video ? t("photo.task.video", { n: index + 1 }) : t("photo.task.result", { n: index + 1 });
+  const canCompare = !!sourceUrl && !video;
+  const [compare, setCompare] = React.useState(false);
 
   return (
-    <Dialog>
+    <Dialog onOpenChange={(o) => { if (!o) setCompare(false); }}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
@@ -66,21 +71,31 @@ const ResultLightbox: React.FC<{ url: string; index: number; trigger: React.Reac
             <Eye className="h-4 w-4 mr-1.5" /> {label}
           </DialogTitle>
         </DialogHeader>
-        <div className="flex justify-end gap-2 mb-2">
-          <Button size="icon" variant="outline" onClick={() => copy(url)} title={t("photo.task.copy-link")}>
-            <Copy className="h-4 w-4" />
-          </Button>
-          <Button size="icon" variant="outline" onClick={() => openWindow(url)} title={t("photo.task.open-window")}>
-            <Link className="h-4 w-4" />
-          </Button>
-          <a href={getDownloadFileUrl(url)} download>
-            <Button size="icon" variant="outline" title={t("photo.task.download")}>
-              <Download className="h-4 w-4" />
+        <div className="flex items-center gap-2 mb-2">
+          {canCompare && (
+            <Button size="sm" variant={compare ? "default" : "outline"} onClick={() => setCompare((v) => !v)}>
+              {compare ? <ImageIcon className="h-4 w-4 mr-1" /> : <Columns2 className="h-4 w-4 mr-1" />}
+              {compare ? t("photo.task.result-only") : t("photo.task.compare")}
             </Button>
-          </a>
+          )}
+          <div className="ml-auto flex gap-2">
+            <Button size="icon" variant="outline" onClick={() => copy(url)} title={t("photo.task.copy-link")}>
+              <Copy className="h-4 w-4" />
+            </Button>
+            <Button size="icon" variant="outline" onClick={() => openWindow(url)} title={t("photo.task.open-window")}>
+              <Link className="h-4 w-4" />
+            </Button>
+            <a href={getDownloadFileUrl(url)} download>
+              <Button size="icon" variant="outline" title={t("photo.task.download")}>
+                <Download className="h-4 w-4" />
+              </Button>
+            </a>
+          </div>
         </div>
         <div className="flex justify-center max-h-[70vh] overflow-auto">
-          {video ? (
+          {compare && canCompare ? (
+            <BeforeAfterSlider before={sourceUrl!} after={url} className="w-full" />
+          ) : video ? (
             <video src={url} controls className="max-w-full rounded-md" />
           ) : (
             <img src={url} alt={label} className="max-w-full rounded-md object-contain" />
@@ -92,7 +107,7 @@ const ResultLightbox: React.FC<{ url: string; index: number; trigger: React.Reac
 };
 
 // 结果项（展开区）：卡片缩略图 + 文件名 + 下载，点击进灯箱
-const ResultPreview: React.FC<{ url: string; index: number }> = ({ url, index }) => {
+const ResultPreview: React.FC<{ url: string; index: number; sourceUrl?: string }> = ({ url, index, sourceUrl }) => {
   const { t } = useTranslation();
   const video = isVideoUrl(url);
   const label = video ? t("photo.task.video", { n: index + 1 }) : t("photo.task.result", { n: index + 1 });
@@ -102,6 +117,7 @@ const ResultPreview: React.FC<{ url: string; index: number }> = ({ url, index })
       <ResultLightbox
         url={url}
         index={index}
+        sourceUrl={sourceUrl}
         trigger={
           <div className="cursor-pointer group relative">
             {video ? (
@@ -126,12 +142,13 @@ const ResultPreview: React.FC<{ url: string; index: number }> = ({ url, index })
 };
 
 // 行内缩略图：成功任务无需展开即可看到结果；悬停浮层放大，点击进灯箱
-const InlineThumb: React.FC<{ url: string; index: number }> = ({ url, index }) => {
+const InlineThumb: React.FC<{ url: string; index: number; sourceUrl?: string }> = ({ url, index, sourceUrl }) => {
   const video = isVideoUrl(url);
   return (
     <ResultLightbox
       url={url}
       index={index}
+      sourceUrl={sourceUrl}
       trigger={
         <button
           type="button"
@@ -163,16 +180,19 @@ const InlineThumb: React.FC<{ url: string; index: number }> = ({ url, index }) =
 
 const TaskRow: React.FC<{
   task: PhotoTask;
+  sourceUrls?: string[];
   onDelete: (id: string) => void;
   onRetry: (id: string) => void;
   onRefresh: (id: string) => void;
-}> = ({ task, onDelete, onRetry, onRefresh }) => {
+}> = ({ task, sourceUrls = [], onDelete, onRetry, onRefresh }) => {
   const { t } = useTranslation();
   const [expanded, setExpanded] = React.useState(false);
   const stColor = STATUS_COLOR[task.status] || "secondary";
   const stLabel = t(`photo.status.${task.status}`, task.status);
   const isActive = ["pending", "processing"].includes(task.status);
   const results = task.result_urls ?? [];
+  // 对比用源图：优先按索引配对，单源/数量不匹配时回退到首张源图
+  const sourceFor = (i: number) => sourceUrls[i] ?? sourceUrls[0];
 
   return (
     <div className="border rounded-md mb-2 bg-card">
@@ -196,7 +216,7 @@ const TaskRow: React.FC<{
         {task.status === "success" && results.length > 0 && (
           <div className="hidden md:flex items-center gap-1">
             {results.slice(0, 3).map((url, i) => (
-              <InlineThumb key={i} url={url} index={i} />
+              <InlineThumb key={i} url={url} index={i} sourceUrl={sourceFor(i)} />
             ))}
             {results.length > 3 && (
               <span className="text-xs text-muted-foreground">+{results.length - 3}</span>
@@ -248,7 +268,7 @@ const TaskRow: React.FC<{
               )}
               <div className="flex flex-wrap gap-2">
                 {results.map((url, i) => (
-                  <ResultPreview key={i} url={url} index={i} />
+                  <ResultPreview key={i} url={url} index={i} sourceUrl={sourceFor(i)} />
                 ))}
               </div>
             </>
@@ -259,9 +279,18 @@ const TaskRow: React.FC<{
   );
 };
 
-const TaskTable: React.FC<Props> = ({ tasks, onDelete, onRetry, onRefreshTask, onRefreshAll }) => {
+const TaskTable: React.FC<Props> = ({ tasks, images = [], onDelete, onRetry, onRefreshTask, onRefreshAll }) => {
   const { t } = useTranslation();
   const [tab, setTab] = React.useState<"active" | "history">("active");
+
+  // 图库 id → url，用于把任务源图解析出来做 before/after 对比
+  const urlById = React.useMemo(() => {
+    const m = new Map<string, string>();
+    images.forEach((img) => m.set(img.id, img.url));
+    return m;
+  }, [images]);
+  const resolveSources = (task: PhotoTask) =>
+    (task.image_ids ?? []).map((id) => urlById.get(id)).filter((u): u is string => !!u);
 
   const activeTasks = tasks.filter((tk) => ["pending", "processing"].includes(tk.status));
   const historyTasks = tasks.filter((tk) => ["success", "failed"].includes(tk.status));
@@ -290,7 +319,7 @@ const TaskTable: React.FC<Props> = ({ tasks, onDelete, onRetry, onRefreshTask, o
         <p className="text-center text-muted-foreground py-8">{tab === "active" ? t("photo.task.empty-active") : t("photo.task.empty-history")}</p>
       ) : (
         list.map((task) => (
-          <TaskRow key={task.task_id} task={task}
+          <TaskRow key={task.task_id} task={task} sourceUrls={resolveSources(task)}
             onDelete={onDelete} onRetry={onRetry} onRefresh={onRefreshTask} />
         ))
       )}

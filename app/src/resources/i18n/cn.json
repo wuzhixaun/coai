@@ -751,7 +751,9 @@
       "cancel-task": "取消任务",
       "cancel": "取消",
       "retry": "重试",
-      "delete": "删除"
+      "delete": "删除",
+      "compare": "对比原图",
+      "result-only": "仅看结果"
     },
     "features": {
       "white_bg": "白底图",

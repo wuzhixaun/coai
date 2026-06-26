@@ -1451,7 +1451,9 @@
       "cancel-task": "Cancel task",
       "cancel": "Cancel",
       "retry": "Retry",
-      "delete": "Delete"
+      "delete": "Delete",
+      "compare": "Compare original",
+      "result-only": "Result only"
     },
     "features": {
       "white_bg": "White BG",
