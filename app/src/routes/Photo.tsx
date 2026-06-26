@@ -21,7 +21,8 @@ const Photo: React.FC = () => {
     identities, selectedIdentityId, setSelectedIdentityId,
     selectedBrandKitId, setSelectedBrandKitId,
     createIdentityAction, deleteIdentityAction, favoriteImage,
-    templates, runWorkflow,
+    templates, runWorkflow, runWorkflowSteps,
+    recipes, createRecipeAction, deleteRecipeAction,
   } = usePhotoTask();
 
   const [mobileTab, setMobileTab] = useState<MobileTab>("upload");
@@ -101,13 +102,17 @@ const Photo: React.FC = () => {
         />
         <WorkflowBar
           templates={templates}
+          recipes={recipes}
           selectedCount={selectedIds.length}
           loading={loading}
           onRun={runWorkflow}
+          onRunSteps={runWorkflowSteps}
+          onDeleteRecipe={deleteRecipeAction}
         />
         <FeaturePanel
           selectedCount={selectedIds.length} loading={loading}
           onProcess={(features, paramsMap, model) => process(features, paramsMap, model)}
+          onSaveRecipe={createRecipeAction}
         />
       </div>
 

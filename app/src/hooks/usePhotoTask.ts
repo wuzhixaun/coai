@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import type { PhotoImage, PhotoTask, PhotoIdentity, WorkflowTemplate } from "@/api/photo";
+import type { PhotoImage, PhotoTask, PhotoIdentity, WorkflowTemplate, WorkflowStep, PhotoRecipe } from "@/api/photo";
 import * as api from "@/api/photo";
 
 const POLL_INTERVAL = 10_000;
@@ -16,6 +16,7 @@ export function usePhotoTask() {
   const [selectedIdentityId, setSelectedIdentityId] = useState<string>("");
   const [selectedBrandKitId, setSelectedBrandKitId] = useState<string>("");
   const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
+  const [recipes, setRecipes] = useState<PhotoRecipe[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -64,6 +65,9 @@ export function usePhotoTask() {
     }).catch(() => {});
     api.listWorkflowTemplates().then((data) => {
       if (Array.isArray(data)) setTemplates(data);
+    }).catch(() => {});
+    api.listRecipes().then((data) => {
+      if (Array.isArray(data)) setRecipes(data);
     }).catch(() => {});
     return () => { pollingRef.current.forEach((t) => clearInterval(t)); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -130,13 +134,13 @@ export function usePhotoTask() {
     setLoading(false);
   }, [selectedIds, startPolling, selectedIdentityId, selectedBrandKitId]);
 
-  // 一键成套：按模板串行执行多步，结果聚合为一个 workflow 任务
-  const runWorkflow = useCallback(async (templateKey: string) => {
+  // 一键成套：按模板或自定义步骤(配方)串行执行，结果聚合为一个 workflow 任务
+  const submitWorkflowBody = useCallback(async (body: { template?: string; steps?: WorkflowStep[] }) => {
     if (selectedIds.length === 0) return;
     setLoading(true);
     try {
       const task = await api.submitWorkflow({
-        template: templateKey, image_ids: selectedIds,
+        ...body, image_ids: selectedIds,
         identity_id: selectedIdentityId, brand_kit_id: selectedBrandKitId,
       });
       if (task && task.task_id) {
@@ -146,6 +150,25 @@ export function usePhotoTask() {
     } catch (e) { console.error("Workflow failed:", e); }
     setLoading(false);
   }, [selectedIds, startPolling, selectedIdentityId, selectedBrandKitId]);
+
+  const runWorkflow = useCallback((templateKey: string) => submitWorkflowBody({ template: templateKey }), [submitWorkflowBody]);
+  const runWorkflowSteps = useCallback((steps: WorkflowStep[]) => submitWorkflowBody({ steps }), [submitWorkflowBody]);
+
+  // ── 配方 ──
+  const createRecipeAction = useCallback(async (name: string, steps: WorkflowStep[]) => {
+    try {
+      const created = await api.createRecipe({ name, steps });
+      setRecipes((prev) => [created, ...prev]);
+      toast.success(t("photo.recipe.saved", { name: created.name }));
+    } catch (e) { console.error("Save recipe failed:", e); }
+  }, [t]);
+
+  const deleteRecipeAction = useCallback(async (id: string) => {
+    try {
+      await api.deleteRecipe(id);
+      setRecipes((prev) => prev.filter((x) => x.id !== id));
+    } catch (e) { console.error("Delete recipe failed:", e); }
+  }, []);
 
   // ── 一致性身份 ──
   const refreshIdentities = useCallback(async () => {
@@ -217,5 +240,6 @@ export function usePhotoTask() {
     identities, selectedIdentityId, setSelectedIdentityId,
     selectedBrandKitId, setSelectedBrandKitId,
     refreshIdentities, createIdentityAction, deleteIdentityAction, favoriteImage,
-    templates, runWorkflow };
+    templates, runWorkflow, runWorkflowSteps,
+    recipes, createRecipeAction, deleteRecipeAction };
 }

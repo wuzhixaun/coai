@@ -825,6 +825,15 @@
       "hint": "选好图片后点模板，自动串行产出整套素材",
       "run": "一键生成"
     },
+    "recipe": {
+      "title": "我的配方",
+      "save": "保存为配方",
+      "saved": "已保存配方「{{name}}」",
+      "name-ph": "配方名称，如 上架三件套",
+      "need-features": "请先选择至少一个功能",
+      "cancel": "取消",
+      "confirm": "保存"
+    },
     "status": {
       "pending": "排队中",
       "processing": "处理中",

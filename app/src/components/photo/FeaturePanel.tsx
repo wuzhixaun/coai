@@ -13,6 +13,7 @@ interface Props {
   selectedCount: number;
   loading: boolean;
   onProcess: (features: string[], paramsMap: Record<string, Record<string, unknown>>, model: string) => void;
+  onSaveRecipe?: (name: string, steps: { feature: string; params: Record<string, unknown> }[]) => void;
 }
 
 // 功能标签文案走 i18n（photo.features.<key>），这里仅保留 key 与图标。
@@ -59,9 +60,11 @@ const SIZE_OPTS = ["1:1", "16:9", "4:3", "3:4", "9:16"];
 // 避免电商同事误选。
 const IMAGE_GEN_TAG = "image-generation";
 
-const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) => {
+const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess, onSaveRecipe }) => {
   const { t } = useTranslation();
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [recipeOpen, setRecipeOpen] = useState(false);
+  const [recipeName, setRecipeName] = useState("");
   const [dialogKey, setDialogKey] = useState<string | null>(null);
   const [params, setParams] = useState<Record<string, Record<string, unknown>>>({});
   const [prompts, setPrompts] = useState<PromptsConfig | null>(null);
@@ -118,6 +121,15 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
     const features = Array.from(selected);
     onProcess(features, withImageCount(features), chosenModel);
     setSelected(new Set());
+  };
+
+  // 把当前选中的功能(含已配置参数)按顺序存为配方步骤
+  const handleSaveRecipe = () => {
+    const steps = Array.from(selected).map((f) => ({ feature: f, params: params[f] || {} }));
+    if (steps.length === 0 || !recipeName.trim() || !onSaveRecipe) return;
+    onSaveRecipe(recipeName.trim(), steps);
+    setRecipeOpen(false);
+    setRecipeName("");
   };
 
   const handleDialogOk = () => {
@@ -212,10 +224,36 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
         ))}
       </div>
 
-      <Button className="w-full" onClick={handleBatchProcess}
-        disabled={selectedCount === 0 || selected.size === 0 || loading}>
-        {loading ? t("photo.feature.processing") : t("photo.feature.process", { count: selected.size })}
-      </Button>
+      <div className="flex gap-2">
+        <Button className="flex-1" onClick={handleBatchProcess}
+          disabled={selectedCount === 0 || selected.size === 0 || loading}>
+          {loading ? t("photo.feature.processing") : t("photo.feature.process", { count: selected.size })}
+        </Button>
+        {onSaveRecipe && (
+          <Button variant="outline" disabled={selected.size === 0}
+            onClick={() => setRecipeOpen(true)} title={t("photo.recipe.save")}>
+            {t("photo.recipe.save")}
+          </Button>
+        )}
+      </div>
+
+      {/* 保存配方对话框 */}
+      <Dialog open={recipeOpen} onOpenChange={setRecipeOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t("photo.recipe.save")}</DialogTitle>
+          </DialogHeader>
+          {selected.size === 0 ? (
+            <p className="text-sm text-destructive">{t("photo.recipe.need-features")}</p>
+          ) : (
+            <Input value={recipeName} onChange={(e) => setRecipeName(e.target.value)} placeholder={t("photo.recipe.name-ph")} />
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRecipeOpen(false)}>{t("photo.recipe.cancel")}</Button>
+            <Button onClick={handleSaveRecipe} disabled={selected.size === 0 || !recipeName.trim()}>{t("photo.recipe.confirm")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!dialogKey} onOpenChange={(open) => { if (!open) setDialogKey(null); }}>
         <DialogContent>

@@ -1525,6 +1525,15 @@
       "hint": "Select images, click a template to auto-generate the full set",
       "run": "Generate"
     },
+    "recipe": {
+      "title": "My recipes",
+      "save": "Save as recipe",
+      "saved": "Recipe \"{{name}}\" saved",
+      "name-ph": "Recipe name, e.g. Listing trio",
+      "need-features": "Select at least one feature first",
+      "cancel": "Cancel",
+      "confirm": "Save"
+    },
     "status": {
       "pending": "Queued",
       "processing": "Processing",

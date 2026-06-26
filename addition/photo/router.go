@@ -34,6 +34,11 @@ func Register(app *gin.RouterGroup) {
 	group.GET("/workflow/templates", ListWorkflowTemplatesAPI)
 	group.POST("/workflow", WorkflowAPI)
 
+	// 配方（保存/复用工作流）
+	group.POST("/recipe", CreateRecipeAPI)
+	group.GET("/recipe", ListRecipesAPI)
+	group.DELETE("/recipe/:id", DeleteRecipeAPI)
+
 	// 任务管理
 	group.GET("/tasks", ListTasksAPI)
 	group.GET("/tasks/:id", GetTaskAPI)

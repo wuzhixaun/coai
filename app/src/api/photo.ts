@@ -139,6 +139,28 @@ export async function submitWorkflow(body: {
   return data;
 }
 
+// ── 配方（保存/复用工作流）──────────────────────────────────
+export interface PhotoRecipe {
+  id: string;
+  name: string;
+  steps: WorkflowStep[];
+  created_at: string;
+}
+
+export async function listRecipes(): Promise<PhotoRecipe[]> {
+  const { data } = await axios.get("/photo/recipe");
+  return data;
+}
+
+export async function createRecipe(body: { name: string; steps: WorkflowStep[] }): Promise<PhotoRecipe> {
+  const { data } = await axios.post("/photo/recipe", body);
+  return data;
+}
+
+export async function deleteRecipe(id: string): Promise<void> {
+  await axios.delete(`/photo/recipe/${id}`);
+}
+
 export async function listTasks(): Promise<PhotoTask[]> {
   const { data } = await axios.get("/photo/tasks");
   return data;

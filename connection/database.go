@@ -95,6 +95,7 @@ func ConnectDatabase() *sql.DB {
 	CreatePhotoImagesTable(db)
 	CreatePhotoTasksTable(db)
 	CreatePhotoIdentityTable(db)
+	CreatePhotoRecipeTable(db)
 	CreateImageGenerationTable(db)
 
 	if err := doMigration(db); err != nil {
@@ -449,6 +450,23 @@ func CreatePhotoIdentityTable(db *sql.DB) {
 		  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		  INDEX idx_user (user_id),
 		  INDEX idx_type (type)
+		);
+	`)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+// CreatePhotoRecipeTable 配方：用户保存的命名工作流（有序步骤），便于复用标准化流程。
+func CreatePhotoRecipeTable(db *sql.DB) {
+	_, err := globals.ExecDb(db, `
+		CREATE TABLE IF NOT EXISTS photo_recipe (
+		  id VARCHAR(12) PRIMARY KEY,
+		  user_id BIGINT NOT NULL,
+		  name VARCHAR(255) NOT NULL,
+		  steps TEXT NOT NULL,
+		  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		  INDEX idx_user (user_id)
 		);
 	`)
 	if err != nil {
