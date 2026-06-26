@@ -1408,6 +1408,26 @@
       "starter-model": "AI model try-on",
       "starter-watermark": "Batch erase / watermark removal"
     },
+    "identity": {
+      "title": "Consistency identity",
+      "hint": "When selected, scene/model images use this identity's reference images and locked seed to keep the subject consistent",
+      "none": "None",
+      "new": "New identity",
+      "type-product": "Product",
+      "type-model": "Model",
+      "name": "Name",
+      "name-ph": "e.g. Dress A / Model Mei",
+      "subject": "Subject description (optional)",
+      "subject-ph": "e.g. red long-sleeve dress, round neck",
+      "refs": "Reference images (from selected)",
+      "refs-count": "{{count}} reference image(s)",
+      "no-refs": "Select at least one image on the left as reference first",
+      "create": "Create",
+      "cancel": "Cancel",
+      "created": "Identity \"{{name}}\" created",
+      "delete": "Delete",
+      "manage": "Manage identities"
+    },
     "feature": {
       "title": "AI Image Tools",
       "model": "Image Model",

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import UploadPanel from "@/components/photo/UploadPanel";
 import FeaturePanel from "@/components/photo/FeaturePanel";
+import IdentityPanel from "@/components/photo/IdentityPanel";
 import TaskTable from "@/components/photo/TaskTable";
 import { usePhotoTask } from "@/hooks/usePhotoTask";
 import { cn } from "@/components/ui/lib/utils.ts";
@@ -16,6 +17,8 @@ const Photo: React.FC = () => {
     upload, uploadFolder, toggleSelect, selectAll, clearSelection,
     removeImage, clearAll, process, retryAction, deleteAction,
     refreshTask, refreshAll,
+    identities, selectedIdentityId, setSelectedIdentityId,
+    createIdentityAction, deleteIdentityAction,
   } = usePhotoTask();
 
   const [mobileTab, setMobileTab] = useState<MobileTab>("upload");
@@ -81,6 +84,15 @@ const Photo: React.FC = () => {
           "lg:block lg:flex-1",
         )}
       >
+        <IdentityPanel
+          identities={identities}
+          selectedIdentityId={selectedIdentityId}
+          selectedImageIds={selectedIds}
+          images={images}
+          onSelect={setSelectedIdentityId}
+          onCreate={createIdentityAction}
+          onDelete={deleteIdentityAction}
+        />
         <FeaturePanel
           selectedCount={selectedIds.length} loading={loading}
           onProcess={(features, paramsMap, model) => process(features, paramsMap, model)}

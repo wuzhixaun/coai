@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import type { PhotoImage, PhotoTask } from "@/api/photo";
+import type { PhotoImage, PhotoTask, PhotoIdentity } from "@/api/photo";
 import * as api from "@/api/photo";
 
 const POLL_INTERVAL = 10_000;
@@ -12,6 +12,8 @@ export function usePhotoTask() {
   const [imagesLoading, setImagesLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [tasks, setTasks] = useState<PhotoTask[]>([]);
+  const [identities, setIdentities] = useState<PhotoIdentity[]>([]);
+  const [selectedIdentityId, setSelectedIdentityId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -55,6 +57,9 @@ export function usePhotoTask() {
     api.listImages().then((data) => {
       if (Array.isArray(data)) setImages(data);
     }).catch(() => {}).finally(() => setImagesLoading(false));
+    api.listIdentities().then((data) => {
+      if (Array.isArray(data)) setIdentities(data);
+    }).catch(() => {});
     return () => { pollingRef.current.forEach((t) => clearInterval(t)); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -100,7 +105,7 @@ export function usePhotoTask() {
     for (const feature of features) {
       try {
         const params = paramsMap[feature] || {};
-        const newTasks = await api.submitProcess(selectedIds, [feature], params, model);
+        const newTasks = await api.submitProcess(selectedIds, [feature], params, model, selectedIdentityId);
         if (Array.isArray(newTasks)) {
           newTasks.forEach((t) => {
             if (t.status !== "success" && t.status !== "failed") startPolling(t.task_id);
@@ -110,7 +115,31 @@ export function usePhotoTask() {
       } catch (e) { console.error("Process failed:", e); }
     }
     setLoading(false);
-  }, [selectedIds, startPolling]);
+  }, [selectedIds, startPolling, selectedIdentityId]);
+
+  // ── 一致性身份 ──
+  const refreshIdentities = useCallback(async () => {
+    try {
+      const data = await api.listIdentities();
+      if (Array.isArray(data)) setIdentities(data);
+    } catch { /* ignore */ }
+  }, []);
+
+  const createIdentityAction = useCallback(async (body: { type: string; name: string; ref_image_ids: string[]; subject_prompt?: string }) => {
+    const created = await api.createIdentity(body);
+    setIdentities((prev) => [created, ...prev]);
+    setSelectedIdentityId(created.id);
+    toast.success(t("photo.identity.created", { name: created.name }));
+    return created;
+  }, [t]);
+
+  const deleteIdentityAction = useCallback(async (id: string) => {
+    try {
+      await api.deleteIdentity(id);
+      setIdentities((prev) => prev.filter((x) => x.id !== id));
+      setSelectedIdentityId((cur) => (cur === id ? "" : cur));
+    } catch (e) { console.error("Delete identity failed:", e); }
+  }, []);
 
   const retryAction = useCallback(async (taskId: string) => {
     try {
@@ -144,5 +173,7 @@ export function usePhotoTask() {
 
   return { images, imagesLoading, selectedIds, tasks, loading, uploading, uploadProgress, upload, uploadFolder,
     toggleSelect, selectAll, clearSelection, removeImage, clearAll, process,
-    retryAction, deleteAction, refreshTask, refreshAll };
+    retryAction, deleteAction, refreshTask, refreshAll,
+    identities, selectedIdentityId, setSelectedIdentityId,
+    refreshIdentities, createIdentityAction, deleteIdentityAction };
 }

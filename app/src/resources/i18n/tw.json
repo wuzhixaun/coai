@@ -1850,6 +1850,26 @@
       "timeout": "處理超時，請稍後重試（圖片/影片產生較慢時可多等一會）",
       "need-image": "請先上傳參考圖後再處理",
       "insufficient": "額度不足，請充值後重試"
+    },
+    "identity": {
+      "title": "一致性身份",
+      "hint": "選出身分後，場景圖/模特兒圖會帶著該身分的參考圖與鎖定seed，保持主體一致",
+      "none": "不應用",
+      "new": "新建身份",
+      "type-product": "商品",
+      "type-model": "模特兒",
+      "name": "名稱",
+      "name-ph": "如：A 款洋裝/ 模特兒小美",
+      "subject": "主體描述（可選）",
+      "subject-ph": "如：紅色長袖連身裙，圓領",
+      "refs": "參考圖（取自已選圖片）",
+      "refs-count": "{{count}} 張參考圖",
+      "no-refs": "請先在左側選擇至少一張圖片作為參考圖",
+      "create": "創建",
+      "cancel": "取消",
+      "created": "已建立身分認同“{{name}}”",
+      "delete": "刪除",
+      "manage": "管理身份"
     }
   }
 }

@@ -13,6 +13,17 @@ export interface PhotoTask {
   source_filenames: string[]; submit_ids: string[];
 }
 
+export interface PhotoIdentity {
+  id: string;
+  type: "product" | "model";
+  name: string;
+  ref_image_ids: string[];
+  ref_image_urls: string[];
+  seed: number;
+  subject_prompt: string;
+  created_at: string;
+}
+
 export interface FeatureConfig {
   channel_type: string; model?: string; system_prompt: string;
   templates?: { label: string; prompt: string }[];
@@ -76,12 +87,29 @@ export async function deleteImage(id: string): Promise<void> {
 
 export async function submitProcess(
   imageIds: string[], features: string[],
-  params: Record<string, unknown> = {}, channelOverride = "",
+  params: Record<string, unknown> = {}, channelOverride = "", identityId = "",
 ): Promise<PhotoTask[]> {
   const { data } = await axios.post("/photo/process", {
-    image_ids: imageIds, features, params, channel_override: channelOverride,
+    image_ids: imageIds, features, params, channel_override: channelOverride, identity_id: identityId,
   });
   return data;
+}
+
+// ── 一致性身份（商品/模特）──────────────────────────────────
+export async function listIdentities(type?: string): Promise<PhotoIdentity[]> {
+  const { data } = await axios.get("/photo/identity", { params: type ? { type } : {} });
+  return data;
+}
+
+export async function createIdentity(body: {
+  type: string; name: string; ref_image_ids: string[]; subject_prompt?: string;
+}): Promise<PhotoIdentity> {
+  const { data } = await axios.post("/photo/identity", body);
+  return data;
+}
+
+export async function deleteIdentity(id: string): Promise<void> {
+  await axios.delete(`/photo/identity/${id}`);
 }
 
 export async function listTasks(): Promise<PhotoTask[]> {

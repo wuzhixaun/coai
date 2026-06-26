@@ -708,6 +708,26 @@
       "starter-model": "AI 模特换装",
       "starter-watermark": "批量去水印/擦除"
     },
+    "identity": {
+      "title": "一致性身份",
+      "hint": "选身份后，场景图/模特图会带该身份的参考图与锁定 seed，保持主体一致",
+      "none": "不应用",
+      "new": "新建身份",
+      "type-product": "商品",
+      "type-model": "模特",
+      "name": "名称",
+      "name-ph": "如：A 款连衣裙 / 模特小美",
+      "subject": "主体描述（可选）",
+      "subject-ph": "如：红色长袖连衣裙，圆领",
+      "refs": "参考图（来自已选图片）",
+      "refs-count": "{{count}} 张参考图",
+      "no-refs": "请先在左侧选择至少一张图片作为参考图",
+      "create": "创建",
+      "cancel": "取消",
+      "created": "已创建身份「{{name}}」",
+      "delete": "删除",
+      "manage": "管理身份"
+    },
     "feature": {
       "title": "AI 图片处理功能",
       "model": "生图模型",
