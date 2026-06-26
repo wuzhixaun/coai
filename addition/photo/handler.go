@@ -199,6 +199,21 @@ func ProcessAPI(c *gin.Context) {
 		}
 	}
 
+	// 一致性身份：解析身份的参考图路径、锁定 seed 与主体描述，注入处理（全局套用）。
+	var identityRefPaths []string
+	var identitySeed *int
+	identitySubject := ""
+	if req.IdentityId != "" {
+		if idt, e := queryIdentityByID(db, req.IdentityId, userID); e == nil && idt != nil {
+			if paths, e2 := ResolveImagePaths(db, idt.RefImageIds, userID); e2 == nil {
+				identityRefPaths = paths
+			}
+			s := idt.Seed
+			identitySeed = &s
+			identitySubject = idt.SubjectPrompt
+		}
+	}
+
 	responses := make([]TaskInfo, 0, len(req.Features))
 	for _, feature := range req.Features {
 		isVideo := feature == FeatureVideoGen
@@ -230,7 +245,7 @@ func ProcessAPI(c *gin.Context) {
 			ImageIds: req.ImageIds, TotalImages: totalImages, TotalVideos: totalVideos,
 			SourceFilenames: filenames, CreatedAt: time.Now().Format(time.RFC3339), FolderName: folderName,
 		})
-		go ProcessTask(nil, db, taskID, feature, imagePaths, req.Params, req.ChannelOverride, group)
+		go ProcessTask(nil, db, taskID, feature, imagePaths, req.Params, req.ChannelOverride, group, identityRefPaths, identitySeed, identitySubject)
 	}
 	c.JSON(http.StatusOK, responses)
 }
@@ -354,9 +369,10 @@ func RetryTaskAPI(c *gin.Context) {
 	userGroup := auth.GetGroup(db, user)
 
 	// 重置并异步重试
+	// 注：当前 photo_tasks 未持久化 identity_id，重试暂不重新套用一致性身份（后续增强）。
 	db.Exec("UPDATE photo_tasks SET status = ?, progress = 0, error_message = '' WHERE task_id = ?",
 		TaskStatusPending, taskID)
-	go ProcessTask(nil, db, taskID, feature, imagePaths, nil, "", userGroup)
+	go ProcessTask(nil, db, taskID, feature, imagePaths, nil, "", userGroup, nil, nil, "")
 
 	t, _ := scanTaskRow(db.QueryRow(taskSelectSQL+" WHERE task_id = ?", taskID))
 	c.JSON(http.StatusOK, t)

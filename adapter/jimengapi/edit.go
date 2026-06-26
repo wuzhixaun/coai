@@ -46,6 +46,13 @@ func (c *ImageGenerator) CreateImageEditRequest(props *adaptercommon.ImageEditPr
 			BinaryDataBase64: base64s,
 			ForceSingle:      &forceSingle,
 		}
+		// 一致性身份：优先用调用方锁定的 seed，否则回退模型默认 seed。
+		if props.Seed != nil {
+			req.Seed = props.Seed
+		} else if spec.DefaultSeed >= 0 {
+			seed := spec.DefaultSeed
+			req.Seed = &seed
+		}
 		if props.Strength != nil {
 			strength := float64(*props.Strength)
 			scale, err := normalizeScale(&strength, spec)

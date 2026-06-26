@@ -21,6 +21,39 @@ import (
 const MaxWorkers = 4
 const MaxGenerateCount = 6
 
+// identityContext 承载一致性身份在处理期的派生数据：参考图 base64、锁定 seed、主体描述。
+// 所有方法对 nil 安全，未应用身份时直接传 nil 即可。
+type identityContext struct {
+	refImages  []string // base64
+	lockedSeed *int
+	subject    string
+}
+
+func (i *identityContext) refB64() []string {
+	if i == nil {
+		return nil
+	}
+	return i.refImages
+}
+
+func (i *identityContext) seed() *int {
+	if i == nil {
+		return nil
+	}
+	return i.lockedSeed
+}
+
+// composeSubject 把身份主体描述前置到用户 prompt（主体在前，强化一致性约束）。
+func composeSubject(i *identityContext, userPrompt string) string {
+	if i == nil || i.subject == "" {
+		return userPrompt
+	}
+	if userPrompt == "" {
+		return i.subject
+	}
+	return i.subject + ", " + userPrompt
+}
+
 func ResolveImagePaths(db *sql.DB, imageIDs []string, userID int64) ([]string, error) {
 	var paths []string
 	for _, id := range imageIDs {
@@ -108,13 +141,14 @@ func extractResultURL(content string) string {
 }
 
 func callImageEdit(imageBase64, prompt, model, userGroup string) (string, error) {
-	return callImageEditMulti([]string{imageBase64}, prompt, model, userGroup)
+	return callImageEditMulti([]string{imageBase64}, prompt, model, userGroup, nil)
 }
 
-// callImageEditMulti 支持多张参考图的图生图编辑（如 Logo 定制：商品图 + Logo 图）。
-func callImageEditMulti(images []string, prompt, model, userGroup string) (string, error) {
+// callImageEditMulti 支持多张参考图的图生图编辑（如 Logo 定制：商品图 + Logo 图；
+// 一致性身份：商品图 + 身份参考图组）。seed 非空时锁定 seed 以获得更一致的结果。
+func callImageEditMulti(images []string, prompt, model, userGroup string, seed *int) (string, error) {
 	props := adaptercommon.CreateImageEditProps(&adaptercommon.ImageEditProps{
-		Model: model, Images: images, Prompt: prompt,
+		Model: model, Images: images, Prompt: prompt, Seed: seed,
 	})
 	props.OriginalModel = model
 	var resultURL string
@@ -151,7 +185,7 @@ func processLogoCustom(productPath, logoPath, position, channelOverride, userGro
 		return "", fmt.Errorf("读取 Logo 图片失败: %w", err)
 	}
 	prompt := GetSystemPrompt("logo_custom", map[string]string{"position": position})
-	return callImageEditMulti([]string{productB64, logoB64}, prompt, resolveModel("logo_custom", channelOverride), userGroup)
+	return callImageEditMulti([]string{productB64, logoB64}, prompt, resolveModel("logo_custom", channelOverride), userGroup, nil)
 }
 
 func clampGenerateCount(count int) int {
@@ -193,13 +227,14 @@ func processWhiteBg(imagePath, channelOverride, userGroup string) (string, error
 	return callImageEdit(b64, prompt, resolveModel("white_bg", channelOverride), userGroup)
 }
 
-func processSceneGen(imagePath, userPrompt, channelOverride, userGroup string) (string, error) {
+func processSceneGen(imagePath, userPrompt, channelOverride, userGroup string, idt *identityContext) (string, error) {
 	b64, err := ReadImageBytesAsBase64(imagePath)
 	if err != nil {
 		return "", err
 	}
-	prompt := GetSystemPrompt("scene_gen", map[string]string{"user_prompt": userPrompt})
-	return callImageEdit(b64, prompt, resolveModel("scene_gen", channelOverride), userGroup)
+	prompt := GetSystemPrompt("scene_gen", map[string]string{"user_prompt": composeSubject(idt, userPrompt)})
+	images := append([]string{b64}, idt.refB64()...)
+	return callImageEditMulti(images, prompt, resolveModel("scene_gen", channelOverride), userGroup, idt.seed())
 }
 
 func processImageErase(imagePath, erasePrompt, channelOverride, userGroup string) (string, error) {
@@ -261,13 +296,14 @@ func processHdUpscale(imagePath, channelOverride, userGroup string) (string, err
 	return resultURL, err
 }
 
-func processModelImage(imagePath, prompt, channelOverride, userGroup string) (string, error) {
+func processModelImage(imagePath, prompt, channelOverride, userGroup string, idt *identityContext) (string, error) {
 	b64, err := ReadImageBytesAsBase64(imagePath)
 	if err != nil {
 		return "", err
 	}
-	fullPrompt := BuildPrompt("model_image", prompt, map[string]string{})
-	return callImageEdit(b64, fullPrompt, resolveModel("model_image", channelOverride), userGroup)
+	fullPrompt := BuildPrompt("model_image", composeSubject(idt, prompt), map[string]string{})
+	images := append([]string{b64}, idt.refB64()...)
+	return callImageEditMulti(images, fullPrompt, resolveModel("model_image", channelOverride), userGroup, idt.seed())
 }
 
 func processMaterialChange(imagePath, channelOverride, userGroup string) (string, error) {
@@ -400,7 +436,7 @@ func isGenerationModel(model string) bool {
 	return strings.HasPrefix(model, "jimeng-seedream")
 }
 
-func ProcessTask(ctx context.Context, db *sql.DB, taskID, feature string, imagePaths []string, params map[string]interface{}, channelOverride, userGroup string) {
+func ProcessTask(ctx context.Context, db *sql.DB, taskID, feature string, imagePaths []string, params map[string]interface{}, channelOverride, userGroup string, identityRefPaths []string, identitySeed *int, identitySubject string) {
 	defer func() {
 		if r := recover(); r != nil {
 			println("[ProcessTask] PANIC:", fmt.Sprintf("%v", r))
@@ -409,6 +445,18 @@ func ProcessTask(ctx context.Context, db *sql.DB, taskID, feature string, imageP
 		}
 	}()
 	db.Exec("UPDATE photo_tasks SET status = ? WHERE task_id = ?", TaskStatusProcessing, taskID)
+
+	// 一致性身份：读取参考图为 base64（仅一次），供 scene_gen/model_image 注入。
+	var idt *identityContext
+	if len(identityRefPaths) > 0 || identitySeed != nil || identitySubject != "" {
+		var refB64 []string
+		for _, p := range identityRefPaths {
+			if b, e := ReadImageBytesAsBase64(p); e == nil {
+				refB64 = append(refB64, b)
+			}
+		}
+		idt = &identityContext{refImages: refB64, lockedSeed: identitySeed, subject: identitySubject}
+	}
 
 	var resultURLs []string
 	var err error
@@ -463,7 +511,7 @@ func ProcessTask(ctx context.Context, db *sql.DB, taskID, feature string, imageP
 				}
 			case FeatureSceneGen:
 				for i := 0; i < imageCount; i++ {
-					url, e := processSceneGen(p, getStringParam(params, "prompt", ""), channelOverride, userGroup)
+					url, e := processSceneGen(p, getStringParam(params, "prompt", ""), channelOverride, userGroup, idt)
 					appendGenerated(&resultURLs, &err, url, e)
 				}
 			case FeatureImageErase:
@@ -491,7 +539,7 @@ func ProcessTask(ctx context.Context, db *sql.DB, taskID, feature string, imageP
 				appendGenerated(&resultURLs, &err, url, e)
 			case FeatureModelImage:
 				for i := 0; i < imageCount; i++ {
-					url, e := processModelImage(p, getStringParam(params, "prompt", ""), channelOverride, userGroup)
+					url, e := processModelImage(p, getStringParam(params, "prompt", ""), channelOverride, userGroup, idt)
 					appendGenerated(&resultURLs, &err, url, e)
 				}
 			case FeatureMaterialChange:
