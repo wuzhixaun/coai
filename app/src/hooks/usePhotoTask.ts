@@ -93,11 +93,19 @@ export function usePhotoTask() {
 
   const selectAll = useCallback(() => setSelectedIds(images.map((i) => i.id)), [images]);
   const clearSelection = useCallback(() => setSelectedIds([]), []);
-  const removeImage = useCallback((id: string) => {
+  // 删除需同步后端，否则刷新后图库会从 DB 重新拉回（P0.1 后图库已持久化加载）。
+  const removeImage = useCallback(async (id: string) => {
     setImages((prev) => prev.filter((x) => x.id !== id));
     setSelectedIds((prev) => prev.filter((x) => x !== id));
+    try { await api.deleteImage(id); } catch (e) { console.error("Delete image failed:", e); }
   }, []);
-  const clearAll = useCallback(() => { setImages([]); setSelectedIds([]); }, []);
+  const clearAll = useCallback(async () => {
+    const ids = images.map((i) => i.id);
+    setImages([]);
+    setSelectedIds([]);
+    try { await Promise.allSettled(ids.map((id) => api.deleteImage(id))); }
+    catch (e) { console.error("Clear images failed:", e); }
+  }, [images]);
 
   const process = useCallback(async (features: string[], paramsMap: Record<string, Record<string, unknown>> = {}, model = "") => {
     if (selectedIds.length === 0) return;
