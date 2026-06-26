@@ -187,6 +187,12 @@ const TaskRow: React.FC<{
 }> = ({ task, sourceUrls = [], onDelete, onRetry, onRefresh }) => {
   const { t } = useTranslation();
   const [expanded, setExpanded] = React.useState(false);
+  const [picked, setPicked] = React.useState<Set<string>>(new Set());
+  const togglePick = (url: string) => setPicked((prev) => {
+    const n = new Set(prev);
+    n.has(url) ? n.delete(url) : n.add(url);
+    return n;
+  });
   const stColor = STATUS_COLOR[task.status] || "secondary";
   const stLabel = t(`photo.status.${task.status}`, task.status);
   const isActive = ["pending", "processing"].includes(task.status);
@@ -286,7 +292,19 @@ const TaskRow: React.FC<{
           {results.length > 0 && (
             <>
               {results.length > 1 && (
-                <div className="flex justify-end mb-2">
+                <div className="flex justify-end items-center gap-2 mb-2">
+                  {picked.size > 0 && (
+                    <>
+                      <button className="text-xs text-muted-foreground hover:text-foreground" onClick={() => setPicked(new Set())}>
+                        {t("photo.task.pick-clear")}
+                      </button>
+                      <a href={getDownloadZipUrl(Array.from(picked), zipPrefix)} download>
+                        <Button size="sm" variant="default">
+                          <Package className="h-3 w-3 mr-1" />{t("photo.task.pick-download", { count: picked.size })}
+                        </Button>
+                      </a>
+                    </>
+                  )}
                   <a href={getDownloadZipUrl(results, zipPrefix)} download>
                     <Button size="sm" variant="outline">
                       <Package className="h-3 w-3 mr-1" />{t("photo.task.zip-download", { count: results.length })}
@@ -296,7 +314,16 @@ const TaskRow: React.FC<{
               )}
               <div className="flex flex-wrap gap-2">
                 {results.map((url, i) => (
-                  <ResultPreview key={i} url={url} index={i} sourceUrl={sourceFor(i)} />
+                  <div key={i} className="relative">
+                    {/* 多变体挑选：勾选后可仅下载选中（收藏择优） */}
+                    <button type="button" onClick={() => togglePick(url)}
+                      className={`absolute top-1 left-1 z-10 h-5 w-5 rounded-full border flex items-center justify-center text-[10px] ${
+                        picked.has(url) ? "bg-primary text-primary-foreground border-primary" : "bg-background/80 border-input text-transparent"
+                      }`}>
+                      ✓
+                    </button>
+                    <ResultPreview url={url} index={i} sourceUrl={sourceFor(i)} />
+                  </div>
                 ))}
               </div>
             </>

@@ -1796,7 +1796,10 @@
         "model": "モデル商品",
         "extract": "翻訳の抽出",
         "video": "動画"
-      }
+      },
+      "platforms": "マルチプラットフォームプリセット（拡張可能なもののみ）",
+      "config-param": "設定パラメータ",
+      "save-param": "設定を保存"
     },
     "task": {
       "active": "現在の処理中({{count}})",
@@ -1823,7 +1826,10 @@
       "progress-detail-video": "ビデオを生成中· {{done }}/{{ total}}",
       "partial": "部分的な成功{{done }}/{{ total}}",
       "retry-missing": "失敗したアイテムを再試行",
-      "dismiss": "削除"
+      "dismiss": "削除",
+      "pick-download": "ダウンロードがチェックされました({{count}})",
+      "pick-all": "すべて選択",
+      "pick-clear": "選択をクリア"
     },
     "features": {
       "white_bg": "ホワイトベースチャート",

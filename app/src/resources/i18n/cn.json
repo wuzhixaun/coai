@@ -801,7 +801,10 @@
       "progress-detail-video": "正在生成视频 · 第 {{done}}/{{total}} 个",
       "partial": "部分成功 {{done}}/{{total}}",
       "retry-missing": "重试失败项",
-      "dismiss": "移除"
+      "dismiss": "移除",
+      "pick-download": "下载选中 ({{count}})",
+      "pick-all": "全选",
+      "pick-clear": "清除选择"
     },
     "features": {
       "white_bg": "白底图",

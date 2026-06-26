@@ -1798,7 +1798,10 @@
         "model": "模特兒商品",
         "extract": "提取翻譯",
         "video": "影片"
-      }
+      },
+      "platforms": "多平台預設（只擴不裁）",
+      "config-param": "配置參數",
+      "save-param": "儲存配置"
     },
     "task": {
       "active": "目前處理({{count}})",
@@ -1825,7 +1828,10 @@
       "progress-detail-video": "正在產生影片· 第{{done}}/{{total}} 個",
       "partial": "部分成功{{done}}/{{total}}",
       "retry-missing": "重試失敗項",
-      "dismiss": "移除"
+      "dismiss": "移除",
+      "pick-download": "下載選取({{count}})",
+      "pick-all": "全選",
+      "pick-clear": "清除選擇"
     },
     "features": {
       "white_bg": "白底圖",
