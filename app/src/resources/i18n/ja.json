@@ -1829,7 +1829,9 @@
       "dismiss": "削除",
       "pick-download": "ダウンロードがチェックされました({{count}})",
       "pick-all": "すべて選択",
-      "pick-clear": "選択をクリア"
+      "pick-clear": "選択をクリア",
+      "item-status": "チャート状態別チャート",
+      "item-summary": "{{ok}}成功・{{failed}}失敗"
     },
     "features": {
       "white_bg": "ホワイトベースチャート",

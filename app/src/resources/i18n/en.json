@@ -1504,7 +1504,9 @@
       "dismiss": "Dismiss",
       "pick-download": "Download selected ({{count}})",
       "pick-all": "Select all",
-      "pick-clear": "Clear"
+      "pick-clear": "Clear",
+      "item-status": "Per-image status",
+      "item-summary": "{{ok}} ok · {{failed}} failed"
     },
     "features": {
       "white_bg": "White BG",

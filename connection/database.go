@@ -494,6 +494,7 @@ func CreatePhotoTasksTable(db *sql.DB) {
 		  submit_ids TEXT,
 		  source_filenames TEXT,
 		  source_paths TEXT,
+		  item_status TEXT,
 		  folder_name VARCHAR(255) DEFAULT '',
 		  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		  completed_at DATETIME,

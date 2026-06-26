@@ -243,12 +243,12 @@ func ProcessAPI(c *gin.Context) {
 func scanTaskRow(scanner interface{ Scan(...interface{}) error }) (TaskInfo, error) {
 	var t TaskInfo
 	var n1, n2, n3, n4, n5, n6 sql.NullString
-	var n7, n8 sql.NullString
+	var n7, n8, n9 sql.NullString
 
 	err := scanner.Scan(
 		&t.TaskId, &t.Feature, &t.Status, &n1, &n2, &n6, &t.Progress,
 		&t.TotalImages, &t.ProcessedImages, &t.TotalVideos, &t.ProcessedVideos,
-		&n3, &n4, &n5, &t.FolderName, &n7, &n8,
+		&n3, &n4, &n5, &t.FolderName, &n7, &n8, &n9,
 	)
 	if err != nil {
 		return t, err
@@ -264,6 +264,9 @@ func scanTaskRow(scanner interface{ Scan(...interface{}) error }) (TaskInfo, err
 	}
 	if n8.Valid {
 		t.CompletedAt = n8.String
+	}
+	if items, e := utils.UnmarshalString[[]ItemStatus](nullToString(n9)); e == nil {
+		t.ItemStatus = items
 	}
 	return t, nil
 }
@@ -321,15 +324,19 @@ func RetryTaskAPI(c *gin.Context) {
 	userID := getUserID(c)
 	taskID := c.Param("id")
 
-	var feature, imgIDsStr, paramsStr, pathsStr string
+	var feature, imgIDsStr, pathsStr string
+	var paramsNS, itemNS sql.NullString
 	err := db.QueryRow(
-		"SELECT feature, image_ids, params, source_paths FROM photo_tasks WHERE task_id = ?",
+		"SELECT feature, image_ids, params, source_paths, item_status FROM photo_tasks WHERE task_id = ?",
 		taskID,
-	).Scan(&feature, &imgIDsStr, &paramsStr, &pathsStr)
+	).Scan(&feature, &imgIDsStr, &paramsNS, &pathsStr, &itemNS)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "任务不存在"})
 		return
 	}
+	// 复原原始参数（此前重试传 nil 会丢参数）与逐图状态（用于只重试失败项）
+	params, _ := utils.UnmarshalString[map[string]interface{}](nullToString(paramsNS))
+	prevItems, _ := utils.UnmarshalString[[]ItemStatus](nullToString(itemNS))
 
 	// 解析图片路径
 	var imagePaths []string
@@ -356,11 +363,11 @@ func RetryTaskAPI(c *gin.Context) {
 	user := manager.ParseAuth(c, c.GetHeader("Authorization"))
 	userGroup := auth.GetGroup(db, user)
 
-	// 重置并异步重试
+	// 重置并异步重试（只重跑失败项；保留原参数）
 	// 注：当前 photo_tasks 未持久化 identity_id，重试暂不重新套用一致性身份（后续增强）。
 	db.Exec("UPDATE photo_tasks SET status = ?, progress = 0, error_message = '' WHERE task_id = ?",
 		TaskStatusPending, taskID)
-	go ProcessTask(nil, db, taskID, feature, imagePaths, nil, "", userGroup, nil, nil, "")
+	go ProcessRetryTask(db, taskID, feature, imagePaths, params, "", userGroup, prevItems)
 
 	t, _ := scanTaskRow(db.QueryRow(taskSelectSQL+" WHERE task_id = ?", taskID))
 	c.JSON(http.StatusOK, t)
@@ -471,5 +478,6 @@ func DownloadZipAPI(c *gin.Context) {
 const taskSelectSQL = `
 	SELECT task_id, feature, status, image_ids, result_urls, error_message, progress,
 	       total_images, processed_images, total_videos, processed_videos,
-	       submit_ids, source_filenames, source_paths, folder_name, created_at, completed_at
+	       submit_ids, source_filenames, source_paths, folder_name, created_at, completed_at,
+	       item_status
 	FROM photo_tasks`

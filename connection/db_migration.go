@@ -73,6 +73,14 @@ func doMigration(db *sql.DB) error {
 		return err
 	}
 
+	// add `item_status` field in `photo_tasks` for per-image status (batch pipeline)
+	if err := execSql(db, `
+		ALTER TABLE photo_tasks
+		ADD COLUMN item_status TEXT;
+	`); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -92,6 +100,14 @@ func doSqliteMigration(db *sql.DB) error {
 	if err := execSql(db, `
 		ALTER TABLE photo_identity
 		ADD COLUMN meta TEXT;
+	`); err != nil {
+		return err
+	}
+
+	// add `item_status` field in `photo_tasks` for per-image status (batch pipeline)
+	if err := execSql(db, `
+		ALTER TABLE photo_tasks
+		ADD COLUMN item_status TEXT;
 	`); err != nil {
 		return err
 	}

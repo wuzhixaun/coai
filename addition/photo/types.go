@@ -62,6 +62,15 @@ type ImageInfo struct {
 
 // ── 任务信息 ─────────────────────────────────────────────────
 
+// ItemStatus 逐图状态：批量任务中每张源图的处理结果，支持精确的部分成功与只重试失败项。
+type ItemStatus struct {
+	Index    int      `json:"index"`
+	Filename string   `json:"filename"`
+	Status   string   `json:"status"` // success | failed
+	Urls     []string `json:"urls"`
+	Error    string   `json:"error"`
+}
+
 type TaskInfo struct {
 	TaskId          string   `json:"task_id"`
 	Feature         string   `json:"feature"`
@@ -79,6 +88,7 @@ type TaskInfo struct {
 	CompletedAt     string   `json:"completed_at"`
 	SourceFilenames []string `json:"source_filenames"`
 	SubmitIds       []string `json:"submit_ids"`
+	ItemStatus      []ItemStatus `json:"item_status"`
 }
 
 // ── 一致性身份 ───────────────────────────────────────────────

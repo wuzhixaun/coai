@@ -448,26 +448,147 @@ func ProcessTask(ctx context.Context, db *sql.DB, taskID, feature string, imageP
 	db.Exec("UPDATE photo_tasks SET status = ? WHERE task_id = ?", TaskStatusProcessing, taskID)
 
 	idt := buildIdentityContext(identityRefPaths, identitySeed, identitySubject)
-	resultURLs, err := runFeature(feature, imagePaths, params, channelOverride, userGroup, idt)
-	isVideo := feature == FeatureVideoGen
+	items, allResults := runFeaturePerImage(feature, imagePaths, params, channelOverride, userGroup, idt,
+		func(done, total, produced int) {
+			pct := done * 100 / max1(total)
+			if pct > 99 {
+				pct = 99
+			}
+			db.Exec("UPDATE photo_tasks SET progress = ?, processed_images = ? WHERE task_id = ?", pct, produced, taskID)
+		})
+	finalizeTask(db, taskID, feature, channelOverride, items, allResults)
+}
 
-	resultJSON := utils.Marshal(resultURLs)
-	now := time.Now().Format(time.RFC3339)
-	if err != nil {
-		db.Exec("UPDATE photo_tasks SET status = ?, error_message = ?, result_urls = ?, completed_at = ? WHERE task_id = ?",
-			TaskStatusFailed, err.Error(), resultJSON, now, taskID)
-	} else {
-		processedVideos := 0
-		processedImages := len(resultURLs)
-		if isVideo && len(resultURLs) > 0 {
-			processedVideos = 1
+func max1(n int) int {
+	if n < 1 {
+		return 1
+	}
+	return n
+}
+
+// runFeaturePerImage 逐图运行 feature，返回每张源图的状态与扁平结果。
+// 视频功能多图→一个产出，作为单个 item。逐图执行让"部分成功"精确、并支持只重试失败项。
+func runFeaturePerImage(feature string, imagePaths []string, params map[string]interface{}, channelOverride, userGroup string, idt *identityContext, onProgress func(done, total, produced int)) ([]ItemStatus, []string) {
+	var items []ItemStatus
+	var all []string
+
+	if feature == FeatureVideoGen {
+		urls, err := runFeature(feature, imagePaths, params, channelOverride, userGroup, idt)
+		it := ItemStatus{Index: 0, Status: TaskStatusSuccess, Urls: urls}
+		if len(imagePaths) > 0 {
+			it.Filename = filepath.Base(imagePaths[0])
 		}
-		db.Exec(`UPDATE photo_tasks SET status = ?, result_urls = ?, progress = 100,
-			processed_images = ?, processed_videos = ?, completed_at = ? WHERE task_id = ?`,
-			TaskStatusSuccess, resultJSON, processedImages, processedVideos, now, taskID)
+		if err != nil {
+			it.Status = TaskStatusFailed
+			it.Error = err.Error()
+		}
+		items = append(items, it)
+		all = append(all, urls...)
+		if onProgress != nil {
+			onProgress(1, 1, len(all))
+		}
+		return items, all
 	}
 
-	recordPhotoGeneration(db, taskID, feature, channelOverride, len(resultURLs), err)
+	for i, p := range imagePaths {
+		urls, err := runFeature(feature, []string{p}, params, channelOverride, userGroup, idt)
+		it := ItemStatus{Index: i, Filename: filepath.Base(p), Status: TaskStatusSuccess, Urls: urls}
+		if err != nil {
+			it.Status = TaskStatusFailed
+			it.Error = err.Error()
+		}
+		items = append(items, it)
+		all = append(all, urls...)
+		if onProgress != nil {
+			onProgress(i+1, len(imagePaths), len(all))
+		}
+	}
+	return items, all
+}
+
+// finalizeTask 根据逐图状态写回任务：任一图失败即整任务标记 failed（保留部分产物），
+// 否则成功。同时落库 item_status 供前端展示与只重试失败项。
+func finalizeTask(db *sql.DB, taskID, feature, channelOverride string, items []ItemStatus, allResults []string) {
+	var genErr error
+	for _, it := range items {
+		if it.Status == TaskStatusFailed {
+			genErr = fmt.Errorf("%s", it.Error)
+			break
+		}
+	}
+	processedVideos := 0
+	if feature == FeatureVideoGen && len(allResults) > 0 {
+		processedVideos = 1
+	}
+	resultJSON := utils.Marshal(allResults)
+	itemJSON := utils.Marshal(items)
+	now := time.Now().Format(time.RFC3339)
+	if genErr != nil {
+		db.Exec(`UPDATE photo_tasks SET status = ?, error_message = ?, result_urls = ?, item_status = ?,
+			processed_images = ?, processed_videos = ?, completed_at = ? WHERE task_id = ?`,
+			TaskStatusFailed, genErr.Error(), resultJSON, itemJSON, len(allResults), processedVideos, now, taskID)
+	} else {
+		db.Exec(`UPDATE photo_tasks SET status = ?, error_message = '', result_urls = ?, item_status = ?, progress = 100,
+			processed_images = ?, processed_videos = ?, completed_at = ? WHERE task_id = ?`,
+			TaskStatusSuccess, resultJSON, itemJSON, len(allResults), processedVideos, now, taskID)
+	}
+	recordPhotoGeneration(db, taskID, feature, channelOverride, len(allResults), genErr)
+}
+
+// ProcessRetryTask 重试：若有逐图状态且存在失败项，只重跑失败的源图并合并结果；
+// 否则整任务重跑。视频任务始终整体重跑。
+func ProcessRetryTask(db *sql.DB, taskID, feature string, imagePaths []string, params map[string]interface{}, channelOverride, userGroup string, prevItems []ItemStatus) {
+	defer func() {
+		if r := recover(); r != nil {
+			println("[ProcessRetryTask] PANIC:", fmt.Sprintf("%v", r))
+			db.Exec("UPDATE photo_tasks SET status = ?, error_message = ? WHERE task_id = ?",
+				TaskStatusFailed, fmt.Sprintf("panic: %v", r), taskID)
+		}
+	}()
+	db.Exec("UPDATE photo_tasks SET status = ? WHERE task_id = ?", TaskStatusProcessing, taskID)
+
+	var failedIdx []int
+	for _, it := range prevItems {
+		if it.Status == TaskStatusFailed {
+			failedIdx = append(failedIdx, it.Index)
+		}
+	}
+
+	// 无逐图信息 / 无失败项 / 视频任务 → 整体重跑
+	if len(prevItems) == 0 || len(failedIdx) == 0 || feature == FeatureVideoGen {
+		items, all := runFeaturePerImage(feature, imagePaths, params, channelOverride, userGroup, nil, nil)
+		finalizeTask(db, taskID, feature, channelOverride, items, all)
+		return
+	}
+
+	// 只重跑失败索引，成功项保持不变
+	byIdx := make(map[int]ItemStatus, len(prevItems))
+	for _, it := range prevItems {
+		byIdx[it.Index] = it
+	}
+	for _, idx := range failedIdx {
+		if idx < 0 || idx >= len(imagePaths) {
+			continue
+		}
+		urls, err := runFeature(feature, []string{imagePaths[idx]}, params, channelOverride, userGroup, nil)
+		it := ItemStatus{Index: idx, Filename: filepath.Base(imagePaths[idx]), Status: TaskStatusSuccess, Urls: urls}
+		if err != nil {
+			it.Status = TaskStatusFailed
+			it.Error = err.Error()
+		}
+		byIdx[idx] = it
+	}
+
+	// 按原顺序重建 items 与扁平结果
+	items := make([]ItemStatus, 0, len(prevItems))
+	var all []string
+	for i := 0; i < len(prevItems); i++ {
+		if it, ok := byIdx[i]; ok {
+			items = append(items, it)
+			all = append(all, it.Urls...)
+		}
+	}
+	finalizeTask(db, taskID, feature, channelOverride, items, all)
 }
 
 // buildIdentityContext 读取身份参考图为 base64，组装处理期身份上下文（无身份时返回 nil）。

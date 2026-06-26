@@ -286,6 +286,28 @@ const TaskRow: React.FC<{
       {expanded && (
         <div className="px-4 pb-3 border-t pt-2">
           {task.error_message && <p className="text-destructive text-sm mb-2">{t("photo.task.error", { msg: friendlyError(task.error_message, t) })}</p>}
+          {/* 逐图状态：批量任务每张源图的成功/失败（P3.2） */}
+          {(task.item_status?.length ?? 0) > 1 && (
+            <div className="mb-2">
+              <p className="text-xs text-muted-foreground mb-1">
+                {t("photo.task.item-status")}：{t("photo.task.item-summary", {
+                  ok: task.item_status!.filter((it) => it.status === "success").length,
+                  failed: task.item_status!.filter((it) => it.status === "failed").length,
+                })}
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {task.item_status!.map((it) => (
+                  <span key={it.index}
+                    title={it.status === "failed" ? friendlyError(it.error, t) : it.filename}
+                    className={`px-1.5 py-0.5 rounded text-[10px] border ${
+                      it.status === "failed" ? "border-destructive text-destructive" : "border-input text-muted-foreground"
+                    }`}>
+                    {it.status === "failed" ? "✗" : "✓"} {it.filename || `#${it.index + 1}`}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
           {(task.source_filenames?.length ?? 0) > 0 && (
             <p className="text-muted-foreground text-xs mb-2">{t("photo.task.source-files", { files: task.source_filenames.join(", ") })}</p>
           )}

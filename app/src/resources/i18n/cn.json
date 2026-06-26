@@ -804,7 +804,9 @@
       "dismiss": "移除",
       "pick-download": "下载选中 ({{count}})",
       "pick-all": "全选",
-      "pick-clear": "清除选择"
+      "pick-clear": "清除选择",
+      "item-status": "逐图状态",
+      "item-summary": "{{ok}} 成功 · {{failed}} 失败"
     },
     "features": {
       "white_bg": "白底图",

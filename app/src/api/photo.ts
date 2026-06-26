@@ -5,12 +5,16 @@ export interface PhotoImage {
   url: string; folder_name: string; created_at: string;
 }
 
+export interface PhotoItemStatus {
+  index: number; filename: string; status: "success" | "failed"; urls: string[]; error: string;
+}
+
 export interface PhotoTask {
   task_id: string; feature: string; status: "pending" | "processing" | "success" | "failed";
   image_ids: string[]; result_urls: string[]; error_message: string; progress: number;
   created_at: string; folder_name: string; total_images: number; processed_images: number;
   total_videos: number; processed_videos: number; completed_at?: string;
-  source_filenames: string[]; submit_ids: string[];
+  source_filenames: string[]; submit_ids: string[]; item_status?: PhotoItemStatus[];
 }
 
 export interface PhotoIdentity {

@@ -1831,7 +1831,9 @@
       "dismiss": "移除",
       "pick-download": "下載選取({{count}})",
       "pick-all": "全選",
-      "pick-clear": "清除選擇"
+      "pick-clear": "清除選擇",
+      "item-status": "逐圖狀態",
+      "item-summary": "{{ok}} 成功· {{failed}} 失敗"
     },
     "features": {
       "white_bg": "白底圖",
