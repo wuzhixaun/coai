@@ -1412,6 +1412,8 @@
       "url-fail": "Fetch failed, try a direct image URL"
     },
     "identity": {
+      "panel-title": "Consistency identity & brand kit (optional)",
+      "applied": "Applied",
       "title": "Consistency identity",
       "hint": "When selected, scene/model images use this identity's reference images and locked seed to keep the subject consistent",
       "none": "None",

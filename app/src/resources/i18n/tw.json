@@ -1897,7 +1897,9 @@
       "brand-title": "品牌資產",
       "brand-new": "新品牌",
       "color": "主色",
-      "logo": "Logo（取已選第一張）"
+      "logo": "Logo（取已選第一張）",
+      "panel-title": "一致性身分與品牌權益（可選）",
+      "applied": "已應用"
     },
     "workflow": {
       "title": "一鍵成套",

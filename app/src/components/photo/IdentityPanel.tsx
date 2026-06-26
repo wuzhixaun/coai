@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label.tsx";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
 } from "@/components/ui/dialog.tsx";
-import { Fingerprint, Palette, Plus, X } from "lucide-react";
+import { Fingerprint, Palette, Plus, X, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import type { PhotoIdentity, PhotoImage } from "@/api/photo";
 
@@ -37,6 +37,7 @@ const IdentityPanel: React.FC<Props> = ({
   const [color, setColor] = useState("#000000");
   const [submitting, setSubmitting] = useState(false);
   const [filter, setFilter] = useState<"all" | "product" | "model">("all");
+  const [expanded, setExpanded] = useState(false); // 默认收起，避免占用显眼位置
 
   const consistencyIdentities = identities.filter((it) => it.type === "product" || it.type === "model");
   const brandKits = identities.filter((it) => it.type === "brandkit");
@@ -95,7 +96,19 @@ const IdentityPanel: React.FC<Props> = ({
   );
 
   return (
-    <div className="border-b bg-card px-4 py-2 space-y-1.5">
+    <div className="border-b bg-card px-4 py-2">
+      {/* 折叠头：默认收起，需要时展开 */}
+      <button type="button" onClick={() => setExpanded((v) => !v)}
+        className="flex w-full items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground">
+        <Fingerprint className="h-3.5 w-3.5" /> {t("photo.identity.panel-title")}
+        {(selectedIdentityId || selectedBrandKitId) && (
+          <span className="rounded-full bg-primary/10 text-primary px-1.5 py-0.5 text-[10px] leading-none">{t("photo.identity.applied")}</span>
+        )}
+        <ChevronDown className={`h-3.5 w-3.5 ml-auto transition-transform ${expanded ? "rotate-180" : ""}`} />
+      </button>
+
+      {expanded && (
+      <div className="mt-2 space-y-1.5">
       {/* 一致性身份：商品/模特 */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
@@ -151,6 +164,8 @@ const IdentityPanel: React.FC<Props> = ({
 
       {(selectedIdentityId || selectedBrandKitId) && (
         <p className="text-[10px] text-muted-foreground">{t("photo.identity.hint")}</p>
+      )}
+      </div>
       )}
 
       {/* 新建对话框（商品/模特/品牌共用） */}
