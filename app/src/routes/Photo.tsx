@@ -4,6 +4,7 @@ import UploadPanel from "@/components/photo/UploadPanel";
 import FeaturePanel from "@/components/photo/FeaturePanel";
 import IdentityPanel from "@/components/photo/IdentityPanel";
 import WorkflowBar from "@/components/photo/WorkflowBar";
+import InpaintEditor from "@/components/photo/InpaintEditor";
 import TaskTable from "@/components/photo/TaskTable";
 import { usePhotoTask } from "@/hooks/usePhotoTask";
 import { cn } from "@/components/ui/lib/utils.ts";
@@ -17,7 +18,7 @@ const Photo: React.FC = () => {
     images, imagesLoading, selectedIds, tasks, loading, uploading, uploadProgress,
     upload, uploadFolder, fetchUrl, toggleSelect, selectAll, clearSelection,
     removeImage, clearAll, process, retryAction, deleteAction,
-    refreshTask, refreshAll,
+    refreshTask, refreshAll, inpaint,
     identities, selectedIdentityId, setSelectedIdentityId,
     selectedBrandKitId, setSelectedBrandKitId,
     createIdentityAction, deleteIdentityAction, favoriteImage,
@@ -26,6 +27,19 @@ const Photo: React.FC = () => {
   } = usePhotoTask();
 
   const [mobileTab, setMobileTab] = useState<MobileTab>("upload");
+  const [inpaintUrl, setInpaintUrl] = useState<string | null>(null);
+  const [inpainting, setInpainting] = useState(false);
+
+  const applyInpaint = async (mask: string, prompt: string) => {
+    if (!inpaintUrl) return;
+    setInpainting(true);
+    try {
+      await inpaint(inpaintUrl, mask, prompt);
+      setInpaintUrl(null);
+    } catch { /* error toasted in hook */ } finally {
+      setInpainting(false);
+    }
+  };
 
   const activeCount = tasks.filter((t) => ["pending", "processing"].includes(t.status)).length;
 
@@ -78,6 +92,7 @@ const Photo: React.FC = () => {
           onToggleSelect={toggleSelect} onSelectAll={selectAll}
           onClearSelection={clearSelection} onRemove={removeImage} onClearAll={clearAll}
           onFavorite={favoriteImage} onFetchUrl={fetchUrl}
+          onInpaint={(img) => setInpaintUrl(img.url)}
         />
       </div>
 
@@ -131,8 +146,17 @@ const Photo: React.FC = () => {
           onRetry={retryAction}
           onRefreshTask={refreshTask}
           onRefreshAll={refreshAll}
+          onInpaint={(url) => setInpaintUrl(url)}
         />
       </div>
+
+      <InpaintEditor
+        imageUrl={inpaintUrl}
+        open={!!inpaintUrl}
+        loading={inpainting}
+        onOpenChange={(o) => { if (!o) setInpaintUrl(null); }}
+        onApply={applyInpaint}
+      />
     </div>
   );
 };

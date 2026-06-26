@@ -229,6 +229,21 @@ export function usePhotoTask() {
     } catch (e) { console.error("Favorite image failed:", e); }
   }, [createIdentityAction]);
 
+  // 局部重绘：提交源图 + mask + prompt，结果进任务表并轮询
+  const inpaint = useCallback(async (imageUrl: string, maskBase64: string, prompt: string) => {
+    try {
+      const task = await api.submitInpaint(imageUrl, maskBase64, prompt);
+      if (task && task.task_id) {
+        setTasks((prev) => [task, ...prev]);
+        if (task.status !== "success" && task.status !== "failed") startPolling(task.task_id);
+      }
+      return task;
+    } catch (e) {
+      toast.error(serverErrMsg(e, t("photo.upload.failed-retry")));
+      throw e;
+    }
+  }, [startPolling, t]);
+
   const retryAction = useCallback(async (taskId: string) => {
     try {
       const task = await api.retryTask(taskId);
@@ -261,7 +276,7 @@ export function usePhotoTask() {
 
   return { images, imagesLoading, selectedIds, tasks, loading, uploading, uploadProgress, upload, uploadFolder, fetchUrl,
     toggleSelect, selectAll, clearSelection, removeImage, clearAll, process,
-    retryAction, deleteAction, refreshTask, refreshAll,
+    retryAction, deleteAction, refreshTask, refreshAll, inpaint,
     identities, selectedIdentityId, setSelectedIdentityId,
     selectedBrandKitId, setSelectedBrandKitId,
     refreshIdentities, createIdentityAction, deleteIdentityAction, favoriteImage,

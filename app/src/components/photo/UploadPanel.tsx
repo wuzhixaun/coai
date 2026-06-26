@@ -4,7 +4,7 @@ import type { TFunction } from "i18next";
 import { Button } from "@/components/ui/button.tsx";
 import { Progress } from "@/components/ui/progress.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { Upload, FolderOpen, Trash2, Star, Sparkles, Link as LinkIcon } from "lucide-react";
+import { Upload, FolderOpen, Trash2, Star, Sparkles, Brush, Link as LinkIcon } from "lucide-react";
 import { toast } from "sonner";
 import type { PhotoImage } from "@/api/photo";
 
@@ -23,6 +23,7 @@ interface Props {
   onClearAll: () => void;
   onFavorite?: (img: PhotoImage) => void;
   onFetchUrl?: (url: string) => void | Promise<void>;
+  onInpaint?: (img: PhotoImage) => void;
 }
 
 const ALLOWED = ["image/png", "image/jpeg", "image/webp", "image/bmp", "image/tiff"];
@@ -45,7 +46,7 @@ function filterValid(files: File[], t: TFunction): File[] {
 
 const UploadPanel: React.FC<Props> = ({
   images, imagesLoading, selectedIds, uploading, uploadProgress, onUpload, onUploadFolder,
-  onToggleSelect, onSelectAll, onClearSelection, onRemove, onClearAll, onFavorite, onFetchUrl,
+  onToggleSelect, onSelectAll, onClearSelection, onRemove, onClearAll, onFavorite, onFetchUrl, onInpaint,
 }) => {
   const { t } = useTranslation();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -222,6 +223,13 @@ const UploadPanel: React.FC<Props> = ({
                   className="absolute bottom-5 right-1 bg-background/80 text-amber-500 rounded-full w-5 h-5 flex items-center justify-center hover:bg-background"
                   onClick={(e) => { e.stopPropagation(); onFavorite(img); }}>
                   <Star className="h-3 w-3" />
+                </button>
+              )}
+              {onInpaint && (
+                <button title={t("photo.inpaint.open")}
+                  className="absolute bottom-5 left-1 bg-background/80 text-primary rounded-full w-5 h-5 flex items-center justify-center hover:bg-background"
+                  onClick={(e) => { e.stopPropagation(); onInpaint(img); }}>
+                  <Brush className="h-3 w-3" />
                 </button>
               )}
             </div>

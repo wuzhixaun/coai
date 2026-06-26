@@ -171,6 +171,12 @@ export async function deleteRecipe(id: string): Promise<void> {
   await axios.delete(`/photo/recipe/${id}`);
 }
 
+// 画布内局部重绘：源图(本地 url) + mask(base64) + prompt
+export async function submitInpaint(imageUrl: string, maskBase64: string, prompt: string): Promise<PhotoTask> {
+  const { data } = await axios.post("/photo/inpaint", { image_url: imageUrl, mask_base64: maskBase64, prompt });
+  return data;
+}
+
 export async function listTasks(): Promise<PhotoTask[]> {
   const { data } = await axios.get("/photo/tasks");
   return data;

@@ -739,6 +739,21 @@
       "delete": "删除",
       "manage": "管理身份"
     },
+    "inpaint": {
+      "title": "局部重绘",
+      "hint": "用画笔涂抹要修改/去除的区域（红色），填写要做什么后应用",
+      "brush": "涂抹",
+      "restore": "擦除涂抹",
+      "size": "笔刷",
+      "undo": "撤销",
+      "clear": "清除",
+      "prompt": "想做什么（留空=去除涂抹区）",
+      "prompt-ph": "如：去除瑕疵 / 换成蓝色 / 删除文字",
+      "apply": "应用",
+      "applying": "处理中…",
+      "cancel": "取消",
+      "open": "局部重绘"
+    },
     "feature": {
       "group": {
         "basic": "基础处理",

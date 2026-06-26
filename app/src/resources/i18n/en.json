@@ -1439,6 +1439,21 @@
       "delete": "Delete",
       "manage": "Manage identities"
     },
+    "inpaint": {
+      "title": "Inpaint",
+      "hint": "Brush over the area to edit/remove (red), describe what to do, then apply",
+      "brush": "Brush",
+      "restore": "Unbrush",
+      "size": "Size",
+      "undo": "Undo",
+      "clear": "Clear",
+      "prompt": "What to do (empty = remove brushed area)",
+      "prompt-ph": "e.g. remove blemish / change to blue / delete text",
+      "apply": "Apply",
+      "applying": "Processing…",
+      "cancel": "Cancel",
+      "open": "Inpaint"
+    },
     "feature": {
       "group": {
         "basic": "Basic",

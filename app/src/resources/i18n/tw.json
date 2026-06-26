@@ -1914,6 +1914,21 @@
       "need-features": "請先選擇至少一個功能",
       "cancel": "取消",
       "confirm": "儲存"
+    },
+    "inpaint": {
+      "title": "局部重繪",
+      "hint": "用畫筆塗抹要修改/移除的區域（紅色），填寫要做什麼後塗抹",
+      "brush": "塗抹",
+      "restore": "擦除塗抹",
+      "size": "筆刷",
+      "undo": "撤銷",
+      "clear": "清除",
+      "prompt": "想做什麼（留空=去除塗抹區）",
+      "prompt-ph": "如：去除瑕疵/ 換成藍色/ 刪除文字",
+      "apply": "應用",
+      "applying": "處理中…",
+      "cancel": "取消",
+      "open": "局部重繪"
     }
   }
 }

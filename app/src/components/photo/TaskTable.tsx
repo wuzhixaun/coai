@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog.tsx";
-import { Columns2, Copy, Download, Eye, Image as ImageIcon, Link, Package, RefreshCw, RotateCcw, Trash2, X } from "lucide-react";
+import { Brush, Columns2, Copy, Download, Eye, Image as ImageIcon, Link, Package, RefreshCw, RotateCcw, Trash2, X } from "lucide-react";
 import type { PhotoImage, PhotoTask } from "@/api/photo";
 import { getDownloadFileUrl, getDownloadZipUrl } from "@/api/photo";
 import { useClipboard } from "@/utils/dom.ts";
@@ -24,6 +24,7 @@ interface Props {
   onRetry: (taskId: string) => void;
   onRefreshTask: (taskId: string) => void;
   onRefreshAll: () => void;
+  onInpaint?: (url: string) => void;
 }
 
 const STATUS_COLOR: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -54,16 +55,17 @@ const isVideoUrl = (url: string) => url.endsWith(".mp4") || url.endsWith(".webm"
 
 // 灯箱：包裹任意 trigger，点击后弹出大图/视频预览，支持复制链接、新窗口打开、下载；
 // 传入 sourceUrl（且非视频）时提供「对比原图 / 仅看结果」切换。
-const ResultLightbox: React.FC<{ url: string; index: number; trigger: React.ReactNode; sourceUrl?: string }> = ({ url, index, trigger, sourceUrl }) => {
+const ResultLightbox: React.FC<{ url: string; index: number; trigger: React.ReactNode; sourceUrl?: string; onInpaint?: (url: string) => void }> = ({ url, index, trigger, sourceUrl, onInpaint }) => {
   const { t } = useTranslation();
   const copy = useClipboard();
   const video = isVideoUrl(url);
   const label = video ? t("photo.task.video", { n: index + 1 }) : t("photo.task.result", { n: index + 1 });
   const canCompare = !!sourceUrl && !video;
   const [compare, setCompare] = React.useState(false);
+  const [open, setOpen] = React.useState(false);
 
   return (
-    <Dialog onOpenChange={(o) => { if (!o) setCompare(false); }}>
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setCompare(false); }}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
@@ -76,6 +78,11 @@ const ResultLightbox: React.FC<{ url: string; index: number; trigger: React.Reac
             <Button size="sm" variant={compare ? "default" : "outline"} onClick={() => setCompare((v) => !v)}>
               {compare ? <ImageIcon className="h-4 w-4 mr-1" /> : <Columns2 className="h-4 w-4 mr-1" />}
               {compare ? t("photo.task.result-only") : t("photo.task.compare")}
+            </Button>
+          )}
+          {onInpaint && !video && (
+            <Button size="sm" variant="outline" onClick={() => { setOpen(false); onInpaint(url); }}>
+              <Brush className="h-4 w-4 mr-1" />{t("photo.inpaint.open")}
             </Button>
           )}
           <div className="ml-auto flex gap-2">
@@ -107,7 +114,7 @@ const ResultLightbox: React.FC<{ url: string; index: number; trigger: React.Reac
 };
 
 // 结果项（展开区）：卡片缩略图 + 文件名 + 下载，点击进灯箱
-const ResultPreview: React.FC<{ url: string; index: number; sourceUrl?: string }> = ({ url, index, sourceUrl }) => {
+const ResultPreview: React.FC<{ url: string; index: number; sourceUrl?: string; onInpaint?: (url: string) => void }> = ({ url, index, sourceUrl, onInpaint }) => {
   const { t } = useTranslation();
   const video = isVideoUrl(url);
   const label = video ? t("photo.task.video", { n: index + 1 }) : t("photo.task.result", { n: index + 1 });
@@ -118,6 +125,7 @@ const ResultPreview: React.FC<{ url: string; index: number; sourceUrl?: string }
         url={url}
         index={index}
         sourceUrl={sourceUrl}
+        onInpaint={onInpaint}
         trigger={
           <div className="cursor-pointer group relative">
             {video ? (
@@ -142,13 +150,14 @@ const ResultPreview: React.FC<{ url: string; index: number; sourceUrl?: string }
 };
 
 // 行内缩略图：成功任务无需展开即可看到结果；悬停浮层放大，点击进灯箱
-const InlineThumb: React.FC<{ url: string; index: number; sourceUrl?: string }> = ({ url, index, sourceUrl }) => {
+const InlineThumb: React.FC<{ url: string; index: number; sourceUrl?: string; onInpaint?: (url: string) => void }> = ({ url, index, sourceUrl, onInpaint }) => {
   const video = isVideoUrl(url);
   return (
     <ResultLightbox
       url={url}
       index={index}
       sourceUrl={sourceUrl}
+      onInpaint={onInpaint}
       trigger={
         <button
           type="button"
@@ -184,7 +193,8 @@ const TaskRow: React.FC<{
   onDelete: (id: string) => void;
   onRetry: (id: string) => void;
   onRefresh: (id: string) => void;
-}> = ({ task, sourceUrls = [], onDelete, onRetry, onRefresh }) => {
+  onInpaint?: (url: string) => void;
+}> = ({ task, sourceUrls = [], onDelete, onRetry, onRefresh, onInpaint }) => {
   const { t } = useTranslation();
   const [expanded, setExpanded] = React.useState(false);
   const [picked, setPicked] = React.useState<Set<string>>(new Set());
@@ -249,7 +259,7 @@ const TaskRow: React.FC<{
         {!isActive && results.length > 0 && (
           <div className="hidden md:flex items-center gap-1">
             {results.slice(0, 3).map((url, i) => (
-              <InlineThumb key={i} url={url} index={i} sourceUrl={sourceFor(i)} />
+              <InlineThumb key={i} url={url} index={i} sourceUrl={sourceFor(i)} onInpaint={onInpaint} />
             ))}
             {results.length > 3 && (
               <span className="text-xs text-muted-foreground">+{results.length - 3}</span>
@@ -336,7 +346,7 @@ const TaskRow: React.FC<{
               )}
               <div className="flex flex-wrap gap-2">
                 {results.map((url, i) => (
-                  <div key={i} className="relative">
+                  <div key={`r-${i}`} className="relative">
                     {/* 多变体挑选：勾选后可仅下载选中（收藏择优） */}
                     <button type="button" onClick={() => togglePick(url)}
                       className={`absolute top-1 left-1 z-10 h-5 w-5 rounded-full border flex items-center justify-center text-[10px] ${
@@ -344,7 +354,7 @@ const TaskRow: React.FC<{
                       }`}>
                       ✓
                     </button>
-                    <ResultPreview url={url} index={i} sourceUrl={sourceFor(i)} />
+                    <ResultPreview url={url} index={i} sourceUrl={sourceFor(i)} onInpaint={onInpaint} />
                   </div>
                 ))}
               </div>
@@ -356,7 +366,7 @@ const TaskRow: React.FC<{
   );
 };
 
-const TaskTable: React.FC<Props> = ({ tasks, images = [], onDelete, onRetry, onRefreshTask, onRefreshAll }) => {
+const TaskTable: React.FC<Props> = ({ tasks, images = [], onDelete, onRetry, onRefreshTask, onRefreshAll, onInpaint }) => {
   const { t } = useTranslation();
   const [tab, setTab] = React.useState<"active" | "history">("active");
 
@@ -403,7 +413,7 @@ const TaskTable: React.FC<Props> = ({ tasks, images = [], onDelete, onRetry, onR
       ) : (
         list.map((task) => (
           <TaskRow key={task.task_id} task={task} sourceUrls={resolveSources(task)}
-            onDelete={onDelete} onRetry={onRetry} onRefresh={onRefreshTask} />
+            onDelete={onDelete} onRetry={onRetry} onRefresh={onRefreshTask} onInpaint={onInpaint} />
         ))
       )}
     </div>
