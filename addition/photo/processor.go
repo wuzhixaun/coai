@@ -447,18 +447,46 @@ func ProcessTask(ctx context.Context, db *sql.DB, taskID, feature string, imageP
 	}()
 	db.Exec("UPDATE photo_tasks SET status = ? WHERE task_id = ?", TaskStatusProcessing, taskID)
 
-	// 一致性身份：读取参考图为 base64（仅一次），供 scene_gen/model_image 注入。
-	var idt *identityContext
-	if len(identityRefPaths) > 0 || identitySeed != nil || identitySubject != "" {
-		var refB64 []string
-		for _, p := range identityRefPaths {
-			if b, e := ReadImageBytesAsBase64(p); e == nil {
-				refB64 = append(refB64, b)
-			}
+	idt := buildIdentityContext(identityRefPaths, identitySeed, identitySubject)
+	resultURLs, err := runFeature(feature, imagePaths, params, channelOverride, userGroup, idt)
+	isVideo := feature == FeatureVideoGen
+
+	resultJSON := utils.Marshal(resultURLs)
+	now := time.Now().Format(time.RFC3339)
+	if err != nil {
+		db.Exec("UPDATE photo_tasks SET status = ?, error_message = ?, result_urls = ?, completed_at = ? WHERE task_id = ?",
+			TaskStatusFailed, err.Error(), resultJSON, now, taskID)
+	} else {
+		processedVideos := 0
+		processedImages := len(resultURLs)
+		if isVideo && len(resultURLs) > 0 {
+			processedVideos = 1
 		}
-		idt = &identityContext{refImages: refB64, lockedSeed: identitySeed, subject: identitySubject}
+		db.Exec(`UPDATE photo_tasks SET status = ?, result_urls = ?, progress = 100,
+			processed_images = ?, processed_videos = ?, completed_at = ? WHERE task_id = ?`,
+			TaskStatusSuccess, resultJSON, processedImages, processedVideos, now, taskID)
 	}
 
+	recordPhotoGeneration(db, taskID, feature, channelOverride, len(resultURLs), err)
+}
+
+// buildIdentityContext 读取身份参考图为 base64，组装处理期身份上下文（无身份时返回 nil）。
+func buildIdentityContext(identityRefPaths []string, identitySeed *int, identitySubject string) *identityContext {
+	if len(identityRefPaths) == 0 && identitySeed == nil && identitySubject == "" {
+		return nil
+	}
+	var refB64 []string
+	for _, p := range identityRefPaths {
+		if b, e := ReadImageBytesAsBase64(p); e == nil {
+			refB64 = append(refB64, b)
+		}
+	}
+	return &identityContext{refImages: refB64, lockedSeed: identitySeed, subject: identitySubject}
+}
+
+// runFeature 执行单个功能（不触碰 DB），返回结果 URL 列表与错误。
+// 供 ProcessTask 与工作流编排（ProcessWorkflowTask）共用。
+func runFeature(feature string, imagePaths []string, params map[string]interface{}, channelOverride, userGroup string, idt *identityContext) ([]string, error) {
 	var resultURLs []string
 	var err error
 	isVideo := feature == FeatureVideoGen
@@ -579,23 +607,7 @@ func ProcessTask(ctx context.Context, db *sql.DB, taskID, feature string, imageP
 		}
 	}
 
-	resultJSON := utils.Marshal(resultURLs)
-	now := time.Now().Format(time.RFC3339)
-	if err != nil {
-		db.Exec("UPDATE photo_tasks SET status = ?, error_message = ?, result_urls = ?, completed_at = ? WHERE task_id = ?",
-			TaskStatusFailed, err.Error(), resultJSON, now, taskID)
-	} else {
-		processedVideos := 0
-		processedImages := len(resultURLs)
-		if isVideo && len(resultURLs) > 0 {
-			processedVideos = 1
-		}
-		db.Exec(`UPDATE photo_tasks SET status = ?, result_urls = ?, progress = 100,
-			processed_images = ?, processed_videos = ?, completed_at = ? WHERE task_id = ?`,
-			TaskStatusSuccess, resultJSON, processedImages, processedVideos, now, taskID)
-	}
-
-	recordPhotoGeneration(db, taskID, feature, channelOverride, len(resultURLs), err)
+	return resultURLs, err
 }
 
 // recordPhotoGeneration 把 Photo 流水线的一次生成同时计入两处：

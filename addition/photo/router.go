@@ -30,6 +30,10 @@ func Register(app *gin.RouterGroup) {
 	// 处理功能 (统一入口)
 	group.POST("/process", ProcessAPI)
 
+	// 一键成套素材工作流
+	group.GET("/workflow/templates", ListWorkflowTemplatesAPI)
+	group.POST("/workflow", WorkflowAPI)
+
 	// 任务管理
 	group.GET("/tasks", ListTasksAPI)
 	group.GET("/tasks/:id", GetTaskAPI)
