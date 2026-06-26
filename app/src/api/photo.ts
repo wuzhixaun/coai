@@ -114,6 +114,31 @@ export async function deleteIdentity(id: string): Promise<void> {
   await axios.delete(`/photo/identity/${id}`);
 }
 
+// ── 一键成套素材工作流 ──────────────────────────────────────
+export interface WorkflowStep {
+  feature: string;
+  params?: Record<string, unknown>;
+}
+
+export interface WorkflowTemplate {
+  key: string;
+  name: string;
+  steps: WorkflowStep[];
+}
+
+export async function listWorkflowTemplates(): Promise<WorkflowTemplate[]> {
+  const { data } = await axios.get("/photo/workflow/templates");
+  return data;
+}
+
+export async function submitWorkflow(body: {
+  template?: string; steps?: WorkflowStep[]; image_ids: string[];
+  identity_id?: string; brand_kit_id?: string;
+}): Promise<PhotoTask> {
+  const { data } = await axios.post("/photo/workflow", body);
+  return data;
+}
+
 export async function listTasks(): Promise<PhotoTask[]> {
   const { data } = await axios.get("/photo/tasks");
   return data;

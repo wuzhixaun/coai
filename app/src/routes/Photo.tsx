@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import UploadPanel from "@/components/photo/UploadPanel";
 import FeaturePanel from "@/components/photo/FeaturePanel";
 import IdentityPanel from "@/components/photo/IdentityPanel";
+import WorkflowBar from "@/components/photo/WorkflowBar";
 import TaskTable from "@/components/photo/TaskTable";
 import { usePhotoTask } from "@/hooks/usePhotoTask";
 import { cn } from "@/components/ui/lib/utils.ts";
@@ -20,6 +21,7 @@ const Photo: React.FC = () => {
     identities, selectedIdentityId, setSelectedIdentityId,
     selectedBrandKitId, setSelectedBrandKitId,
     createIdentityAction, deleteIdentityAction, favoriteImage,
+    templates, runWorkflow,
   } = usePhotoTask();
 
   const [mobileTab, setMobileTab] = useState<MobileTab>("upload");
@@ -96,6 +98,12 @@ const Photo: React.FC = () => {
           onSelectBrandKit={setSelectedBrandKitId}
           onCreate={createIdentityAction}
           onDelete={deleteIdentityAction}
+        />
+        <WorkflowBar
+          templates={templates}
+          selectedCount={selectedIds.length}
+          loading={loading}
+          onRun={runWorkflow}
         />
         <FeaturePanel
           selectedCount={selectedIds.length} loading={loading}

@@ -1510,7 +1510,13 @@
       "resize": "Resize",
       "material_extract": "Extract Material",
       "product_extract": "Extract Product",
-      "video_gen": "Video"
+      "video_gen": "Video",
+      "workflow": "Workflow set"
+    },
+    "workflow": {
+      "title": "One-click set",
+      "hint": "Select images, click a template to auto-generate the full set",
+      "run": "Generate"
     },
     "status": {
       "pending": "Queued",

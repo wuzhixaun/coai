@@ -810,7 +810,13 @@
       "resize": "改尺寸",
       "material_extract": "素材提取",
       "product_extract": "商品提取",
-      "video_gen": "视频"
+      "video_gen": "视频",
+      "workflow": "成套套件"
+    },
+    "workflow": {
+      "title": "一键成套",
+      "hint": "选好图片后点模板，自动串行产出整套素材",
+      "run": "一键生成"
     },
     "status": {
       "pending": "排队中",

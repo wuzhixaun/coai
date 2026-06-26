@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import type { PhotoImage, PhotoTask, PhotoIdentity } from "@/api/photo";
+import type { PhotoImage, PhotoTask, PhotoIdentity, WorkflowTemplate } from "@/api/photo";
 import * as api from "@/api/photo";
 
 const POLL_INTERVAL = 10_000;
@@ -15,6 +15,7 @@ export function usePhotoTask() {
   const [identities, setIdentities] = useState<PhotoIdentity[]>([]);
   const [selectedIdentityId, setSelectedIdentityId] = useState<string>("");
   const [selectedBrandKitId, setSelectedBrandKitId] = useState<string>("");
+  const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -60,6 +61,9 @@ export function usePhotoTask() {
     }).catch(() => {}).finally(() => setImagesLoading(false));
     api.listIdentities().then((data) => {
       if (Array.isArray(data)) setIdentities(data);
+    }).catch(() => {});
+    api.listWorkflowTemplates().then((data) => {
+      if (Array.isArray(data)) setTemplates(data);
     }).catch(() => {});
     return () => { pollingRef.current.forEach((t) => clearInterval(t)); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -123,6 +127,23 @@ export function usePhotoTask() {
         }
       } catch (e) { console.error("Process failed:", e); }
     }
+    setLoading(false);
+  }, [selectedIds, startPolling, selectedIdentityId, selectedBrandKitId]);
+
+  // 一键成套：按模板串行执行多步，结果聚合为一个 workflow 任务
+  const runWorkflow = useCallback(async (templateKey: string) => {
+    if (selectedIds.length === 0) return;
+    setLoading(true);
+    try {
+      const task = await api.submitWorkflow({
+        template: templateKey, image_ids: selectedIds,
+        identity_id: selectedIdentityId, brand_kit_id: selectedBrandKitId,
+      });
+      if (task && task.task_id) {
+        setTasks((prev) => [task, ...prev]);
+        if (task.status !== "success" && task.status !== "failed") startPolling(task.task_id);
+      }
+    } catch (e) { console.error("Workflow failed:", e); }
     setLoading(false);
   }, [selectedIds, startPolling, selectedIdentityId, selectedBrandKitId]);
 
@@ -195,5 +216,6 @@ export function usePhotoTask() {
     retryAction, deleteAction, refreshTask, refreshAll,
     identities, selectedIdentityId, setSelectedIdentityId,
     selectedBrandKitId, setSelectedBrandKitId,
-    refreshIdentities, createIdentityAction, deleteIdentityAction, favoriteImage };
+    refreshIdentities, createIdentityAction, deleteIdentityAction, favoriteImage,
+    templates, runWorkflow };
 }
