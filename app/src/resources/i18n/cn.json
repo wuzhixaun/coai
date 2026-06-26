@@ -753,7 +753,9 @@
       "retry": "重试",
       "delete": "删除",
       "compare": "对比原图",
-      "result-only": "仅看结果"
+      "result-only": "仅看结果",
+      "progress-detail": "正在{{feature}} · 第 {{done}}/{{total}} 张",
+      "progress-detail-video": "正在生成视频 · 第 {{done}}/{{total}} 个"
     },
     "features": {
       "white_bg": "白底图",

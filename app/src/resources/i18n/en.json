@@ -1453,7 +1453,9 @@
       "retry": "Retry",
       "delete": "Delete",
       "compare": "Compare original",
-      "result-only": "Result only"
+      "result-only": "Result only",
+      "progress-detail": "{{feature}} · {{done}}/{{total}}",
+      "progress-detail-video": "Generating video · {{done}}/{{total}}"
     },
     "features": {
       "white_bg": "White BG",

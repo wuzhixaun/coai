@@ -205,6 +205,17 @@ const TaskRow: React.FC<{
             <div className={`h-full rounded-full transition-all ${task.status === "failed" ? "bg-destructive" : "bg-primary"}`}
               style={{ width: `${task.progress}%` }} />
           </div>
+          {task.status === "processing" && (
+            <p className="mt-1 text-[10px] text-muted-foreground truncate">
+              {task.total_videos > 0
+                ? t("photo.task.progress-detail-video", { done: task.processed_videos, total: task.total_videos })
+                : t("photo.task.progress-detail", {
+                    feature: t(`photo.features.${task.feature}`, task.feature),
+                    done: task.processed_images,
+                    total: task.total_images,
+                  })}
+            </p>
+          )}
         </div>
         <span className="text-xs text-muted-foreground">
           {task.processed_images}/{task.total_images}
