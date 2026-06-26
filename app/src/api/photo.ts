@@ -189,6 +189,7 @@ export function getDownloadFileUrl(url: string): string {
   return `/photo/download/file?url=${encodeURIComponent(url)}`;
 }
 
-export function getDownloadZipUrl(urls: string[]): string {
-  return `/photo/download/zip?urls=${encodeURIComponent(urls.join(","))}`;
+export function getDownloadZipUrl(urls: string[], prefix?: string): string {
+  const base = `/photo/download/zip?urls=${encodeURIComponent(urls.join(","))}`;
+  return prefix ? `${base}&prefix=${encodeURIComponent(prefix)}` : base;
 }

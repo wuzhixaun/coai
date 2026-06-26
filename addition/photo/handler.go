@@ -408,6 +408,13 @@ func DownloadZipAPI(c *gin.Context) {
 		return
 	}
 
+	// 自定义文件名前缀（SKU/平台/序号），默认 result；做基础清洗防止路径穿越
+	zipPrefix := strings.TrimSpace(c.Query("prefix"))
+	if zipPrefix == "" {
+		zipPrefix = "result"
+	}
+	zipPrefix = strings.NewReplacer("/", "_", "\\", "_", "..", "_", " ", "_").Replace(zipPrefix)
+
 	// 解析逗号分隔的 URL 列表
 	urlParts := strings.Split(urlsParam, ",")
 	var urls []string
@@ -437,7 +444,7 @@ func DownloadZipAPI(c *gin.Context) {
 			continue
 		}
 
-		entryName := fmt.Sprintf("result_%d%s", i+1, filepath.Ext(filePath))
+		entryName := fmt.Sprintf("%s_%d%s", zipPrefix, i+1, filepath.Ext(filePath))
 		entry, err := w.Create(entryName)
 		if err != nil {
 			f.Close()

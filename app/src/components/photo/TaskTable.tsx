@@ -193,6 +193,9 @@ const TaskRow: React.FC<{
   const results = task.result_urls ?? [];
   // 对比用源图：优先按索引配对，单源/数量不匹配时回退到首张源图
   const sourceFor = (i: number) => sourceUrls[i] ?? sourceUrls[0];
+  // ZIP 文件名前缀：功能 + 首个源文件名(去扩展名)，便于分平台/批量归档
+  const srcStem = (task.source_filenames?.[0] || "").replace(/\.[^.]+$/, "");
+  const zipPrefix = [task.feature, srcStem].filter(Boolean).join("_") || "result";
   // 部分成功：后端任一图出错即把整任务标记 failed，但已成功的结果仍写入 result_urls。
   // 期望产出数 = total_videos 优先（视频），否则 total_images。
   const expected = task.total_videos > 0 ? task.total_videos : task.total_images;
@@ -284,7 +287,7 @@ const TaskRow: React.FC<{
             <>
               {results.length > 1 && (
                 <div className="flex justify-end mb-2">
-                  <a href={getDownloadZipUrl(results)} download>
+                  <a href={getDownloadZipUrl(results, zipPrefix)} download>
                     <Button size="sm" variant="outline">
                       <Package className="h-3 w-3 mr-1" />{t("photo.task.zip-download", { count: results.length })}
                     </Button>
