@@ -4,7 +4,7 @@ import type { TFunction } from "i18next";
 import { Button } from "@/components/ui/button.tsx";
 import { Progress } from "@/components/ui/progress.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { Upload, FolderOpen, Trash2 } from "lucide-react";
+import { Upload, FolderOpen, Trash2, ImageOff, Shirt, Eraser } from "lucide-react";
 import { toast } from "sonner";
 import type { PhotoImage } from "@/api/photo";
 
@@ -153,6 +153,31 @@ const UploadPanel: React.FC<Props> = ({
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={`init-sk-${i}`} className="w-full h-24 rounded" />
           ))}
+        </div>
+      )}
+
+      {/* 空状态教学卡片：无图且加载/上传均结束时，引导按常见场景上传，解决冷启动 */}
+      {!imagesLoading && !uploading && images.length === 0 && (
+        <div className="mt-4">
+          <p className="text-sm font-medium text-foreground">{t("photo.upload.empty-title")}</p>
+          <p className="text-xs text-muted-foreground mb-3">{t("photo.upload.empty-desc")}</p>
+          <div className="space-y-2">
+            {[
+              { key: "white_bg", icon: <ImageOff className="h-4 w-4" /> },
+              { key: "model", icon: <Shirt className="h-4 w-4" /> },
+              { key: "watermark", icon: <Eraser className="h-4 w-4" /> },
+            ].map((s) => (
+              <button
+                key={s.key}
+                type="button"
+                className="flex w-full items-center gap-2 rounded-md border border-dashed p-2 text-left text-sm text-foreground transition-colors hover:border-primary/50 hover:bg-muted/40"
+                onClick={() => fileRef.current?.click()}
+              >
+                <span className="text-primary">{s.icon}</span>
+                {t(`photo.upload.starter-${s.key}`)}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

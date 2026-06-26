@@ -1401,7 +1401,12 @@
       "too-big": "{{count}} file(s) exceed 50MB, skipped",
       "success": "Uploaded {{count}} image(s)",
       "failed": "Upload failed: {{reason}}",
-      "failed-retry": "please retry"
+      "failed-retry": "please retry",
+      "empty-title": "Upload a product photo to start",
+      "empty-desc": "Pick a common scenario and click to upload your image",
+      "starter-white_bg": "White background",
+      "starter-model": "AI model try-on",
+      "starter-watermark": "Batch erase / watermark removal"
     },
     "feature": {
       "title": "AI Image Tools",
@@ -1440,6 +1445,7 @@
       "refresh": "Refresh",
       "empty-active": "No active tasks",
       "empty-history": "No history",
+      "empty-hint": "Upload and select images, then pick a feature to start",
       "error": "Error: {{msg}}",
       "source-files": "Source: {{files}}",
       "zip-download": "Download zip ({{count}})",

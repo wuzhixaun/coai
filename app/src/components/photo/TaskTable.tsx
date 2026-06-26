@@ -344,7 +344,10 @@ const TaskTable: React.FC<Props> = ({ tasks, images = [], onDelete, onRetry, onR
       </div>
 
       {list.length === 0 ? (
-        <p className="text-center text-muted-foreground py-8">{tab === "active" ? t("photo.task.empty-active") : t("photo.task.empty-history")}</p>
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">{tab === "active" ? t("photo.task.empty-active") : t("photo.task.empty-history")}</p>
+          <p className="mt-1 text-xs text-muted-foreground/70">{t("photo.task.empty-hint")}</p>
+        </div>
       ) : (
         list.map((task) => (
           <TaskRow key={task.task_id} task={task} sourceUrls={resolveSources(task)}
