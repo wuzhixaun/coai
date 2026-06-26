@@ -1752,7 +1752,12 @@
       "too-big": "50 MBを超える{{count}}個のファイル、スキップ",
       "success": "{{count}}枚の画像が正常にアップロードされました",
       "failed": "画像のアップロードに失敗しました: {{reason}}",
-      "failed-retry": "もう一度お試しください"
+      "failed-retry": "もう一度お試しください",
+      "empty-title": "処理を開始するには、製品マップをアップロードしてください",
+      "empty-desc": "一般的なシナリオを選択し、[画像をアップロード]をクリックして開始します",
+      "starter-white_bg": "ワンクリックの白い背景グラフ",
+      "starter-model": "AIモデルのドレスアップ",
+      "starter-watermark": "透かし/消去の一括処理"
     },
     "feature": {
       "title": "AI画像処理機能",
@@ -1802,7 +1807,15 @@
       "cancel-task": "ジョブをキャンセル",
       "cancel": "キャンセル",
       "retry": "リトライ",
-      "delete": "デリート"
+      "delete": "デリート",
+      "empty-hint": "画像をアップロードして選択し、処理を開始する関数を選択します",
+      "compare": "元の画像と比較",
+      "result-only": "結果のみを表示",
+      "progress-detail": "{{feature}}・ページ{{done }}/{{ total}}",
+      "progress-detail-video": "ビデオを生成中· {{done }}/{{ total}}",
+      "partial": "部分的な成功{{done }}/{{ total}}",
+      "retry-missing": "失敗したアイテムを再試行",
+      "dismiss": "削除"
     },
     "features": {
       "white_bg": "ホワイトベースチャート",

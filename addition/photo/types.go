@@ -81,6 +81,33 @@ type TaskInfo struct {
 	SubmitIds       []string `json:"submit_ids"`
 }
 
+// ── 一致性身份 ───────────────────────────────────────────────
+
+const (
+	IdentityTypeProduct = "product"
+	IdentityTypeModel   = "model"
+)
+
+// IdentityInfo 商品/模特一致性身份：一组参考图 + 锁定 seed + 主体描述。
+type IdentityInfo struct {
+	Id            string   `json:"id"`
+	Type          string   `json:"type"`
+	Name          string   `json:"name"`
+	RefImageIds   []string `json:"ref_image_ids"`
+	RefImageUrls  []string `json:"ref_image_urls"` // 派生：供前端展示，不入库
+	Seed          int      `json:"seed"`
+	SubjectPrompt string   `json:"subject_prompt"`
+	CreatedAt     string   `json:"created_at"`
+}
+
+// CreateIdentityRequest 新建身份请求
+type CreateIdentityRequest struct {
+	Type          string   `json:"type"`
+	Name          string   `json:"name" binding:"required"`
+	RefImageIds   []string `json:"ref_image_ids" binding:"required,min=1"`
+	SubjectPrompt string   `json:"subject_prompt"`
+}
+
 // ── 请求体 ───────────────────────────────────────────────────
 
 // ProcessRequest 统一处理请求（多功能批量）
@@ -91,4 +118,5 @@ type ProcessRequest struct {
 	SystemPrompt    string                 `json:"system_prompt"`
 	ChannelOverride string                 `json:"channel_override"` // 可选，覆盖默认渠道
 	FeatureParams   map[string]interface{} `json:"feature_params"`   // 每个功能的独立参数
+	IdentityId      string                 `json:"identity_id"`      // 可选，应用一致性身份（参考图+seed+主体）
 }

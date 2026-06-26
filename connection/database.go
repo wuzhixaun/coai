@@ -94,6 +94,7 @@ func ConnectDatabase() *sql.DB {
 	CreatePaymentTable(db)
 	CreatePhotoImagesTable(db)
 	CreatePhotoTasksTable(db)
+	CreatePhotoIdentityTable(db)
 	CreateImageGenerationTable(db)
 
 	if err := doMigration(db); err != nil {
@@ -425,6 +426,28 @@ func CreateImageGenerationTable(db *sql.DB) {
 		  INDEX idx_status (status),
 		  INDEX idx_source (source),
 		  INDEX idx_created_at (created_at)
+		);
+	`)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+// CreatePhotoIdentityTable 商品/模特一致性身份：保存一组参考图(引用 photo_images)、
+// 锁定的 seed 与主体描述 prompt，用于跨场景/跨功能保持主体一致（Phase 1 一致性引擎）。
+func CreatePhotoIdentityTable(db *sql.DB) {
+	_, err := globals.ExecDb(db, `
+		CREATE TABLE IF NOT EXISTS photo_identity (
+		  id VARCHAR(12) PRIMARY KEY,
+		  user_id BIGINT NOT NULL,
+		  type VARCHAR(16) NOT NULL DEFAULT 'product',
+		  name VARCHAR(255) NOT NULL,
+		  ref_image_ids TEXT NOT NULL,
+		  seed INT DEFAULT -1,
+		  subject_prompt TEXT,
+		  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		  INDEX idx_user (user_id),
+		  INDEX idx_type (type)
 		);
 	`)
 	if err != nil {

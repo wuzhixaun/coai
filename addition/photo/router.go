@@ -22,6 +22,11 @@ func Register(app *gin.RouterGroup) {
 	group.GET("/images/:id", GetImageAPI)
 	group.DELETE("/images/:id", DeleteImageAPI)
 
+	// 一致性身份（商品/模特）
+	group.POST("/identity", CreateIdentityAPI)
+	group.GET("/identity", ListIdentitiesAPI)
+	group.DELETE("/identity/:id", DeleteIdentityAPI)
+
 	// 处理功能 (统一入口)
 	group.POST("/process", ProcessAPI)
 
