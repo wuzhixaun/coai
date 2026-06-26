@@ -6,6 +6,12 @@ import * as api from "@/api/photo";
 
 const POLL_INTERVAL = 10_000;
 
+// 从 axios 错误中提取后端 message（如"额度不足"），否则回退
+function serverErrMsg(e: unknown, fallback: string): string {
+  const r = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+  return r || (e instanceof Error ? e.message : fallback);
+}
+
 export function usePhotoTask() {
   const { t } = useTranslation();
   const [images, setImages] = useState<PhotoImage[]>([]);
@@ -129,10 +135,13 @@ export function usePhotoTask() {
           });
           setTasks((prev) => [...newTasks, ...prev]);
         }
-      } catch (e) { console.error("Process failed:", e); }
+      } catch (e) {
+        console.error("Process failed:", e);
+        toast.error(serverErrMsg(e, t("photo.upload.failed-retry")));
+      }
     }
     setLoading(false);
-  }, [selectedIds, startPolling, selectedIdentityId, selectedBrandKitId]);
+  }, [selectedIds, startPolling, selectedIdentityId, selectedBrandKitId, t]);
 
   // 一键成套：按模板或自定义步骤(配方)串行执行，结果聚合为一个 workflow 任务
   const submitWorkflowBody = useCallback(async (body: { template?: string; steps?: WorkflowStep[] }) => {
@@ -147,9 +156,12 @@ export function usePhotoTask() {
         setTasks((prev) => [task, ...prev]);
         if (task.status !== "success" && task.status !== "failed") startPolling(task.task_id);
       }
-    } catch (e) { console.error("Workflow failed:", e); }
+    } catch (e) {
+      console.error("Workflow failed:", e);
+      toast.error(serverErrMsg(e, t("photo.upload.failed-retry")));
+    }
     setLoading(false);
-  }, [selectedIds, startPolling, selectedIdentityId, selectedBrandKitId]);
+  }, [selectedIds, startPolling, selectedIdentityId, selectedBrandKitId, t]);
 
   const runWorkflow = useCallback((templateKey: string) => submitWorkflowBody({ template: templateKey }), [submitWorkflowBody]);
   const runWorkflowSteps = useCallback((steps: WorkflowStep[]) => submitWorkflowBody({ steps }), [submitWorkflowBody]);

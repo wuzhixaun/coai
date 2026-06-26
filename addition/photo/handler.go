@@ -202,6 +202,24 @@ func ProcessAPI(c *gin.Context) {
 	// 一致性身份 + 品牌资产：解析为注入参数（参考图路径 / 锁定 seed / 主体描述），全局套用。
 	identityRefPaths, identitySeed, identitySubject := resolveInjection(db, userID, req.IdentityId, req.BrandKitId)
 
+	// 额度预检：估算本次总消耗，余额不足则在创建任务前拒绝（避免空跑扣费）。
+	var estimate float32
+	for _, feature := range req.Features {
+		cnt := len(req.ImageIds)
+		if feature == FeatureVideoGen {
+			cnt = 1
+		} else if IsAIFeature(feature) && supportsGenerateCount(feature) {
+			cnt = len(req.ImageIds) * clampGenerateCount(getIntParam(req.Params, "image_count", 1))
+		}
+		estimate += PhotoUnitPrice(feature, req.ChannelOverride) * float32(cnt)
+	}
+	if estimate > 0 {
+		if u := auth.GetUserById(db, userID); u != nil && u.GetQuota(db) < estimate {
+			c.JSON(http.StatusPaymentRequired, gin.H{"status": "error", "message": "额度不足，请充值后重试"})
+			return
+		}
+	}
+
 	responses := make([]TaskInfo, 0, len(req.Features))
 	for _, feature := range req.Features {
 		isVideo := feature == FeatureVideoGen

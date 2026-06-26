@@ -123,6 +123,18 @@ func WorkflowAPI(c *gin.Context) {
 		}
 	}
 
+	// 额度预检：工作流逐步出图，估算 Σ(各步单价 × 图片数)，余额不足则拒绝。
+	var estimate float32
+	for _, step := range steps {
+		estimate += PhotoUnitPrice(step.Feature, req.ChannelOverride) * float32(len(req.ImageIds))
+	}
+	if estimate > 0 {
+		if u := auth.GetUserById(db, userID); u != nil && u.GetQuota(db) < estimate {
+			c.JSON(http.StatusPaymentRequired, gin.H{"status": "error", "message": "额度不足，请充值后重试"})
+			return
+		}
+	}
+
 	// 一致性身份 + 品牌资产解析（复用与 ProcessAPI 一致的注入参数）
 	identityRefPaths, identitySeed, identitySubject := resolveInjection(db, userID, req.IdentityId, req.BrandKitId)
 

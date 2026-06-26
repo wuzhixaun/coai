@@ -12,11 +12,22 @@ import (
 
 	adaptercommon "chat/adapter/common"
 	"chat/admin"
+	"chat/auth"
 	"chat/channel"
 	"chat/globals"
 	"chat/manager"
 	"chat/utils"
 )
+
+// PhotoUnitPrice 返回某功能(模型)的单位计费价：ImageBilling=单张价、TimesBilling=单次价；
+// 非计费模型返回 0。复用站点既有定价(channel.ChargeInstance)，不另立价表。
+func PhotoUnitPrice(feature, channelOverride string) float32 {
+	charge := channel.ChargeInstance.GetCharge(resolveModel(feature, channelOverride))
+	if charge == nil || !charge.IsBilling() {
+		return 0
+	}
+	return charge.GetLimit()
+}
 
 const MaxWorkers = 4
 const MaxGenerateCount = 6
@@ -754,7 +765,19 @@ func recordPhotoGeneration(db *sql.DB, taskID, feature, channelOverride string, 
 	if userID > 0 {
 		_ = db.QueryRow("SELECT username FROM auth WHERE id = ?", userID).Scan(&username)
 	}
-	manager.RecordImageOutcome(db, userID, username, manager.ImageSourcePhoto, model, 0, "jimeng-api", imageCount, 0, 0, genErr)
+
+	// 计费：仅对成功产出按 单价 × 张数 扣费（失败不扣）；复用 auth.User.UseQuota。
+	var quota float32
+	if genErr == nil && imageCount > 0 {
+		if price := PhotoUnitPrice(feature, channelOverride); price > 0 {
+			quota = price * float32(imageCount)
+			if u := auth.GetUserById(db, userID); u != nil {
+				u.UseQuota(db, quota)
+			}
+		}
+	}
+
+	manager.RecordImageOutcome(db, userID, username, manager.ImageSourcePhoto, model, 0, "jimeng-api", imageCount, quota, 0, genErr)
 }
 
 func handleResult(resultURLs *[]string, url string, err error) {
