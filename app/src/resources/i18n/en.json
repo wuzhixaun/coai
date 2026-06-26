@@ -1470,6 +1470,7 @@
       "position": "Position",
       "category": "Category",
       "target-size": "Target Size",
+      "platforms": "Platform presets (expand, no crop)",
       "cancel": "Cancel",
       "start": "Process"
     },

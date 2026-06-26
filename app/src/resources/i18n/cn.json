@@ -770,6 +770,7 @@
       "position": "位置",
       "category": "提取类别",
       "target-size": "目标尺寸",
+      "platforms": "多平台预设（只扩不裁）",
       "cancel": "取消",
       "start": "开始处理"
     },

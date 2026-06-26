@@ -52,7 +52,17 @@ const NEEDS_PARAM: Record<string, string[]> = {
 const COLOR_OPTS = ["red", "blue", "green", "black", "white", "yellow", "purple", "pink", "orange", "gray"];
 const LANG_OPTS = ["en", "zh", "ja", "ko", "fr", "de", "es"];
 const POS_OPTS = ["bottom-right", "bottom-left", "top-right", "top-left", "center"];
-const SIZE_OPTS = ["1:1", "16:9", "4:3", "3:4", "9:16"];
+const SIZE_OPTS = ["1:1", "16:9", "4:3", "3:4", "4:5", "9:16"];
+
+// 多平台主图尺寸预设（P3.1）：平台 → 推荐比例，点击即把比例加入 target_sizes。
+// outpaint 只扩不裁，保主体完整。
+const PLATFORM_PRESETS: { name: string; ratio: string }[] = [
+  { name: "淘宝", ratio: "1:1" }, { name: "天猫", ratio: "1:1" },
+  { name: "京东", ratio: "1:1" }, { name: "拼多多", ratio: "1:1" },
+  { name: "抖音", ratio: "3:4" }, { name: "Amazon", ratio: "1:1" },
+  { name: "TikTok", ratio: "4:5" }, { name: "Etsy", ratio: "4:3" },
+  { name: "Shopify", ratio: "1:1" }, { name: "Temu", ratio: "3:4" },
+];
 
 // 生图模型下拉只展示市场里打了「绘图」(image-generation) 标签的模型，并使用市场配置的
 // 中文友好名。这样以后接入 GPT 画图 / 千问(通义万相) 等模型，只要在后台给它打上该标签
@@ -364,6 +374,27 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess, onSa
                     <Badge key={opt.value} variant={p.category === opt.value ? "default" : "outline"} className="cursor-pointer"
                       onClick={() => setParam("category", opt.value)}>{opt.label}</Badge>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* 多平台尺寸预设：点击平台把推荐比例加入目标尺寸 */}
+            {dialogKey === "resize" && (
+              <div>
+                <Label>{t("photo.feature.platforms")}</Label>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {PLATFORM_PRESETS.map((pf) => {
+                    const cur = (p.target_sizes as string[]) || [];
+                    const active = cur.includes(pf.ratio);
+                    return (
+                      <Badge key={pf.name} variant={active ? "default" : "outline"} className="cursor-pointer"
+                        title={pf.ratio}
+                        onClick={() => setParam("target_sizes", active ? cur : Array.from(new Set([...cur, pf.ratio])))}>
+                        {pf.name}
+                        <span className="ml-1 text-[10px] opacity-70">{pf.ratio}</span>
+                      </Badge>
+                    );
+                  })}
                 </div>
               </div>
             )}
