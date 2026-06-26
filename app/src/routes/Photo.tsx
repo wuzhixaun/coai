@@ -37,7 +37,7 @@ const Photo: React.FC = () => {
 
   return (
     <div
-      className="flex flex-col lg:flex-row bg-background text-foreground"
+      className="flex flex-col lg:flex-row bg-background text-foreground flex-1 min-w-0 w-full"
       style={{ height: "calc(100vh - 64px)" }}
     >
       {/* Mobile tab bar (hidden on desktop) */}
