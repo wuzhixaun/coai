@@ -65,6 +65,7 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess, onSa
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [recipeOpen, setRecipeOpen] = useState(false);
   const [recipeName, setRecipeName] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(false); // 参数渐进式披露：高级项默认折叠
   const [dialogKey, setDialogKey] = useState<string | null>(null);
   const [params, setParams] = useState<Record<string, Record<string, unknown>>>({});
   const [prompts, setPrompts] = useState<PromptsConfig | null>(null);
@@ -100,6 +101,7 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess, onSa
     if (selectedCount === 0) return;
     if (!NEEDS_PARAM[key]) { onProcess([key], withImageCount([key]), chosenModel); return; }
     setDialogKey(key);
+    setShowAdvanced(false);
     if (!params[key]) {
       const init: Record<string, unknown> = {};
       if (key === "color_change") init.target_color = "red";
@@ -261,19 +263,6 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess, onSa
             <DialogTitle>{t("photo.feature.params-title", { feature: dialogKey ? t(`photo.features.${dialogKey}`) : "" })}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3" style={{ maxHeight: "60vh", overflow: "auto" }}>
-            {/* Templates */}
-            {(cfg?.templates?.length ?? 0) > 0 && (
-              <div>
-                <Label>{t("photo.feature.templates")}</Label>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {cfg!.templates!.map((t, i) => (
-                    <Badge key={i} variant="secondary" className="cursor-pointer"
-                      onClick={() => setParam("prompt", t.prompt)}>{t.label}</Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Prompt input */}
             {dialogKey && ["scene_gen", "image_erase", "model_image", "instruction_gen", "video_gen"].includes(dialogKey) && (
               <div>
@@ -395,6 +384,24 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess, onSa
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* 高级：快捷模板（渐进式披露，默认折叠） */}
+            {(cfg?.templates?.length ?? 0) > 0 && (
+              <div className="border-t pt-2">
+                <button type="button" className="text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowAdvanced((v) => !v)}>
+                  {showAdvanced ? "▾" : "▸"} {t("photo.feature.templates")}
+                </button>
+                {showAdvanced && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {cfg!.templates!.map((tpl, i) => (
+                      <Badge key={i} variant="secondary" className="cursor-pointer"
+                        onClick={() => setParam("prompt", tpl.prompt)}>{tpl.label}</Badge>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
