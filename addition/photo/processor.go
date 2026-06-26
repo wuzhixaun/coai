@@ -258,13 +258,14 @@ func processColorChange(imagePath, targetColor, channelOverride, userGroup strin
 	return callImageEdit(b64, prompt, resolveModel("color_change", channelOverride), userGroup)
 }
 
-func processMarketing(imagePath, sellingPoint, channelOverride, userGroup string) (string, error) {
+func processMarketing(imagePath, sellingPoint, channelOverride, userGroup string, idt *identityContext) (string, error) {
 	b64, err := ReadImageBytesAsBase64(imagePath)
 	if err != nil {
 		return "", err
 	}
-	prompt := GetSystemPrompt("marketing", map[string]string{"selling_point": sellingPoint})
-	return callImageEdit(b64, prompt, resolveModel("marketing", channelOverride), userGroup)
+	prompt := composeSubject(idt, GetSystemPrompt("marketing", map[string]string{"selling_point": sellingPoint}))
+	images := append([]string{b64}, idt.refB64()...)
+	return callImageEditMulti(images, prompt, resolveModel("marketing", channelOverride), userGroup, idt.seed())
 }
 
 func processImageTranslate(imagePath, targetLang, channelOverride, userGroup string) (string, error) {
@@ -526,7 +527,7 @@ func ProcessTask(ctx context.Context, db *sql.DB, taskID, feature string, imageP
 				}
 			case FeatureMarketing:
 				for i := 0; i < imageCount; i++ {
-					url, e := processMarketing(p, getStringParam(params, "selling_point", "Premium Quality"), channelOverride, userGroup)
+					url, e := processMarketing(p, getStringParam(params, "selling_point", "Premium Quality"), channelOverride, userGroup, idt)
 					appendGenerated(&resultURLs, &err, url, e)
 				}
 			case FeatureImageTranslate:

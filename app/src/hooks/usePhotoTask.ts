@@ -14,6 +14,7 @@ export function usePhotoTask() {
   const [tasks, setTasks] = useState<PhotoTask[]>([]);
   const [identities, setIdentities] = useState<PhotoIdentity[]>([]);
   const [selectedIdentityId, setSelectedIdentityId] = useState<string>("");
+  const [selectedBrandKitId, setSelectedBrandKitId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -113,7 +114,7 @@ export function usePhotoTask() {
     for (const feature of features) {
       try {
         const params = paramsMap[feature] || {};
-        const newTasks = await api.submitProcess(selectedIds, [feature], params, model, selectedIdentityId);
+        const newTasks = await api.submitProcess(selectedIds, [feature], params, model, selectedIdentityId, selectedBrandKitId);
         if (Array.isArray(newTasks)) {
           newTasks.forEach((t) => {
             if (t.status !== "success" && t.status !== "failed") startPolling(t.task_id);
@@ -123,7 +124,7 @@ export function usePhotoTask() {
       } catch (e) { console.error("Process failed:", e); }
     }
     setLoading(false);
-  }, [selectedIds, startPolling, selectedIdentityId]);
+  }, [selectedIds, startPolling, selectedIdentityId, selectedBrandKitId]);
 
   // ── 一致性身份 ──
   const refreshIdentities = useCallback(async () => {
@@ -133,10 +134,12 @@ export function usePhotoTask() {
     } catch { /* ignore */ }
   }, []);
 
-  const createIdentityAction = useCallback(async (body: { type: string; name: string; ref_image_ids: string[]; subject_prompt?: string }) => {
+  const createIdentityAction = useCallback(async (body: { type: string; name: string; ref_image_ids: string[]; subject_prompt?: string; color?: string }) => {
     const created = await api.createIdentity(body);
     setIdentities((prev) => [created, ...prev]);
-    setSelectedIdentityId(created.id);
+    // 品牌资产与商品/模特身份是两条正交轴，分别记选中态
+    if (created.type === "brandkit") setSelectedBrandKitId(created.id);
+    else setSelectedIdentityId(created.id);
     toast.success(t("photo.identity.created", { name: created.name }));
     return created;
   }, [t]);
@@ -146,6 +149,7 @@ export function usePhotoTask() {
       await api.deleteIdentity(id);
       setIdentities((prev) => prev.filter((x) => x.id !== id));
       setSelectedIdentityId((cur) => (cur === id ? "" : cur));
+      setSelectedBrandKitId((cur) => (cur === id ? "" : cur));
     } catch (e) { console.error("Delete identity failed:", e); }
   }, []);
 
@@ -183,5 +187,6 @@ export function usePhotoTask() {
     toggleSelect, selectAll, clearSelection, removeImage, clearAll, process,
     retryAction, deleteAction, refreshTask, refreshAll,
     identities, selectedIdentityId, setSelectedIdentityId,
+    selectedBrandKitId, setSelectedBrandKitId,
     refreshIdentities, createIdentityAction, deleteIdentityAction };
 }

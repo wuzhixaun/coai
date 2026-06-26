@@ -214,6 +214,25 @@ func ProcessAPI(c *gin.Context) {
 		}
 	}
 
+	// 品牌资产：Logo 作为附加参考图、主色并入主体描述。与一致性身份可组合，
+	// 复用同一注入管线（identityRefPaths / identitySubject）。
+	if req.BrandKitId != "" {
+		if bk, e := queryIdentityByID(db, req.BrandKitId, userID); e == nil && bk != nil && bk.Type == IdentityTypeBrandKit {
+			if paths, e2 := ResolveImagePaths(db, bk.RefImageIds, userID); e2 == nil {
+				identityRefPaths = append(identityRefPaths, paths...)
+			}
+			brandPhrase := "保持品牌一致：叠加品牌 Logo"
+			if bk.Color != "" {
+				brandPhrase += "，主色调 " + bk.Color
+			}
+			if identitySubject == "" {
+				identitySubject = brandPhrase
+			} else {
+				identitySubject += "；" + brandPhrase
+			}
+		}
+	}
+
 	responses := make([]TaskInfo, 0, len(req.Features))
 	for _, feature := range req.Features {
 		isVideo := feature == FeatureVideoGen

@@ -15,12 +15,13 @@ export interface PhotoTask {
 
 export interface PhotoIdentity {
   id: string;
-  type: "product" | "model";
+  type: "product" | "model" | "brandkit";
   name: string;
   ref_image_ids: string[];
   ref_image_urls: string[];
   seed: number;
   subject_prompt: string;
+  color: string;
   created_at: string;
 }
 
@@ -87,10 +88,11 @@ export async function deleteImage(id: string): Promise<void> {
 
 export async function submitProcess(
   imageIds: string[], features: string[],
-  params: Record<string, unknown> = {}, channelOverride = "", identityId = "",
+  params: Record<string, unknown> = {}, channelOverride = "", identityId = "", brandKitId = "",
 ): Promise<PhotoTask[]> {
   const { data } = await axios.post("/photo/process", {
-    image_ids: imageIds, features, params, channel_override: channelOverride, identity_id: identityId,
+    image_ids: imageIds, features, params, channel_override: channelOverride,
+    identity_id: identityId, brand_kit_id: brandKitId,
   });
   return data;
 }
@@ -102,7 +104,7 @@ export async function listIdentities(type?: string): Promise<PhotoIdentity[]> {
 }
 
 export async function createIdentity(body: {
-  type: string; name: string; ref_image_ids: string[]; subject_prompt?: string;
+  type: string; name: string; ref_image_ids: string[]; subject_prompt?: string; color?: string;
 }): Promise<PhotoIdentity> {
   const { data } = await axios.post("/photo/identity", body);
   return data;

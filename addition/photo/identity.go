@@ -33,20 +33,37 @@ func resolveRefImageUrls(db *sql.DB, ids []string, userID int64) []string {
 	return urls
 }
 
+// identityMeta 存于 photo_identity.meta(JSON)，目前承载 brandkit 的主色。
+type identityMeta struct {
+	Color string `json:"color,omitempty"`
+}
+
+func parseIdentityMeta(metaJSON string) identityMeta {
+	var m identityMeta
+	if metaJSON == "" || metaJSON == "null" {
+		return m
+	}
+	if v, err := utils.UnmarshalString[identityMeta](metaJSON); err == nil {
+		return v
+	}
+	return m
+}
+
 func queryIdentityByID(db *sql.DB, id string, userID int64) (*IdentityInfo, error) {
 	var it IdentityInfo
 	var refJSON string
-	var subject sql.NullString
+	var subject, meta sql.NullString
 	var createdAt string
 	err := db.QueryRow(`
-		SELECT id, type, name, ref_image_ids, seed, subject_prompt, created_at
+		SELECT id, type, name, ref_image_ids, seed, subject_prompt, meta, created_at
 		FROM photo_identity WHERE id = ? AND user_id = ?
-	`, id, userID).Scan(&it.Id, &it.Type, &it.Name, &refJSON, &it.Seed, &subject, &createdAt)
+	`, id, userID).Scan(&it.Id, &it.Type, &it.Name, &refJSON, &it.Seed, &subject, &meta, &createdAt)
 	if err != nil {
 		return nil, err
 	}
 	it.RefImageIds = parseJSONStringArray(refJSON)
 	it.SubjectPrompt = nullToString(subject)
+	it.Color = parseIdentityMeta(nullToString(meta)).Color
 	it.CreatedAt = createdAt
 	return &it, nil
 }
@@ -57,14 +74,17 @@ func CreateIdentityAPI(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "请求参数错误"})
 		return
 	}
-	if req.Type != IdentityTypeModel {
+	switch req.Type {
+	case IdentityTypeModel, IdentityTypeBrandKit:
+		// keep
+	default:
 		req.Type = IdentityTypeProduct
 	}
 
 	db := getDBFromCtx(c)
 	userID := getUserID(c)
 
-	// 校验参考图均属于当前用户，并解析出展示 url
+	// 校验参考图均属于当前用户，并解析出展示 url（brandkit 的 ref 即 Logo 图）
 	urls := resolveRefImageUrls(db, req.RefImageIds, userID)
 	if len(urls) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "参考图无效或不属于当前用户"})
@@ -73,10 +93,11 @@ func CreateIdentityAPI(c *gin.Context) {
 
 	id := generateImageID()
 	seed := lockedSeed()
+	metaJSON := utils.Marshal(identityMeta{Color: req.Color})
 	_, err := db.Exec(`INSERT INTO photo_identity
-		(id, user_id, type, name, ref_image_ids, seed, subject_prompt)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		id, userID, req.Type, req.Name, utils.Marshal(req.RefImageIds), seed, req.SubjectPrompt,
+		(id, user_id, type, name, ref_image_ids, seed, subject_prompt, meta)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, userID, req.Type, req.Name, utils.Marshal(req.RefImageIds), seed, req.SubjectPrompt, metaJSON,
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "创建失败"})
@@ -85,7 +106,7 @@ func CreateIdentityAPI(c *gin.Context) {
 
 	c.JSON(http.StatusOK, IdentityInfo{
 		Id: id, Type: req.Type, Name: req.Name, RefImageIds: req.RefImageIds,
-		RefImageUrls: urls, Seed: seed, SubjectPrompt: req.SubjectPrompt,
+		RefImageUrls: urls, Seed: seed, SubjectPrompt: req.SubjectPrompt, Color: req.Color,
 		CreatedAt: time.Now().Format(time.RFC3339),
 	})
 }
@@ -95,10 +116,10 @@ func ListIdentitiesAPI(c *gin.Context) {
 	userID := getUserID(c)
 
 	typeFilter := c.Query("type")
-	query := `SELECT id, type, name, ref_image_ids, seed, subject_prompt, created_at
+	query := `SELECT id, type, name, ref_image_ids, seed, subject_prompt, meta, created_at
 		FROM photo_identity WHERE user_id = ?`
 	args := []interface{}{userID}
-	if typeFilter == IdentityTypeProduct || typeFilter == IdentityTypeModel {
+	if typeFilter == IdentityTypeProduct || typeFilter == IdentityTypeModel || typeFilter == IdentityTypeBrandKit {
 		query += " AND type = ?"
 		args = append(args, typeFilter)
 	}
@@ -115,13 +136,14 @@ func ListIdentitiesAPI(c *gin.Context) {
 	for rows.Next() {
 		var it IdentityInfo
 		var refJSON string
-		var subject sql.NullString
+		var subject, meta sql.NullString
 		var createdAt string
-		if err := rows.Scan(&it.Id, &it.Type, &it.Name, &refJSON, &it.Seed, &subject, &createdAt); err != nil {
+		if err := rows.Scan(&it.Id, &it.Type, &it.Name, &refJSON, &it.Seed, &subject, &meta, &createdAt); err != nil {
 			continue
 		}
 		it.RefImageIds = parseJSONStringArray(refJSON)
 		it.SubjectPrompt = nullToString(subject)
+		it.Color = parseIdentityMeta(nullToString(meta)).Color
 		it.CreatedAt = createdAt
 		it.RefImageUrls = resolveRefImageUrls(db, it.RefImageIds, userID)
 		list = append(list, it)

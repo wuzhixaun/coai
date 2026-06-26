@@ -65,6 +65,14 @@ func doMigration(db *sql.DB) error {
 		return err
 	}
 
+	// add `meta` field in `photo_identity` for brand kit (logo/color) data
+	if err := execSql(db, `
+		ALTER TABLE photo_identity
+		ADD COLUMN meta TEXT;
+	`); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -76,6 +84,14 @@ func doSqliteMigration(db *sql.DB) error {
 	if err := execSql(db, `
 		ALTER TABLE conversation
 		ADD COLUMN task_id VARCHAR(255) NULL;
+	`); err != nil {
+		return err
+	}
+
+	// add `meta` field in `photo_identity` for brand kit (logo/color) data
+	if err := execSql(db, `
+		ALTER TABLE photo_identity
+		ADD COLUMN meta TEXT;
 	`); err != nil {
 		return err
 	}

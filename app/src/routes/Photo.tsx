@@ -18,6 +18,7 @@ const Photo: React.FC = () => {
     removeImage, clearAll, process, retryAction, deleteAction,
     refreshTask, refreshAll,
     identities, selectedIdentityId, setSelectedIdentityId,
+    selectedBrandKitId, setSelectedBrandKitId,
     createIdentityAction, deleteIdentityAction,
   } = usePhotoTask();
 
@@ -87,9 +88,11 @@ const Photo: React.FC = () => {
         <IdentityPanel
           identities={identities}
           selectedIdentityId={selectedIdentityId}
+          selectedBrandKitId={selectedBrandKitId}
           selectedImageIds={selectedIds}
           images={images}
           onSelect={setSelectedIdentityId}
+          onSelectBrandKit={setSelectedBrandKitId}
           onCreate={createIdentityAction}
           onDelete={deleteIdentityAction}
         />

@@ -84,11 +84,14 @@ type TaskInfo struct {
 // ── 一致性身份 ───────────────────────────────────────────────
 
 const (
-	IdentityTypeProduct = "product"
-	IdentityTypeModel   = "model"
+	IdentityTypeProduct  = "product"
+	IdentityTypeModel    = "model"
+	IdentityTypeBrandKit = "brandkit"
 )
 
-// IdentityInfo 商品/模特一致性身份：一组参考图 + 锁定 seed + 主体描述。
+// IdentityInfo 一致性身份：
+//   - product/model：一组参考图 + 锁定 seed + 主体描述，保持主体一致
+//   - brandkit：Logo(存于 ref_image_ids[0]) + 主色(color)，产出时叠加品牌元素
 type IdentityInfo struct {
 	Id            string   `json:"id"`
 	Type          string   `json:"type"`
@@ -97,6 +100,7 @@ type IdentityInfo struct {
 	RefImageUrls  []string `json:"ref_image_urls"` // 派生：供前端展示，不入库
 	Seed          int      `json:"seed"`
 	SubjectPrompt string   `json:"subject_prompt"`
+	Color         string   `json:"color"` // 品牌主色(brandkit)，存于 meta
 	CreatedAt     string   `json:"created_at"`
 }
 
@@ -106,6 +110,7 @@ type CreateIdentityRequest struct {
 	Name          string   `json:"name" binding:"required"`
 	RefImageIds   []string `json:"ref_image_ids" binding:"required,min=1"`
 	SubjectPrompt string   `json:"subject_prompt"`
+	Color         string   `json:"color"` // 品牌主色(brandkit)
 }
 
 // ── 请求体 ───────────────────────────────────────────────────
@@ -119,4 +124,5 @@ type ProcessRequest struct {
 	ChannelOverride string                 `json:"channel_override"` // 可选，覆盖默认渠道
 	FeatureParams   map[string]interface{} `json:"feature_params"`   // 每个功能的独立参数
 	IdentityId      string                 `json:"identity_id"`      // 可选，应用一致性身份（参考图+seed+主体）
+	BrandKitId      string                 `json:"brand_kit_id"`     // 可选，叠加品牌资产（Logo+主色），与 identity 可组合
 }

@@ -445,6 +445,7 @@ func CreatePhotoIdentityTable(db *sql.DB) {
 		  ref_image_ids TEXT NOT NULL,
 		  seed INT DEFAULT -1,
 		  subject_prompt TEXT,
+		  meta TEXT,
 		  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		  INDEX idx_user (user_id),
 		  INDEX idx_type (type)
