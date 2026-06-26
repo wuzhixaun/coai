@@ -703,11 +703,13 @@
       "failed": "图片上传失败：{{reason}}",
       "failed-retry": "请重试",
       "empty-title": "上传商品图，开始处理",
-      "empty-desc": "选一个常见场景，点击上传你的图片即可开始",
-      "starter-white_bg": "一键白底图",
-      "starter-model": "AI 模特换装",
-      "starter-watermark": "批量去水印/擦除",
-      "favorite": "收藏为参考身份"
+      "empty-desc": "拖拽、点击上方虚线框或 Ctrl+V 粘贴图片即可开始",
+      "empty-can-do": "上传后可做：白底图、AI 模特换装、批量去水印、场景图、营销图等",
+      "favorite": "收藏为参考身份",
+      "url-ph": "粘贴商品链接或图片直链",
+      "url-fetch": "抓取",
+      "url-ok": "已抓取主图",
+      "url-fail": "抓取失败，请改用图片直链"
     },
     "identity": {
       "title": "一致性身份",

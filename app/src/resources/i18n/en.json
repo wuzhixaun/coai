@@ -1403,11 +1403,13 @@
       "failed": "Upload failed: {{reason}}",
       "failed-retry": "please retry",
       "empty-title": "Upload a product photo to start",
-      "empty-desc": "Pick a common scenario and click to upload your image",
-      "starter-white_bg": "White background",
-      "starter-model": "AI model try-on",
-      "starter-watermark": "Batch erase / watermark removal",
-      "favorite": "Save as reference identity"
+      "empty-desc": "Drag, click the box above, or paste (Ctrl+V) an image to begin",
+      "empty-can-do": "After upload you can: white background, AI model try-on, batch erase, scene, marketing, etc.",
+      "favorite": "Save as reference identity",
+      "url-ph": "Paste a product link or direct image URL",
+      "url-fetch": "Fetch",
+      "url-ok": "Main image fetched",
+      "url-fail": "Fetch failed, try a direct image URL"
     },
     "identity": {
       "title": "Consistency identity",

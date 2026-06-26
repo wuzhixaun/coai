@@ -18,6 +18,7 @@ func Register(app *gin.RouterGroup) {
 	// 图片管理
 	group.POST("/upload", UploadImagesAPI)
 	group.POST("/upload/folder", UploadFolderAPI)
+	group.POST("/fetch-url", FetchURLAPI)
 	group.GET("/images", ListImagesAPI)
 	group.GET("/images/:id", GetImageAPI)
 	group.DELETE("/images/:id", DeleteImageAPI)

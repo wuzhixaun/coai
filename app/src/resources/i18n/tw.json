@@ -1760,7 +1760,12 @@
       "starter-white_bg": "一鍵白底圖",
       "starter-model": "AI 模特兒換裝",
       "starter-watermark": "批量去浮水印/擦除",
-      "favorite": "收藏為參考身份"
+      "favorite": "收藏為參考身份",
+      "empty-can-do": "上傳後可做：白底圖、AI 模特兒換裝、大量去浮水印、場景圖、行銷圖等",
+      "url-ph": "貼上商品連結或圖片直鏈",
+      "url-fetch": "抓取",
+      "url-ok": "已抓取主圖",
+      "url-fail": "抓取失敗，請改用圖片直鏈"
     },
     "feature": {
       "title": "AI 圖片處理功能",

@@ -102,6 +102,19 @@ export function usePhotoTask() {
     return upload(files, folderName);
   }, [upload]);
 
+  // 贴链接抓图：抓取主图落库并加入图库
+  const fetchUrl = useCallback(async (url: string) => {
+    try {
+      const img = await api.fetchImageFromUrl(url);
+      if (img && img.id) {
+        setImages((prev) => [...prev, img]);
+        toast.success(t("photo.upload.url-ok"));
+      }
+    } catch (e) {
+      toast.error(serverErrMsg(e, t("photo.upload.url-fail")));
+    }
+  }, [t]);
+
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   }, []);
@@ -246,7 +259,7 @@ export function usePhotoTask() {
     } catch (e) { /* ignore */ }
   }, []);
 
-  return { images, imagesLoading, selectedIds, tasks, loading, uploading, uploadProgress, upload, uploadFolder,
+  return { images, imagesLoading, selectedIds, tasks, loading, uploading, uploadProgress, upload, uploadFolder, fetchUrl,
     toggleSelect, selectAll, clearSelection, removeImage, clearAll, process,
     retryAction, deleteAction, refreshTask, refreshAll,
     identities, selectedIdentityId, setSelectedIdentityId,

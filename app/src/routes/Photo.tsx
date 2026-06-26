@@ -15,7 +15,7 @@ const Photo: React.FC = () => {
   const { t } = useTranslation();
   const {
     images, imagesLoading, selectedIds, tasks, loading, uploading, uploadProgress,
-    upload, uploadFolder, toggleSelect, selectAll, clearSelection,
+    upload, uploadFolder, fetchUrl, toggleSelect, selectAll, clearSelection,
     removeImage, clearAll, process, retryAction, deleteAction,
     refreshTask, refreshAll,
     identities, selectedIdentityId, setSelectedIdentityId,
@@ -77,7 +77,7 @@ const Photo: React.FC = () => {
           onUpload={upload} onUploadFolder={uploadFolder}
           onToggleSelect={toggleSelect} onSelectAll={selectAll}
           onClearSelection={clearSelection} onRemove={removeImage} onClearAll={clearAll}
-          onFavorite={favoriteImage}
+          onFavorite={favoriteImage} onFetchUrl={fetchUrl}
         />
       </div>
 

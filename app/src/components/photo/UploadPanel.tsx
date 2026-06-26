@@ -4,7 +4,7 @@ import type { TFunction } from "i18next";
 import { Button } from "@/components/ui/button.tsx";
 import { Progress } from "@/components/ui/progress.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { Upload, FolderOpen, Trash2, ImageOff, Shirt, Eraser, Star } from "lucide-react";
+import { Upload, FolderOpen, Trash2, Star, Sparkles, Link as LinkIcon } from "lucide-react";
 import { toast } from "sonner";
 import type { PhotoImage } from "@/api/photo";
 
@@ -22,6 +22,7 @@ interface Props {
   onRemove: (id: string) => void;
   onClearAll: () => void;
   onFavorite?: (img: PhotoImage) => void;
+  onFetchUrl?: (url: string) => void | Promise<void>;
 }
 
 const ALLOWED = ["image/png", "image/jpeg", "image/webp", "image/bmp", "image/tiff"];
@@ -44,13 +45,27 @@ function filterValid(files: File[], t: TFunction): File[] {
 
 const UploadPanel: React.FC<Props> = ({
   images, imagesLoading, selectedIds, uploading, uploadProgress, onUpload, onUploadFolder,
-  onToggleSelect, onSelectAll, onClearSelection, onRemove, onClearAll, onFavorite,
+  onToggleSelect, onSelectAll, onClearSelection, onRemove, onClearAll, onFavorite, onFetchUrl,
 }) => {
   const { t } = useTranslation();
   const fileRef = useRef<HTMLInputElement>(null);
   const folderRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [urlInput, setUrlInput] = useState("");
+  const [fetchingUrl, setFetchingUrl] = useState(false);
+
+  const handleFetchUrl = async () => {
+    const u = urlInput.trim();
+    if (!u || !onFetchUrl) return;
+    setFetchingUrl(true);
+    try {
+      await onFetchUrl(u);
+      setUrlInput("");
+    } finally {
+      setFetchingUrl(false);
+    }
+  };
 
   const handleFiles = (files: File[]) => {
     const valid = filterValid(files, t);
@@ -127,6 +142,24 @@ const UploadPanel: React.FC<Props> = ({
         <FolderOpen className="mr-2 h-4 w-4" /> {t("photo.upload.folder")}
       </Button>
 
+      {/* 贴链接抓图 */}
+      {onFetchUrl && (
+        <div className="mt-2 flex gap-1">
+          <input
+            type="url"
+            value={urlInput}
+            onChange={(e) => setUrlInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleFetchUrl(); }}
+            placeholder={t("photo.upload.url-ph")}
+            className="flex-1 min-w-0 rounded-md border bg-background px-2 text-sm"
+          />
+          <Button variant="outline" size="sm" disabled={!urlInput.trim() || fetchingUrl}
+            onClick={handleFetchUrl}>
+            <LinkIcon className="h-3.5 w-3.5 mr-1" />{t("photo.upload.url-fetch")}
+          </Button>
+        </div>
+      )}
+
       {/* Upload progress */}
       {uploading && (
         <div className="mt-3">
@@ -157,28 +190,15 @@ const UploadPanel: React.FC<Props> = ({
         </div>
       )}
 
-      {/* 空状态教学卡片：无图且加载/上传均结束时，引导按常见场景上传，解决冷启动 */}
+      {/* 空状态引导：无图时给出清晰的上手指引（不做名不副实的伪动作按钮） */}
       {!imagesLoading && !uploading && images.length === 0 && (
-        <div className="mt-4">
+        <div className="mt-4 rounded-md border border-dashed p-3">
           <p className="text-sm font-medium text-foreground">{t("photo.upload.empty-title")}</p>
-          <p className="text-xs text-muted-foreground mb-3">{t("photo.upload.empty-desc")}</p>
-          <div className="space-y-2">
-            {[
-              { key: "white_bg", icon: <ImageOff className="h-4 w-4" /> },
-              { key: "model", icon: <Shirt className="h-4 w-4" /> },
-              { key: "watermark", icon: <Eraser className="h-4 w-4" /> },
-            ].map((s) => (
-              <button
-                key={s.key}
-                type="button"
-                className="flex w-full items-center gap-2 rounded-md border border-dashed p-2 text-left text-sm text-foreground transition-colors hover:border-primary/50 hover:bg-muted/40"
-                onClick={() => fileRef.current?.click()}
-              >
-                <span className="text-primary">{s.icon}</span>
-                {t(`photo.upload.starter-${s.key}`)}
-              </button>
-            ))}
-          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">{t("photo.upload.empty-desc")}</p>
+          <p className="mt-2 flex items-start gap-1.5 text-xs text-muted-foreground">
+            <Sparkles className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />
+            <span>{t("photo.upload.empty-can-do")}</span>
+          </p>
         </div>
       )}
 

@@ -131,6 +131,32 @@ func SaveUploadFile(file *multipart.FileHeader, db *sql.DB, userID int64, folder
 	}, nil
 }
 
+// SaveImageBytes 把内存中的图片字节落盘并写库（供 URL 抓图等非 multipart 来源复用）。
+func SaveImageBytes(db *sql.DB, userID int64, filename string, data []byte, folderName string) (*ImageInfo, error) {
+	if !ValidateFileFormat(filename) {
+		return nil, fmt.Errorf("不支持的文件格式: %s", filename)
+	}
+	if !ValidateFileSize(int64(len(data))) {
+		return nil, fmt.Errorf("文件过大 (最大 50MB)")
+	}
+	if err := ensureStorageDir(UploadDir()); err != nil {
+		return nil, fmt.Errorf("创建上传目录失败: %w", err)
+	}
+	saveName := generateFilename(filename)
+	savePath := filepath.Join(UploadDir(), saveName)
+	if err := os.WriteFile(savePath, data, 0644); err != nil {
+		return nil, fmt.Errorf("写入文件失败: %w", err)
+	}
+	imageID := generateImageID()
+	url := globals.UploadPublicURL(saveName)
+	absPath, _ := filepath.Abs(savePath)
+	if err := insertImageRecord(db, imageID, userID, filename, int64(len(data)), url, absPath, folderName); err != nil {
+		os.Remove(savePath)
+		return nil, fmt.Errorf("写入数据库失败: %w", err)
+	}
+	return &ImageInfo{Id: imageID, Filename: filename, Size: int64(len(data)), Url: url, FolderName: folderName}, nil
+}
+
 // DeleteImageFile 删除图片文件和数据库记录
 func DeleteImageFile(db *sql.DB, imageID string, userID int64) error {
 	if db == nil {

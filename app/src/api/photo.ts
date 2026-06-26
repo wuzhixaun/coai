@@ -86,6 +86,12 @@ export async function listImages(): Promise<PhotoImage[]> {
   return data;
 }
 
+// 贴商品链接 / 直链图片 → 抓取主图落库
+export async function fetchImageFromUrl(url: string): Promise<PhotoImage> {
+  const { data } = await axios.post("/photo/fetch-url", { url });
+  return data;
+}
+
 export async function deleteImage(id: string): Promise<void> {
   await axios.delete(`/photo/images/${id}`);
 }
