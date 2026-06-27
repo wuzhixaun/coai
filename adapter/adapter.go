@@ -10,6 +10,7 @@ import (
 	"chat/adapter/dashscope"
 	"chat/adapter/deepseek"
 	"chat/adapter/dify"
+	"chat/adapter/grsai"
 	"chat/adapter/hunyuan"
 	"chat/adapter/jimeng"
 	"chat/adapter/jimengapi"
@@ -52,10 +53,12 @@ var channelFactories = map[string]adaptercommon.FactoryCreator{
 var imageProcessorFactories = map[string]adaptercommon.ImageEditFactoryCreator{
 	globals.JimengChannelType:    jimeng.NewCLIAdapterFromConfig, // CLI，仅 video_gen 仍在使用
 	globals.JimengAPIChannelType: jimengapi.NewImageProcessorFromConfig,
+	globals.GrsaiChannelType:     grsai.NewImageProcessorFromConfig,
 }
 
 var imageGenerationFactories = map[string]adaptercommon.ImageGenerationFactoryCreator{
 	globals.JimengAPIChannelType: jimengapi.NewImageGeneratorFromConfig,
+	globals.GrsaiChannelType:     grsai.NewImageGeneratorFromConfig,
 }
 
 func createImageGenerationRequest(conf globals.ChannelConfig, props *adaptercommon.ImageGenerationProps, hook globals.Hook) error {
