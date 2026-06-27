@@ -42,4 +42,14 @@ func TestTaskResponseState(t *testing.T) {
 	if got := (&TaskResponse{Status: "failed"}).ErrorMessage("def"); got != "def" {
 		t.Fatalf("ErrorMessage fallback=%q", got)
 	}
+	// violation 为终态但非成功；Error 为空时回退到 "content violation"。
+	if !(&TaskResponse{Status: "violation"}).IsTerminal() {
+		t.Fatal("violation should be terminal")
+	}
+	if (&TaskResponse{Status: "violation"}).IsSucceeded() {
+		t.Fatal("violation should not be succeeded")
+	}
+	if got := (&TaskResponse{Status: "violation"}).ErrorMessage("def"); got != "content violation" {
+		t.Fatalf("violation ErrorMessage=%q", got)
+	}
 }

@@ -23,7 +23,7 @@ func TestStoreRemoteURL(t *testing.T) {
 	if err != nil {
 		t.Fatalf("store: %v", err)
 	}
-	if !strings.HasPrefix(public, globals.ResultPublicURL("")) && public == "" {
+	if !strings.HasPrefix(public, globals.ResultPublicURL("")) || public == "" {
 		t.Fatalf("public url=%q", public)
 	}
 	// 文件应真实落地

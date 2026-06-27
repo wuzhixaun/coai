@@ -49,3 +49,39 @@ func TestCreateImageToVideoRequest(t *testing.T) {
 		t.Fatalf("emitted=%v", emitted)
 	}
 }
+
+func TestCreateImageToVideoRequestFallbackSourceURL(t *testing.T) {
+	globals.StorageResultDir = t.TempDir()
+	// dl 下载视频时返回 500，触发落地失败回退到源地址。
+	dl := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer dl.Close()
+
+	srcURL := dl.URL + "/out.mp4"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1/api/generate":
+			_ = json.NewEncoder(w).Encode(TaskResponse{ID: "v1", Status: "running"})
+		case "/v1/api/result":
+			_ = json.NewEncoder(w).Encode(TaskResponse{ID: "v1", Status: "succeeded",
+				Results: []TaskResult{{URL: srcURL}}})
+		}
+	}))
+	defer srv.Close()
+
+	c := newGenerator(fakeConfig{endpoint: srv.URL, secret: "sk-test"})
+	var emitted []string
+	hook := func(ch *globals.Chunk) error { emitted = append(emitted, ch.Content); return nil }
+	err := c.CreateImageToVideoRequest(&adaptercommon.ImageToVideoProps{
+		Model:  "veo",
+		Images: []string{"data:image/png;base64,AAAA"},
+		Prompt: "make it move",
+	}, hook)
+	if err != nil {
+		t.Fatalf("video: %v", err)
+	}
+	if len(emitted) != 1 || emitted[0] != srcURL {
+		t.Fatalf("expected fallback to source url %q, got %v", srcURL, emitted)
+	}
+}

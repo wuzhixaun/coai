@@ -27,12 +27,24 @@ func classifyImages(images []string) []string {
 	return out
 }
 
-// ratioFromSize 由目标宽高推导 grsai 的 aspectRatio，无法推导时返回空串。
+// gcd 欧几里得求最大公约数。
+func gcd(a, b int) int {
+	for b != 0 {
+		a, b = b, a%b
+	}
+	return a
+}
+
+// ratioFromSize 由目标宽高推导 grsai 的 aspectRatio（按最大公约数约分），无法推导时返回空串。
 func ratioFromSize(w, h *int) string {
 	if w == nil || h == nil || *w <= 0 || *h <= 0 {
 		return ""
 	}
-	return fmt.Sprintf("%d:%d", *w, *h)
+	g := gcd(*w, *h)
+	if g <= 0 {
+		g = 1
+	}
+	return fmt.Sprintf("%d:%d", *w/g, *h/g)
 }
 
 // emitResults 把结果下载落地后经 hook 回推（图片 Markdown）。

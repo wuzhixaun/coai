@@ -122,7 +122,8 @@ channel:
     group: [normal, basic, standard, pro]
     state: true
   # 示例 3：grsai 多模型渠道（图片/视频）
-  - name: grsai 多模型渠道
+  - id: 12
+    name: grsai 多模型渠道
     type: grsai
     endpoint: https://grsaiapi.com   # 国内直连可改 https://grsai.dakka.com.cn
     secret: sk-xxxxxxxxxxxxxxxx       # grsai API Key（单 key，非 AK|SK）

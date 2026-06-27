@@ -134,7 +134,7 @@ const (
 	pollBackoffFactor   = 3 // 每次 ×3/2 退避
 )
 
-// PollResult 轮询 /v1/draw/result 直到终态或超时。
+// PollResult 轮询 GET /v1/api/result 直到终态或超时。
 func (c *Generator) PollResult(ctx context.Context, id string, maxWait, interval time.Duration) (*TaskResponse, error) {
 	if id == "" {
 		return nil, fmt.Errorf("grsai poll: empty task id")
