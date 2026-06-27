@@ -1,6 +1,11 @@
 package openai
 
-import "testing"
+import (
+	adaptercommon "chat/adapter/common"
+	"chat/globals"
+	"strings"
+	"testing"
+)
 
 func TestNormalizeInputImage(t *testing.T) {
 	cases := map[string]string{
@@ -60,5 +65,34 @@ func TestExtractVideoURLs(t *testing.T) {
 	// 图片 URL 不应被当成视频
 	if v := extractVideoURLs("![image](https://x.com/a.png)"); len(v) != 0 {
 		t.Fatalf("png should not be video: %v", v)
+	}
+}
+
+func TestGeneratorImplementsInterfaces(t *testing.T) {
+	var g interface{} = &Generator{}
+	if _, ok := g.(adaptercommon.ImageGenerationFactory); !ok {
+		t.Fatal("not ImageGenerationFactory")
+	}
+	if _, ok := g.(adaptercommon.ImageEditFactory); !ok {
+		t.Fatal("not ImageEditFactory")
+	}
+	if _, ok := g.(adaptercommon.ImageUpscaleFactory); !ok {
+		t.Fatal("not ImageUpscaleFactory")
+	}
+	if _, ok := g.(adaptercommon.ImageOutpaintFactory); !ok {
+		t.Fatal("not ImageOutpaintFactory")
+	}
+	if _, ok := g.(adaptercommon.ImageToVideoFactory); !ok {
+		t.Fatal("not ImageToVideoFactory")
+	}
+}
+
+func TestImageEditRequiresInputImage(t *testing.T) {
+	g := &Generator{ChatInstance: NewChatInstance("https://example.com", "sk-x")}
+	err := g.CreateImageEditRequest(&adaptercommon.ImageEditProps{
+		Model: "nano-banana-2", Prompt: "换白底", Images: []string{"  "},
+	}, func(*globals.Chunk) error { return nil })
+	if err == nil || !strings.Contains(err.Error(), "至少 1 张") {
+		t.Fatalf("want missing-image error, got %v", err)
 	}
 }
