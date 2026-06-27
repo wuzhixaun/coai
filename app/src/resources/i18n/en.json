@@ -1572,6 +1572,7 @@
       "no-channel": "No available channel. Please ask an admin to check model/channel config.",
       "timeout": "Timed out, please retry (image/video generation can be slow).",
       "need-image": "Please upload a reference image first.",
+      "too-many-images": "Too many reference images. Video supports at most 9 — please reduce your selection and retry.",
       "insufficient": "Insufficient quota, please top up and retry."
     }
   },

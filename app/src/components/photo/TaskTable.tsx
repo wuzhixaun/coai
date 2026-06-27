@@ -44,6 +44,8 @@ function friendlyError(raw: string, t: TFunction): string {
     return t("photo.errors.no-channel");
   if (lower.includes("timeout") || lower.includes("超时"))
     return t("photo.errors.timeout");
+  if (lower.includes("at most") || lower.includes("最多") || lower.includes("too many"))
+    return t("photo.errors.too-many-images");
   if (lower.includes("at least") || lower.includes("需要至少") || lower.includes("参考图"))
     return t("photo.errors.need-image");
   if (lower.includes("quota") || lower.includes("insufficient") || lower.includes("余额") || lower.includes("积分"))
