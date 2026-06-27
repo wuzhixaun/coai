@@ -58,6 +58,7 @@ func (c *Generator) streamB(ctx context.Context, spec ModelSpec, body GenerateRe
 	scanner := bufio.NewScanner(resp.Body)
 	scanner.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
 	var last *TaskResponseB
+	var lastID string
 	start := time.Now()
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -77,6 +78,9 @@ func (c *Generator) streamB(ctx context.Context, spec ModelSpec, body GenerateRe
 			continue
 		}
 		last = &ev
+		if ev.ID != "" {
+			lastID = ev.ID
+		}
 		globals.Debug(fmt.Sprintf("[grsai] stream id=%s status=%q progress=%d elapsed=%s",
 			ev.ID, ev.Status, ev.Progress, time.Since(start).Truncate(time.Second)))
 		if ev.IsTerminal() {
@@ -88,12 +92,82 @@ func (c *Generator) streamB(ctx context.Context, spec ModelSpec, body GenerateRe
 		}
 	}
 	if err := scanner.Err(); err != nil {
+		// 流读取出错：若已拿到任务 id，转而轮询结果端点兜底。
+		if lastID != "" {
+			globals.Warn(fmt.Sprintf("[grsai] stream error, fallback to polling result (id=%s): %s", lastID, err))
+			return c.pollDrawResult(ctx, lastID, maxWait)
+		}
 		return last, fmt.Errorf("grsai stream error: %w", err)
 	}
 	if last != nil && last.IsSucceeded() {
 		return last, nil
 	}
+	// grsai 对耗时任务（如视频）常只推几帧 running 就关闭 SSE，结果需另行轮询。
+	if lastID != "" {
+		globals.Warn(fmt.Sprintf("[grsai] stream ended without terminal frame, fallback to polling result (id=%s)", lastID))
+		return c.pollDrawResult(ctx, lastID, maxWait)
+	}
 	return last, fmt.Errorf("grsai stream ended without success result")
+}
+
+// pollDrawResult 轮询 POST /v1/draw/result 直到终态或超时（SurfaceB 的结果兜底查询）。
+func (c *Generator) pollDrawResult(ctx context.Context, id string, maxWait time.Duration) (*TaskResponseB, error) {
+	if id == "" {
+		return nil, fmt.Errorf("grsai poll: empty task id")
+	}
+	if maxWait <= 0 {
+		maxWait = 10 * time.Minute
+	}
+	interval := 5 * time.Second
+	start := time.Now()
+	deadline := start.Add(maxWait)
+	for attempt := 1; ; attempt++ {
+		payload, _ := json.Marshal(map[string]string{"id": id})
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint+"/v1/draw/result", bytes.NewReader(payload))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
+		resp, err := c.httpClient().Do(req)
+		if err != nil {
+			return nil, err
+		}
+		raw, readErr := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if readErr != nil {
+			return nil, readErr
+		}
+		var env struct {
+			Code int            `json:"code"`
+			Msg  string         `json:"msg"`
+			Data *TaskResponseB `json:"data"`
+		}
+		if err := json.Unmarshal(raw, &env); err != nil {
+			return nil, fmt.Errorf("grsai result invalid response: %s", strings.TrimSpace(string(raw)))
+		}
+		if env.Code == 0 && env.Data != nil {
+			d := env.Data
+			globals.Debug(fmt.Sprintf("[grsai] result #%d id=%s status=%q progress=%d elapsed=%s",
+				attempt, id, d.Status, d.Progress, time.Since(start).Truncate(time.Second)))
+			if d.IsTerminal() {
+				if !d.IsSucceeded() {
+					return d, fmt.Errorf("[grsai] task failed (id=%s): %s", id, d.ErrorMessage("unknown error"))
+				}
+				return d, nil
+			}
+		}
+		if time.Now().Add(interval).After(deadline) {
+			return env.Data, fmt.Errorf("[grsai] task timeout after %s (id=%s)", maxWait, id)
+		}
+		timer := time.NewTimer(interval)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return env.Data, ctx.Err()
+		case <-timer.C:
+		}
+	}
 }
 
 // runTask 按模型所属接口面提交并取回结果地址列表。
