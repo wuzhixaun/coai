@@ -47,13 +47,17 @@ func ratioFromSize(w, h *int) string {
 	return fmt.Sprintf("%d:%d", *w/g, *h/g)
 }
 
-// emitResults 把结果下载落地后经 hook 回推（图片 Markdown）。
-func (c *Generator) emitResults(res *TaskResponse, hook globals.Hook) error {
-	if len(res.Results) == 0 {
+// runGenerate 提交生图任务（按 surface 分发），把结果下载落地后经 hook 以 Markdown 图片回推。
+func (c *Generator) runGenerate(spec ModelSpec, body GenerateRequest, hook globals.Hook) error {
+	urls, err := c.runTask(context.Background(), spec, body, globals.ImageTaskTimeout(), globals.ImagePollInterval())
+	if err != nil {
+		return err
+	}
+	if len(urls) == 0 {
 		return fmt.Errorf("grsai task finished without result")
 	}
-	for _, item := range res.Results {
-		stored, err := c.storeRemoteURL(item.URL, true)
+	for _, u := range urls {
+		stored, err := c.storeRemoteURL(u, true)
 		if err != nil {
 			return err
 		}
@@ -62,23 +66,6 @@ func (c *Generator) emitResults(res *TaskResponse, hook globals.Hook) error {
 		}
 	}
 	return nil
-}
-
-func (c *Generator) runGenerate(spec ModelSpec, body GenerateRequest, hook globals.Hook) error {
-	ctx := context.Background()
-	submit, err := c.Submit(ctx, spec, body)
-	if err != nil {
-		return err
-	}
-	// async 提交若直接返回成功结果，则无需轮询。
-	if submit.IsSucceeded() && len(submit.Results) > 0 {
-		return c.emitResults(submit, hook)
-	}
-	res, err := c.PollResult(ctx, submit.ID, globals.ImageTaskTimeout(), globals.ImagePollInterval())
-	if err != nil {
-		return err
-	}
-	return c.emitResults(res, hook)
 }
 
 // CreateImageGenerationRequest 文生图。

@@ -4,23 +4,27 @@ import "testing"
 
 func TestGetModelSpec(t *testing.T) {
 	cases := []struct {
-		model string
-		ok    bool
-		path  string
-		cap   Capability
+		model   string
+		ok      bool
+		path    string
+		surface Surface
+		cap     Capability
 	}{
-		{"nano-banana", true, "/v1/api/generate", CapabilityGenerate},
-		{"nano-banana-2", true, "/v1/api/generate", CapabilityGenerate},
-		{"gpt-image", true, "/v1/api/generate", CapabilityGenerate},
-		{"veo", true, "/v1/api/generate", CapabilityVideo},
-		{"unknown-model", false, "", CapabilityGenerate},
+		{"nano-banana", true, "/v1/api/generate", SurfaceA, CapabilityGenerate},
+		{"nano-banana-2", true, "/v1/api/generate", SurfaceA, CapabilityGenerate},
+		{"gpt-image-2", true, "/v1/draw/completions", SurfaceB, CapabilityGenerate},
+		{"veo3.1-fast", true, "/v1/video/veo", SurfaceB, CapabilityVideo},
+		{"veo3.1-pro", true, "/v1/video/veo", SurfaceB, CapabilityVideo},
+		{"gpt-image", false, "", SurfaceA, CapabilityGenerate}, // 旧名已下线
+		{"veo", false, "", SurfaceA, CapabilityVideo},          // 旧名已下线
+		{"unknown-model", false, "", SurfaceA, CapabilityGenerate},
 	}
 	for _, c := range cases {
 		spec, ok := GetModelSpec(c.model)
 		if ok != c.ok {
 			t.Fatalf("%s: ok=%v want %v", c.model, ok, c.ok)
 		}
-		if ok && (spec.Path != c.path || spec.Capability != c.cap) {
+		if ok && (spec.Path != c.path || spec.Surface != c.surface || spec.Capability != c.cap) {
 			t.Fatalf("%s: spec=%+v", c.model, spec)
 		}
 	}
@@ -51,5 +55,31 @@ func TestTaskResponseState(t *testing.T) {
 	}
 	if got := (&TaskResponse{Status: "violation"}).ErrorMessage("def"); got != "content violation" {
 		t.Fatalf("violation ErrorMessage=%q", got)
+	}
+}
+
+func TestTaskResponseBState(t *testing.T) {
+	if !(&TaskResponseB{Status: "succeeded"}).IsSucceeded() {
+		t.Fatal("succeeded should be succeeded")
+	}
+	if !(&TaskResponseB{Status: "violation"}).IsTerminal() {
+		t.Fatal("violation should be terminal")
+	}
+	if (&TaskResponseB{Status: "running"}).IsTerminal() {
+		t.Fatal("running should not be terminal")
+	}
+	// failure_reason 在 error 缺失时作为兜底。
+	if got := (&TaskResponseB{Status: "failed", FailureReason: "boom"}).ErrorMessage("def"); got != "boom" {
+		t.Fatalf("ErrorMessage=%q", got)
+	}
+	// URLs 优先取 results[].url。
+	rb := &TaskResponseB{Results: []TaskResult{{URL: "https://a/x.png"}}, URL: "https://a/top.png"}
+	if got := rb.URLs(); len(got) != 1 || got[0] != "https://a/x.png" {
+		t.Fatalf("URLs results-first=%v", got)
+	}
+	// results 为空时回退顶层 url。
+	rb2 := &TaskResponseB{URL: "https://a/top.png"}
+	if got := rb2.URLs(); len(got) != 1 || got[0] != "https://a/top.png" {
+		t.Fatalf("URLs fallback=%v", got)
 	}
 }
