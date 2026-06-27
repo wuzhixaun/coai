@@ -56,11 +56,13 @@ var imageProcessorFactories = map[string]adaptercommon.ImageEditFactoryCreator{
 	globals.JimengChannelType:    jimeng.NewCLIAdapterFromConfig, // CLI，仅 video_gen 仍在使用
 	globals.JimengAPIChannelType: jimengapi.NewImageProcessorFromConfig,
 	globals.GrsaiChannelType:     grsai.NewImageProcessorFromConfig,
+	globals.OpenAIChannelType:    openai.NewImageProcessorFromConfig,
 }
 
 var imageGenerationFactories = map[string]adaptercommon.ImageGenerationFactoryCreator{
 	globals.JimengAPIChannelType: jimengapi.NewImageGeneratorFromConfig,
 	globals.GrsaiChannelType:     grsai.NewImageGeneratorFromConfig,
+	globals.OpenAIChannelType:    openai.NewImageGeneratorFromConfig,
 }
 
 func createImageGenerationRequest(conf globals.ChannelConfig, props *adaptercommon.ImageGenerationProps, hook globals.Hook) error {
