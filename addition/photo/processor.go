@@ -430,35 +430,17 @@ func processVideoGenSingle(imagePaths []string, prompt string, duration int, cha
 }
 
 func resolveModel(feature, channelOverride string) string {
-	defaultModel := "jimeng-v2"
-	if fc := GetFeatureConfig(feature); fc != nil {
-		defaultModel = fc.Model
-	}
-	// 前端模型下拉可覆盖，但只能在「同能力」内切换，避免把视频强制用到生图模型上：
-	//  - 生图类 → 只能切到另一个生图模型；
-	//  - 视频类 → 只能切到另一个视频模型（如即梦 jimeng-video 切到 grsai veo3.1-*）。
-	// 高清/扩图/提取等能力功能仍各用专属模型，不被覆盖。
+	// 完全以前端所选模型为准：选什么模型就用什么模型（含视频/能力功能）。
+	// 若所选模型与功能不匹配（如对「视频」选了生图模型），底层适配器会返回明确错误，
+	// 而不是被悄悄替换成默认模型。
 	if channelOverride != "" {
-		if isGenerationModel(defaultModel) && isGenerationModel(channelOverride) {
-			return channelOverride
-		}
-		if isVideoModel(defaultModel) && isVideoModel(channelOverride) {
-			return channelOverride
-		}
+		return channelOverride
 	}
-	return defaultModel
-}
-
-// isGenerationModel 判断是否为生图（文/图生图）基础模型。
-func isGenerationModel(model string) bool {
-	m := strings.ToLower(model)
-	return strings.HasPrefix(m, "jimeng-seedream") || strings.HasPrefix(m, "nano-banana") || strings.HasPrefix(m, "gpt-image")
-}
-
-// isVideoModel 判断是否为视频模型（即梦 jimeng-video / grsai veo* / sora 等）。
-func isVideoModel(model string) bool {
-	m := strings.ToLower(model)
-	return strings.Contains(m, "video") || strings.Contains(m, "veo") || strings.Contains(m, "sora")
+	// 未指定时回退到该功能在 prompts.json 中的专属默认模型。
+	if fc := GetFeatureConfig(feature); fc != nil && fc.Model != "" {
+		return fc.Model
+	}
+	return "jimeng-v2"
 }
 
 func ProcessTask(ctx context.Context, db *sql.DB, taskID, feature string, imagePaths []string, params map[string]interface{}, channelOverride, userGroup string, identityRefPaths []string, identitySeed *int, identitySubject string) {
