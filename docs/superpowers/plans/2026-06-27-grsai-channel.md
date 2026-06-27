@@ -12,9 +12,10 @@
 
 - 渠道 type 常量字符串：`grsai`（`globals.GrsaiChannelType`）。
 - 认证：HTTP Header `Authorization: Bearer <key>`，key 取自 `conf.GetRandomSecret()`（单 key，**非** AK/SK）。
-- reply 模式固定 `replyType:"async"`，结果统一轮询 `POST /v1/draw/result`，入参 `{"id": "<task id>"}`。
+- 接口面以 apifox 为准，统一 `/v1/api/*`：提交 `POST /v1/api/generate`，结果查询 **`GET /v1/api/result?id=<task id>`**（query 传参 + Bearer header，**无请求体**）。不要用 grsai.com 文档的 `/v1/draw/*`、`/v1/video/veo`（那是另一套旧接口面）。
+- reply 模式固定 `replyType:"async"`。
 - 结果状态枚举：`running` / `succeeded` / `failed` / `violation`；终态为 `succeeded`/`failed`/`violation`。
-- 模型裸名：`nano-banana`、`nano-banana-2`、`gpt-image`、`veo`。
+- 模型裸名：`nano-banana`、`nano-banana-2`、`gpt-image`、`veo`；全部经 `POST /v1/api/generate` 提交，用 `model` 字段区分引擎。
 - 落地目录 `globals.StorageResultDir`，公开 URL 用 `globals.ResultPublicURL(filename)`，图片回推用 `utils.GetImageMarkdown(url)`，视频回推裸 URL。
 - 包名：`package grsai`；所有日志前缀 `[grsai]`。
 - 不修改 `addition/photo`、`connection`、`channel` 任何文件；不改任务表结构。
@@ -39,30 +40,19 @@
 
 ---
 
-## Phase 0：核对 apifox 精确字段
+## Phase 0：核对 apifox 精确字段 ✅ 已完成
 
-### Task 0: 确认 gpt-image / veo / 结果查询的请求与响应字段
+### Task 0: 确认接口面 — 已完成（2026-06-27）
 
-**Files:** 无代码改动，产出确认记录写入本计划末尾「字段确认」小节（或直接确认与下方假设一致）。
+**结论（已通过 apifox 核对）：**
+- 提交：`POST /v1/api/generate`，body `{model, prompt, images[], aspectRatio, imageSize, replyType}`。
+- 结果查询：**`GET /v1/api/result?id=<task id>`**，query 传 `id`、header 带 `Authorization: Bearer`，**无请求体**。
+- 响应：`{id, status, progress, results[].url, error}`；状态枚举 `running/succeeded/failed/violation`。
+- 双 Host：`https://grsaiapi.com`（全球）/ `https://grsai.dakka.com.cn`（国内）。
+- grsai.com dashboard 文档的 `/v1/draw/*`、`/v1/video/veo` 是**另一套旧接口面，不采用**。
+- gpt-image / veo 的精确 model 标识无法从 apifox 单页确认，按裸名 `gpt-image`/`veo` 经同一 `/v1/api/generate` 提交，留待 Task 11/12 live smoke test 校正。
 
-**Interfaces:**
-- Produces: 确认 `/v1/draw/result` 入参与响应、`/v1/video/veo` 与 `/v1/draw/completions` 的 body 字段，供后续 Phase 使用。
-
-- [ ] **Step 1: 抓取 apifox 结果查询页**
-
-用 WebFetch 抓 `https://qmy27nhsd9.apifox.cn/452409577e0`，确认结果查询接口的请求体（是否就是 `{"id": "..."}`）与响应字段（`status/progress/results[].url/error`）。
-
-- [ ] **Step 2: 抓取 gpt-image 与 veo 页**
-
-在 apifox 站点（`qmy27nhsd9.apifox.cn`）找到 gpt-image、veo 两页，确认 body 字段。grsai.com 文档页为 JS 渲染、抓取不全，优先用 apifox。
-
-- [ ] **Step 3: 核对下方假设**
-
-确认本计划假设：nano-banana/gpt-image 都接受 `{model, prompt, images[], aspectRatio, imageSize, replyType}`；veo 接受 `{model, prompt, images[], aspectRatio, replyType}`。若字段不同，更新 Phase 2/3/4 中对应 body 构造代码（仅改字段名，不改结构）。
-
-- [ ] **Step 4: 无需提交**（纯调研）
-
-> 若 apifox 页无法访问，按本计划已确认的 nano-banana schema + 文档公开的结果 schema 实现；字段差异在联调（Phase 5）阶段用 live smoke test 校正。
+本 Task 无代码产出，下游 Task 已据此修正。
 
 ---
 
@@ -109,7 +99,7 @@ git commit -m "feat(grsai): add grsai channel type constant"
   - `type Capability int`，常量 `CapabilityGenerate`、`CapabilityVideo`
   - `type ModelSpec struct { Model, Path string; Capability Capability; MaxImages int }`
   - `func GetModelSpec(model string) (ModelSpec, bool)`
-  - `type GenerateRequest struct{...}`、`type ResultRequest struct{ ID string }`
+  - `type GenerateRequest struct{...}`
   - `type TaskResponse struct{ ID, Status string; Progress int; Results []TaskResult; Error string }`
   - `type TaskResult struct{ URL string }`
   - `func (r *TaskResponse) IsTerminal() bool`、`func (r *TaskResponse) IsSucceeded() bool`、`func (r *TaskResponse) ErrorMessage(def string) string`
@@ -132,8 +122,8 @@ func TestGetModelSpec(t *testing.T) {
 	}{
 		{"nano-banana", true, "/v1/api/generate", CapabilityGenerate},
 		{"nano-banana-2", true, "/v1/api/generate", CapabilityGenerate},
-		{"gpt-image", true, "/v1/draw/completions", CapabilityGenerate},
-		{"veo", true, "/v1/video/veo", CapabilityVideo},
+		{"gpt-image", true, "/v1/api/generate", CapabilityGenerate},
+		{"veo", true, "/v1/api/generate", CapabilityVideo},
 		{"unknown-model", false, "", CapabilityGenerate},
 	}
 	for _, c := range cases {
@@ -198,8 +188,8 @@ type ModelSpec struct {
 var modelSpecs = map[string]ModelSpec{
 	"nano-banana":   {Model: "nano-banana", Path: "/v1/api/generate", Capability: CapabilityGenerate, MaxImages: 6},
 	"nano-banana-2": {Model: "nano-banana-2", Path: "/v1/api/generate", Capability: CapabilityGenerate, MaxImages: 6},
-	"gpt-image":     {Model: "gpt-image", Path: "/v1/draw/completions", Capability: CapabilityGenerate, MaxImages: 6},
-	"veo":           {Model: "veo", Path: "/v1/video/veo", Capability: CapabilityVideo, MaxImages: 1},
+	"gpt-image":     {Model: "gpt-image", Path: "/v1/api/generate", Capability: CapabilityGenerate, MaxImages: 6},
+	"veo":           {Model: "veo", Path: "/v1/api/generate", Capability: CapabilityVideo, MaxImages: 1},
 }
 
 // GetModelSpec 按模型名查注册表。
@@ -217,11 +207,6 @@ type GenerateRequest struct {
 	AspectRatio string   `json:"aspectRatio,omitempty"`
 	ImageSize   string   `json:"imageSize,omitempty"`
 	ReplyType   string   `json:"replyType"`
-}
-
-// ResultRequest 是 /v1/draw/result 的入参。
-type ResultRequest struct {
-	ID string `json:"id"`
 }
 
 // TaskResult 单条结果。
@@ -290,7 +275,9 @@ git commit -m "feat(grsai): add model registry and request/response types"
 - Produces:
   - `type Generator struct { instance globals.ChannelConfig; endpoint, apiKey string }`
   - `func newGenerator(conf globals.ChannelConfig) *Generator`
+  - `func (c *Generator) doRequest(req *http.Request, out *TaskResponse) error`
   - `func (c *Generator) postJSON(ctx context.Context, path string, body interface{}, out *TaskResponse) error`
+  - `func (c *Generator) getResult(ctx context.Context, id string, out *TaskResponse) error`（GET `/v1/api/result?id=`）
   - `func (c *Generator) Submit(ctx context.Context, spec ModelSpec, body GenerateRequest) (*TaskResponse, error)`
   - `func (c *Generator) PollResult(ctx context.Context, id string, maxWait, interval time.Duration) (*TaskResponse, error)`
   - `func (c *Generator) GetProxy() globals.ProxyConfig`
@@ -337,8 +324,17 @@ func TestSubmitAndPoll(t *testing.T) {
 		}
 		switch r.URL.Path {
 		case "/v1/api/generate":
+			if r.Method != http.MethodPost {
+				t.Errorf("generate method=%s", r.Method)
+			}
 			_ = json.NewEncoder(w).Encode(TaskResponse{ID: "task-1", Status: "running"})
-		case "/v1/draw/result":
+		case "/v1/api/result":
+			if r.Method != http.MethodGet {
+				t.Errorf("result method=%s", r.Method)
+			}
+			if got := r.URL.Query().Get("id"); got != "task-1" {
+				t.Errorf("result id query=%q", got)
+			}
 			polls++
 			if polls < 2 {
 				_ = json.NewEncoder(w).Encode(TaskResponse{ID: "task-1", Status: "running", Progress: 50})
@@ -459,22 +455,9 @@ func (c *Generator) httpClient() *http.Client {
 	return client
 }
 
-// postJSON 发送 JSON POST 请求，带 Bearer 认证，解析响应到 out。
-func (c *Generator) postJSON(ctx context.Context, path string, body interface{}, out *TaskResponse) error {
-	if c.apiKey == "" {
-		return fmt.Errorf("grsai requires an API key (secret)")
-	}
-	payload, err := json.Marshal(body)
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint+path, bytes.NewReader(payload))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
+// doRequest 执行请求并把响应解析到 out。非 2xx 时结合 out.error 返回错误。
+func (c *Generator) doRequest(req *http.Request, out *TaskResponse) error {
 	req.Header.Set("Authorization", "Bearer "+c.apiKey)
-
 	resp, err := c.httpClient().Do(req)
 	if err != nil {
 		return err
@@ -489,10 +472,39 @@ func (c *Generator) postJSON(ctx context.Context, path string, body interface{},
 		return fmt.Errorf("grsai invalid response (http %d): %s", resp.StatusCode, strings.TrimSpace(string(raw)))
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		msg := out.ErrorMessage(strings.TrimSpace(string(raw)))
-		return fmt.Errorf("grsai http %d: %s", resp.StatusCode, msg)
+		return fmt.Errorf("grsai http %d: %s", resp.StatusCode, out.ErrorMessage(strings.TrimSpace(string(raw))))
 	}
 	return nil
+}
+
+// postJSON 发送 JSON POST 请求（提交任务），带 Bearer 认证，解析响应到 out。
+func (c *Generator) postJSON(ctx context.Context, path string, body interface{}, out *TaskResponse) error {
+	if c.apiKey == "" {
+		return fmt.Errorf("grsai requires an API key (secret)")
+	}
+	payload, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint+path, bytes.NewReader(payload))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	return c.doRequest(req, out)
+}
+
+// getResult 查询任务结果：GET /v1/api/result?id=<id>（无请求体）。
+func (c *Generator) getResult(ctx context.Context, id string, out *TaskResponse) error {
+	if c.apiKey == "" {
+		return fmt.Errorf("grsai requires an API key (secret)")
+	}
+	u := c.endpoint + "/v1/api/result?id=" + url.QueryEscape(id)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return err
+	}
+	return c.doRequest(req, out)
 }
 
 // Submit 提交任务（async），返回带任务 id 的响应。
@@ -538,7 +550,7 @@ func (c *Generator) PollResult(ctx context.Context, id string, maxWait, interval
 	deadline := start.Add(maxWait)
 	for attempt := 1; ; attempt++ {
 		var resp TaskResponse
-		if err := c.postJSON(ctx, "/v1/draw/result", ResultRequest{ID: id}, &resp); err != nil {
+		if err := c.getResult(ctx, id, &resp); err != nil {
 			return nil, err
 		}
 		globals.Debug(fmt.Sprintf("[grsai] poll #%d id=%s status=%q progress=%d elapsed=%s",
@@ -812,37 +824,29 @@ func TestClassifyImages(t *testing.T) {
 
 func TestCreateImageEditRequest(t *testing.T) {
 	globals.StorageResultDir = t.TempDir()
+
+	// dl 提供结果图片的下载地址。
+	dl := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("img"))
+	}))
+	defer dl.Close()
+
 	var gotBody GenerateRequest
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/v1/api/generate":
 			_ = json.NewDecoder(r.Body).Decode(&gotBody)
 			_ = json.NewEncoder(w).Encode(TaskResponse{ID: "t1", Status: "running"})
-		case "/v1/draw/result":
+		case "/v1/api/result":
 			_ = json.NewEncoder(w).Encode(TaskResponse{ID: "t1", Status: "succeeded",
-				Results: []TaskResult{{URL: r.Host}}}) // 用一个可下载地址替换见下
+				Results: []TaskResult{{URL: dl.URL + "/a.png"}}})
+		default:
+			t.Errorf("unexpected path %s", r.URL.Path)
 		}
 	}))
 	defer srv.Close()
-	// 让结果 URL 指向同一 server 的下载分支
-	dl := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("img"))
-	}))
-	defer dl.Close()
 
 	c := newGenerator(fakeConfig{endpoint: srv.URL, secret: "sk-test"})
-	// 覆盖结果 URL：重启一个 handler 直接给 dl 地址
-	srv.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/v1/api/generate":
-			_ = json.NewDecoder(r.Body).Decode(&gotBody)
-			_ = json.NewEncoder(w).Encode(TaskResponse{ID: "t1", Status: "running"})
-		case "/v1/draw/result":
-			_ = json.NewEncoder(w).Encode(TaskResponse{ID: "t1", Status: "succeeded",
-				Results: []TaskResult{{URL: dl.URL + "/a.png"}}})
-		}
-	})
-
 	var emitted []string
 	hook := func(ch *globals.Chunk) error { emitted = append(emitted, ch.Content); return nil }
 	err := c.CreateImageEditRequest(&adaptercommon.ImageEditProps{
@@ -1191,10 +1195,10 @@ func TestCreateImageToVideoRequest(t *testing.T) {
 	var gotBody GenerateRequest
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/v1/video/veo":
+		case "/v1/api/generate":
 			_ = json.NewDecoder(r.Body).Decode(&gotBody)
 			_ = json.NewEncoder(w).Encode(TaskResponse{ID: "v1", Status: "running"})
-		case "/v1/draw/result":
+		case "/v1/api/result":
 			_ = json.NewEncoder(w).Encode(TaskResponse{ID: "v1", Status: "succeeded",
 				Results: []TaskResult{{URL: dl.URL + "/out.mp4"}}})
 		}

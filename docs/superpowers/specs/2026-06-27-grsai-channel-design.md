@@ -17,7 +17,7 @@
 
 1. **接入方式**：新增 `adapter/grsai`，注册进 adapter 工厂表，复用 `channel → adapter` 调度。不在 photo 模块内直接调用外部 API。
 2. **模型命名**：使用裸名 `nano-banana`、`nano-banana-2`、`gpt-image`、`veo`（与即梦模型名不冲突，prompts.json 直接引用，无需 mapper）。
-3. **reply 模式**：统一 `replyType:"async"`，提交后轮询 `/v1/draw/result` 取结果。不使用 stream（避免长连接，对齐即梦 submit/poll 模式）。
+3. **reply 模式**：统一 `replyType:"async"`，提交后轮询 `GET /v1/api/result?id=...` 取结果。不使用 stream（避免长连接，对齐即梦 submit/poll 模式）。
 4. **结果落地**：下载结果 URL 到 `storage/results`，`hook` 回推本地公开 URL，与即梦行为完全一致。
 
 ## 现状参照（镜像模板）
@@ -45,17 +45,19 @@ grsai adapter 完整镜像 `adapter/jimengapi` 的结构与约定：
 认证：Header `Authorization: Bearer <sk-...>`，`Content-Type: application/json`。
 双 Host：海外 `https://grsaiapi.com`、国内直连 `https://grsai.dakka.com.cn`（由渠道 `endpoint` 决定）。
 
+**重要**：apifox（`/v1/api/*`）与 grsai.com dashboard 文档（`/v1/draw/*`、`/v1/video/veo`）是**两套不同接口面**。本接入以 apifox 为准，统一用 `/v1/api/*`。
+
 | 能力 | 方法 | 路径 | 关键字段 |
 |---|---|---|---|
-| nano-banana 生图/图生图 | POST | `/v1/api/generate` | `model, prompt, images[], aspectRatio, imageSize(1K/2K/4K), replyType` |
-| gpt-image 生图/图生图 | POST | `/v1/draw/completions` | 待核对 apifox 对应页面 |
-| veo 视频 | POST | `/v1/video/veo` | 待核对 apifox 对应页面 |
-| 结果查询 | POST | `/v1/draw/result` | 入参 `id`；返回 `status, progress, results[].url, error` |
+| 生图/图生图/视频（统一提交） | POST | `/v1/api/generate` | `model, prompt, images[], aspectRatio, imageSize(1K/2K/4K), replyType` |
+| 结果查询 | **GET** | `/v1/api/result?id=<task id>` | query 传 `id` + Bearer header；返回 `status, progress, results[].url, error` |
 
-async 响应：`{"id":"...","status":"running"}`；轮询结果：`{"id","status":"succeeded","progress":100,"results":[{"url":"..."}]}`；
-失败：`{"id","status":"failed","error":"..."}`。状态枚举：`running / succeeded / failed / violation`。
+提交（async）响应：`{"id":"...","status":"running"}`；轮询结果（GET /v1/api/result）：
+`{"id","status":"succeeded","progress":100,"results":[{"url":"..."}]}`；失败：`{"id","status":"failed","error":"..."}`。
+状态枚举：`running / succeeded / failed / violation`（terminal：后三者）。
 
-> 实现前需核对 apifox 上 gpt-image、veo、结果查询三页的精确请求/响应字段（nano-banana 页已确认）。模型注册表设计为可扩展，字段差异集中在各能力的 body 构造函数里。
+> 已确认（apifox）：`/v1/api/generate` 提交、`GET /v1/api/result?id=` 查询、响应字段、状态枚举、nano-banana body。
+> 待联调确认：gpt-image / veo 的**精确 model 标识**（是否走同一 `/v1/api/generate`，以及 veo 是否有额外字段如时长/比例）。模型注册表 `Path` 字段可逐模型覆盖，差异隔离在 body 构造处；由 Task 11/12 live smoke test 校正。
 
 ## 请求映射
 
