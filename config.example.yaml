@@ -130,8 +130,9 @@ channel:
     models:
       - nano-banana
       - nano-banana-2
-      - gpt-image
-      - veo
+      - gpt-image-2
+      - veo3.1-fast
+      - veo3.1-pro
     state: true
     weight: 1
 

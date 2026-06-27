@@ -1,6 +1,7 @@
 package grsai
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -122,6 +123,48 @@ func TestCreateImageEditRequest(t *testing.T) {
 		t.Fatalf("body=%+v", gotBody)
 	}
 	if len(emitted) != 1 {
+		t.Fatalf("emitted=%v", emitted)
+	}
+}
+
+// TestCreateImageGenerationSurfaceB 覆盖 SurfaceB（gpt-image-2）：
+// 提交走 SSE（POST /v1/draw/completions），结果走 POST /v1/draw/result（{code,data,msg} 包装）。
+func TestCreateImageGenerationSurfaceB(t *testing.T) {
+	globals.StorageResultDir = t.TempDir()
+
+	dl := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("img"))
+	}))
+	defer dl.Close()
+
+	var gotBody GenerateRequest
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/draw/completions" {
+			t.Errorf("unexpected path %s", r.URL.Path)
+			return
+		}
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.Header().Set("Content-Type", "text/event-stream")
+		// 进度帧 + 终态帧（结果在终态帧的 results[].url）。
+		fmt.Fprint(w, "data: {\"id\":\"g1\",\"status\":\"running\",\"progress\":10}\n\n")
+		fmt.Fprintf(w, "data: {\"id\":\"g1\",\"status\":\"succeeded\",\"progress\":100,\"results\":[{\"url\":%q}]}\n\n", dl.URL+"/a.png")
+	}))
+	defer srv.Close()
+
+	c := newGenerator(fakeConfig{endpoint: srv.URL, secret: "sk-test"})
+	var emitted []string
+	hook := func(ch *globals.Chunk) error { emitted = append(emitted, ch.Content); return nil }
+	err := c.CreateImageGenerationRequest(&adaptercommon.ImageGenerationProps{
+		Model:  "gpt-image-2",
+		Prompt: "a red apple",
+	}, hook)
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	if gotBody.Model != "gpt-image-2" || gotBody.ReplyType != "async" {
+		t.Fatalf("body=%+v", gotBody)
+	}
+	if len(emitted) != 1 || emitted[0] == "" {
 		t.Fatalf("emitted=%v", emitted)
 	}
 }

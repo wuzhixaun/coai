@@ -29,26 +29,18 @@ func (c *Generator) CreateImageToVideoRequest(props *adaptercommon.ImageToVideoP
 		ReplyType: "async",
 	}
 
-	ctx := context.Background()
-	submit, err := c.Submit(ctx, spec, body)
+	urls, err := c.runTask(context.Background(), spec, body, videoPollMaxWait, 10*time.Second)
 	if err != nil {
 		return err
 	}
-	res := submit
-	if !(submit.IsSucceeded() && len(submit.Results) > 0) {
-		res, err = c.PollResult(ctx, submit.ID, videoPollMaxWait, 10*time.Second)
-		if err != nil {
-			return err
-		}
-	}
-	if len(res.Results) == 0 || strings.TrimSpace(res.Results[0].URL) == "" {
-		return fmt.Errorf("grsai 未返回视频结果 (id=%s)", submit.ID)
+	if len(urls) == 0 || strings.TrimSpace(urls[0]) == "" {
+		return fmt.Errorf("grsai 未返回视频结果")
 	}
 
-	stored, err := c.storeRemoteURL(res.Results[0].URL, false)
+	stored, err := c.storeRemoteURL(urls[0], false)
 	if err != nil {
-		globals.Warn(fmt.Sprintf("[grsai] 视频结果落地失败，回退源地址 (id=%s): %s", submit.ID, err))
-		stored = res.Results[0].URL
+		globals.Warn(fmt.Sprintf("[grsai] 视频结果落地失败，回退源地址: %s", err))
+		stored = urls[0]
 	}
 	return hook(&globals.Chunk{Content: stored})
 }

@@ -45,19 +45,29 @@ grsai adapter 完整镜像 `adapter/jimengapi` 的结构与约定：
 认证：Header `Authorization: Bearer <sk-...>`，`Content-Type: application/json`。
 双 Host：海外 `https://grsaiapi.com`、国内直连 `https://grsai.dakka.com.cn`（由渠道 `endpoint` 决定）。
 
-**重要**：apifox（`/v1/api/*`）与 grsai.com dashboard 文档（`/v1/draw/*`、`/v1/video/veo`）是**两套不同接口面**。本接入以 apifox 为准，统一用 `/v1/api/*`。
+**重要（实测确认 2026-06-27，用真实 key）**：grsai 实际有**两套并存的接口面**，按模型分流，本接入两套都支持（`ModelSpec.Surface` 字段分发）：
 
-| 能力 | 方法 | 路径 | 关键字段 |
+**SurfaceA** — nano-banana 系：
+| 能力 | 方法 | 路径 | 响应 |
 |---|---|---|---|
-| 生图/图生图/视频（统一提交） | POST | `/v1/api/generate` | `model, prompt, images[], aspectRatio, imageSize(1K/2K/4K), replyType` |
-| 结果查询 | **GET** | `/v1/api/result?id=<task id>` | query 传 `id` + Bearer header；返回 `status, progress, results[].url, error` |
+| 提交 | POST | `/v1/api/generate` | 扁平 JSON `{"id","status":"running"}` |
+| 结果 | **GET** | `/v1/api/result?id=<id>` | `{"id","status","progress","results":[{"url"}],"error"}` |
 
-提交（async）响应：`{"id":"...","status":"running"}`；轮询结果（GET /v1/api/result）：
-`{"id","status":"succeeded","progress":100,"results":[{"url":"..."}]}`；失败：`{"id","status":"failed","error":"..."}`。
-状态枚举：`running / succeeded / failed / violation`（terminal：后三者）。
+**SurfaceB** — gpt-image-2 / veo3-* 系：
+| 能力 | 方法 | 路径 | 响应 |
+|---|---|---|---|
+| 提交（图） | POST | `/v1/draw/completions` | **SSE 流** `data: {"id","status","progress",...}`（读首帧取 id） |
+| 提交（视频） | POST | `/v1/video/veo` | 同上 SSE |
+| 结果 | POST | `/v1/draw/result` body `{"id"}` | **包装** `{"code":0,"data":{"id","status","progress","url","results","error","failure_reason"},"msg"}` |
 
-> 已确认（apifox）：`/v1/api/generate` 提交、`GET /v1/api/result?id=` 查询、响应字段、状态枚举、nano-banana body。
-> 待联调确认：gpt-image / veo 的**精确 model 标识**（是否走同一 `/v1/api/generate`，以及 veo 是否有额外字段如时长/比例）。模型注册表 `Path` 字段可逐模型覆盖，差异隔离在 body 构造处；由 Task 11/12 live smoke test 校正。
+公共：认证 `Authorization: Bearer`；状态枚举 `running / succeeded / failed / violation`（terminal：后三者）。
+
+**真实模型名（实测，替换早期错误假设）**：
+- SurfaceA：`nano-banana`、`nano-banana-2`（生图）
+- SurfaceB：`gpt-image-2`（生图；旧 `sora-image` 已下架，官方提示用 gpt-image-2 代替）、`veo3.1-fast`、`veo3.1-pro`（视频；旧 `veo3-*` 已被 google 下架，提示用 veo3.1）
+- ❌ `gpt-image`、`veo`、`veo3`、`veo3-fast`、`veo3.1` 均报 "model not found"，不可用。
+
+**结果传递（重要）**：SurfaceB 的结果**来自 SSE 流本身**——提交后流持续推送 `data:` 进度帧，最终帧带 `status:succeeded` + `results[].url`。`/v1/draw/result` 轮询不可靠（长期 running），故 adapter 全程消费流直到终态帧（`streamB`，ctx 控时、客户端不设整体 Timeout 以支持长视频）。SurfaceA 仍是提交 + GET 轮询。
 
 ## 请求映射
 
@@ -67,7 +77,7 @@ grsai adapter 完整镜像 `adapter/jimengapi` 的结构与约定：
 | 图生图/换色/场景/擦除 | `ImageEditProps{Images[], Prompt}` | `{model, prompt, images[](base64或URL), aspectRatio, imageSize, replyType:"async"}` |
 | 超分 | `ImageUpscaleProps{Image, ResolutionType(2k/4k)}` | `{model, images:[image], imageSize: 2K/4K, replyType:"async"}` |
 | 扩图 | `ImageOutpaintProps{Image, TargetRatio, Prompt}` | `{model, images:[image], aspectRatio: TargetRatio, prompt, replyType:"async"}` |
-| 图生视频 | `ImageToVideoProps{Images[], Prompt, Duration}` | veo body（待核对字段） |
+| 图生视频 | `ImageToVideoProps{Images[], Prompt, Duration}` | `{model:veo3-*, prompt, images[], replyType:"async"}`（SurfaceB） |
 
 图片输入分类复用即梦思路：`http(s)://` 走 URL，其余按 base64（去 data: 前缀）。
 
