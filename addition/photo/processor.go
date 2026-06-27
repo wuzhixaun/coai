@@ -434,18 +434,31 @@ func resolveModel(feature, channelOverride string) string {
 	if fc := GetFeatureConfig(feature); fc != nil {
 		defaultModel = fc.Model
 	}
-	// 仅「生图类」功能允许被前端模型下拉覆盖，且只能切换到另一个生图模型；
-	// 高清/扩图/提取/视频等能力功能必须使用各自专属模型，否则会被错误地路由到
-	// 不支持该能力的模型（例如视频被强制用 seedream → jimeng-api 不支持视频）。
-	if channelOverride != "" && isGenerationModel(defaultModel) && isGenerationModel(channelOverride) {
-		return channelOverride
+	// 前端模型下拉可覆盖，但只能在「同能力」内切换，避免把视频强制用到生图模型上：
+	//  - 生图类 → 只能切到另一个生图模型；
+	//  - 视频类 → 只能切到另一个视频模型（如即梦 jimeng-video 切到 grsai veo3.1-*）。
+	// 高清/扩图/提取等能力功能仍各用专属模型，不被覆盖。
+	if channelOverride != "" {
+		if isGenerationModel(defaultModel) && isGenerationModel(channelOverride) {
+			return channelOverride
+		}
+		if isVideoModel(defaultModel) && isVideoModel(channelOverride) {
+			return channelOverride
+		}
 	}
 	return defaultModel
 }
 
 // isGenerationModel 判断是否为生图（文/图生图）基础模型。
 func isGenerationModel(model string) bool {
-	return strings.HasPrefix(model, "jimeng-seedream")
+	m := strings.ToLower(model)
+	return strings.HasPrefix(m, "jimeng-seedream") || strings.HasPrefix(m, "nano-banana") || strings.HasPrefix(m, "gpt-image")
+}
+
+// isVideoModel 判断是否为视频模型（即梦 jimeng-video / grsai veo* / sora 等）。
+func isVideoModel(model string) bool {
+	m := strings.ToLower(model)
+	return strings.Contains(m, "video") || strings.Contains(m, "veo") || strings.Contains(m, "sora")
 }
 
 func ProcessTask(ctx context.Context, db *sql.DB, taskID, feature string, imagePaths []string, params map[string]interface{}, channelOverride, userGroup string, identityRefPaths []string, identitySeed *int, identitySubject string) {
