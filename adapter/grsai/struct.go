@@ -17,6 +17,7 @@ func NewImageProcessorFromConfig(conf globals.ChannelConfig) adaptercommon.Image
 }
 
 var (
+	_ adaptercommon.Factory                = (*Generator)(nil)
 	_ adaptercommon.ImageGenerationFactory = (*Generator)(nil)
 	_ adaptercommon.ImageEditFactory       = (*Generator)(nil)
 	_ adaptercommon.ImageUpscaleFactory    = (*Generator)(nil)

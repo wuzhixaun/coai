@@ -47,6 +47,8 @@ var channelFactories = map[string]adaptercommon.FactoryCreator{
 
 	globals.MoonshotChannelType: openai.NewChatInstanceFromConfig, // openai format
 	globals.GroqChannelType:     openai.NewChatInstanceFromConfig, // openai format
+
+	globals.GrsaiChannelType: grsai.NewChatInstanceFromConfig, // 对话框内直接出图/出视频
 }
 
 // 图片处理适配器工厂映射

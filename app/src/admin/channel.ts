@@ -72,6 +72,7 @@ export const ChannelTypes: Record<string, string> = {
   coze: "扣子 Coze",
   dify: "Dify",
   "jimeng-api": "即梦官方 API",
+  grsai: "grsai 多模型（nano-banana / gpt-image / veo）",
 };
 
 export const ShortChannelTypes: Record<string, string> = {
@@ -95,6 +96,7 @@ export const ShortChannelTypes: Record<string, string> = {
   coze: "Coze",
   dify: "Dify",
   "jimeng-api": "即梦 API",
+  grsai: "grsai",
 };
 
 export const ChannelInfos: Record<string, ChannelInfo> = {
@@ -334,6 +336,17 @@ export const ChannelInfos: Record<string, ChannelInfo> = {
       "> 支持 `jimeng-seedream-4.6` / `jimeng-seedream-4.0` 图像生成与图生图编辑；4.6 的 scale 为整数 1-100，4.0 的 scale 为小数 0-1。\n" +
       "> 同时支持 `jimeng-superres` 智能超清（4k/8k）、`jimeng-outpaint` 智能扩图、`jimeng-inpaint` 局部重绘（需源图+灰度 mask）、`jimeng-material-extract` 素材提取（image_edit_prompt）、`jimeng-product-extract` 商品提取（edit_prompt）。\n" +
       "> 生成结果会将火山 24 小时临时图片 URL 转存到本地 `storage/results`。\n",
+  },
+  grsai: {
+    endpoint: "https://grsaiapi.com",
+    format: "sk-xxxxxxxx",
+    models: ["nano-banana", "nano-banana-2", "gpt-image-2", "veo3.1-fast", "veo3.1-pro"],
+    description:
+      "> grsai 多模型平台（图片/视频）。密钥格式为 **Bearer 单 key**（`sk-...`，非 AK|SK），支持多行密钥池。\n" +
+      "> 接入点：海外 *https://grsaiapi.com*，国内直连可改 *https://grsai.dakka.com.cn*。\n" +
+      "> 生图：`nano-banana` / `nano-banana-2`（/v1/api/generate）、`gpt-image-2`（/v1/draw/completions，SSE 流式）。\n" +
+      "> 视频：`veo3.1-fast` / `veo3.1-pro`（/v1/video/veo，SSE 流式）——注意 google 侧 veo 模型可能临时下架。\n" +
+      "> 生成结果的临时 URL 会转存到本地 `storage/results`。\n",
   },
 };
 
