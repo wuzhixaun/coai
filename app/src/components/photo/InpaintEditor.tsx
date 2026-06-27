@@ -16,15 +16,17 @@ interface Props {
   onApply: (maskBase64: string, prompt: string) => void;
 }
 
-// 画布内局部重绘：源图画在显示画布(仅预览)，mask 画在独立离屏画布(黑底白笔，仅导出它)。
-// 这样即便源图跨域污染显示画布，mask 导出始终干净。
+// 画布内局部重绘。两张离屏画布分离职责：
+//  - maskRef    黑底白笔，用于导出（白=重绘区，黑=保留），从不含源图，导出永不被跨域污染
+//  - overlayRef 透明底红笔，仅用于在显示画布上做半透明红色预览
 const InpaintEditor: React.FC<Props> = ({ imageUrl, open, loading, onOpenChange, onApply }) => {
   const { t } = useTranslation();
   const dispRef = useRef<HTMLCanvasElement>(null);
-  const maskRef = useRef<HTMLCanvasElement>(null);   // 离屏：自然尺寸，黑底白笔
+  const maskRef = useRef<HTMLCanvasElement>(null);
+  const overlayRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const drawing = useRef(false);
-  const history = useRef<ImageData[]>([]);
+  const history = useRef<{ mask: ImageData; overlay: ImageData }[]>([]);
   const scaleRef = useRef(1);
 
   const [brush, setBrush] = useState(36);
@@ -33,29 +35,17 @@ const InpaintEditor: React.FC<Props> = ({ imageUrl, open, loading, onOpenChange,
   const [ready, setReady] = useState(false);
   const [hasMask, setHasMask] = useState(false);
 
-  // 把 mask(白) 以半透明红叠加到显示画布上
+  // 显示：源图 + 透明红色 overlay
   const render = useCallback(() => {
-    const dc = dispRef.current, mc = maskRef.current, img = imgRef.current;
-    if (!dc || !mc || !img) return;
+    const dc = dispRef.current, ov = overlayRef.current, img = imgRef.current;
+    if (!dc || !ov || !img) return;
     const ctx = dc.getContext("2d");
     if (!ctx) return;
     ctx.clearRect(0, 0, dc.width, dc.height);
     ctx.drawImage(img, 0, 0, dc.width, dc.height);
-    const tmp = document.createElement("canvas");
-    tmp.width = dc.width; tmp.height = dc.height;
-    const tctx = tmp.getContext("2d");
-    if (tctx) {
-      tctx.drawImage(mc, 0, 0, dc.width, dc.height);
-      tctx.globalCompositeOperation = "source-in";
-      tctx.fillStyle = "rgba(239,68,68,1)";
-      tctx.fillRect(0, 0, dc.width, dc.height);
-      ctx.globalAlpha = 0.5;
-      ctx.drawImage(tmp, 0, 0);
-      ctx.globalAlpha = 1;
-    }
+    ctx.drawImage(ov, 0, 0, dc.width, dc.height);
   }, []);
 
-  // 载入图片，初始化画布
   useEffect(() => {
     if (!open || !imageUrl) return;
     setReady(false);
@@ -66,43 +56,61 @@ const InpaintEditor: React.FC<Props> = ({ imageUrl, open, loading, onOpenChange,
     img.onload = () => {
       imgRef.current = img;
       const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
-      const mc = maskRef.current, dc = dispRef.current;
-      if (!mc || !dc) return;
+      const mc = maskRef.current, ov = overlayRef.current, dc = dispRef.current;
+      if (!mc || !ov || !dc) return;
       mc.width = w; mc.height = h;
+      ov.width = w; ov.height = h;
       const mctx = mc.getContext("2d");
-      if (mctx) { mctx.fillStyle = "#000"; mctx.fillRect(0, 0, w, h); }
+      if (mctx) { mctx.fillStyle = "#000"; mctx.fillRect(0, 0, w, h); }   // 导出底：黑
+      ov.getContext("2d")?.clearRect(0, 0, w, h);                          // 预览底：透明
       const s = Math.min(1, 640 / w, 520 / h);
       scaleRef.current = s;
       dc.width = Math.round(w * s); dc.height = Math.round(h * s);
       setReady(true);
       render();
     };
+    img.onerror = () => { setReady(false); };
     img.src = imageUrl;
   }, [open, imageUrl, render]);
 
   const paintAt = (clientX: number, clientY: number) => {
-    const dc = dispRef.current, mc = maskRef.current;
-    if (!dc || !mc) return;
+    const dc = dispRef.current, mc = maskRef.current, ov = overlayRef.current;
+    if (!dc || !mc || !ov) return;
     const rect = dc.getBoundingClientRect();
     const x = (clientX - rect.left) / scaleRef.current;
     const y = (clientY - rect.top) / scaleRef.current;
     const r = brush / scaleRef.current;
-    const mctx = mc.getContext("2d");
-    if (!mctx) return;
+    const mctx = mc.getContext("2d"), octx = ov.getContext("2d");
+    if (!mctx || !octx) return;
+
+    // 导出 mask：白=重绘 / 黑=保留
     mctx.globalCompositeOperation = "source-over";
     mctx.fillStyle = mode === "erase" ? "#fff" : "#000";
-    mctx.beginPath();
-    mctx.arc(x, y, r, 0, Math.PI * 2);
-    mctx.fill();
+    mctx.beginPath(); mctx.arc(x, y, r, 0, Math.PI * 2); mctx.fill();
+
+    // 预览 overlay：红=重绘；擦除模式用 destination-out 清掉
+    if (mode === "erase") {
+      octx.globalCompositeOperation = "source-over";
+      octx.fillStyle = "rgba(239,68,68,0.55)";
+    } else {
+      octx.globalCompositeOperation = "destination-out";
+      octx.fillStyle = "rgba(0,0,0,1)";
+    }
+    octx.beginPath(); octx.arc(x, y, r, 0, Math.PI * 2); octx.fill();
+    octx.globalCompositeOperation = "source-over";
+
     if (mode === "erase") setHasMask(true);
     render();
   };
 
   const pushHistory = () => {
-    const mc = maskRef.current;
-    const mctx = mc?.getContext("2d");
-    if (mc && mctx) {
-      history.current.push(mctx.getImageData(0, 0, mc.width, mc.height));
+    const mc = maskRef.current, ov = overlayRef.current;
+    const mctx = mc?.getContext("2d"), octx = ov?.getContext("2d");
+    if (mc && ov && mctx && octx) {
+      history.current.push({
+        mask: mctx.getImageData(0, 0, mc.width, mc.height),
+        overlay: octx.getImageData(0, 0, ov.width, ov.height),
+      });
       if (history.current.length > 20) history.current.shift();
     }
   };
@@ -111,6 +119,7 @@ const InpaintEditor: React.FC<Props> = ({ imageUrl, open, loading, onOpenChange,
     if (!ready) return;
     pushHistory();
     drawing.current = true;
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     paintAt(e.clientX, e.clientY);
   };
   const onMove = (e: React.PointerEvent) => {
@@ -119,18 +128,23 @@ const InpaintEditor: React.FC<Props> = ({ imageUrl, open, loading, onOpenChange,
   const onUp = () => { drawing.current = false; };
 
   const undo = () => {
-    const mc = maskRef.current;
-    const mctx = mc?.getContext("2d");
+    const mc = maskRef.current, ov = overlayRef.current;
+    const mctx = mc?.getContext("2d"), octx = ov?.getContext("2d");
     const prev = history.current.pop();
-    if (mc && mctx && prev) { mctx.putImageData(prev, 0, 0); render(); }
+    if (mc && ov && mctx && octx && prev) {
+      mctx.putImageData(prev.mask, 0, 0);
+      octx.putImageData(prev.overlay, 0, 0);
+      render();
+    }
   };
 
   const clearMask = () => {
-    const mc = maskRef.current;
-    const mctx = mc?.getContext("2d");
-    if (mc && mctx) {
+    const mc = maskRef.current, ov = overlayRef.current;
+    const mctx = mc?.getContext("2d"), octx = ov?.getContext("2d");
+    if (mc && ov && mctx && octx) {
       pushHistory();
       mctx.fillStyle = "#000"; mctx.fillRect(0, 0, mc.width, mc.height);
+      octx.clearRect(0, 0, ov.width, ov.height);
       setHasMask(false);
       render();
     }
@@ -176,13 +190,14 @@ const InpaintEditor: React.FC<Props> = ({ imageUrl, open, loading, onOpenChange,
           <div className="flex justify-center rounded-md border bg-muted/30 p-2 overflow-auto max-h-[55vh]">
             <canvas
               ref={dispRef}
-              className="touch-none cursor-crosshair rounded"
+              className="touch-none cursor-crosshair rounded select-none"
               onPointerDown={onDown}
               onPointerMove={onMove}
               onPointerUp={onUp}
-              onPointerLeave={onUp}
+              onPointerCancel={onUp}
             />
             <canvas ref={maskRef} className="hidden" />
+            <canvas ref={overlayRef} className="hidden" />
           </div>
 
           <div>
