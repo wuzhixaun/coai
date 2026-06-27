@@ -1754,7 +1754,18 @@
       "too-big": "{{count}} 個檔案超過50MB，已跳過",
       "success": "成功上傳{{count}} 張圖片",
       "failed": "圖片上傳失敗：{{reason}}",
-      "failed-retry": "請重試。"
+      "failed-retry": "請重試。",
+      "empty-title": "上傳商品圖，開始處理",
+      "empty-desc": "選一個常見場景，點擊上傳你的圖片即可開始",
+      "starter-white_bg": "一鍵白底圖",
+      "starter-model": "AI 模特兒換裝",
+      "starter-watermark": "批量去浮水印/擦除",
+      "favorite": "收藏為參考身份",
+      "empty-can-do": "上傳後可做：白底圖、AI 模特兒換裝、大量去浮水印、場景圖、行銷圖等",
+      "url-ph": "貼上商品連結或圖片直鏈",
+      "url-fetch": "抓取",
+      "url-ok": "已抓取主圖",
+      "url-fail": "抓取失敗，請改用圖片直鏈"
     },
     "feature": {
       "title": "AI 圖片處理功能",
@@ -1785,7 +1796,17 @@
       "category": "提取類別",
       "target-size": "目標尺寸",
       "cancel": "取消",
-      "start": "開始處理"
+      "start": "開始處理",
+      "group": {
+        "basic": "基礎處理",
+        "scene": "場景行銷",
+        "model": "模特兒商品",
+        "extract": "提取翻譯",
+        "video": "影片"
+      },
+      "platforms": "多平台預設（只擴不裁）",
+      "config-param": "配置參數",
+      "save-param": "儲存配置"
     },
     "task": {
       "active": "目前處理({{count}})",
@@ -1804,7 +1825,20 @@
       "cancel-task": "取消任務",
       "cancel": "取消",
       "retry": "重試",
-      "delete": "刪除"
+      "delete": "刪除",
+      "empty-hint": "先上傳並選擇圖片，再選功能開始處理",
+      "compare": "對比原圖",
+      "result-only": "僅看結果",
+      "progress-detail": "正在{{feature}} · 第{{done}}/{{total}} 張",
+      "progress-detail-video": "正在產生影片· 第{{done}}/{{total}} 個",
+      "partial": "部分成功{{done}}/{{total}}",
+      "retry-missing": "重試失敗項",
+      "dismiss": "移除",
+      "pick-download": "下載選取({{count}})",
+      "pick-all": "全選",
+      "pick-clear": "清除選擇",
+      "item-status": "逐圖狀態",
+      "item-summary": "{{ok}} 成功· {{failed}} 失敗"
     },
     "features": {
       "white_bg": "白底圖",
@@ -1823,7 +1857,8 @@
       "resize": "改尺寸",
       "material_extract": "素材擷取",
       "product_extract": "商品提取",
-      "video_gen": "影片"
+      "video_gen": "影片",
+      "workflow": "成套套件"
     },
     "status": {
       "pending": "排隊中",
@@ -1837,6 +1872,63 @@
       "timeout": "處理超時，請稍後重試（圖片/影片產生較慢時可多等一會）",
       "need-image": "請先上傳參考圖後再處理",
       "insufficient": "額度不足，請充值後重試"
+    },
+    "identity": {
+      "title": "一致性身份",
+      "hint": "選出身分後，場景圖/模特兒圖會帶著該身分的參考圖與鎖定seed，保持主體一致",
+      "none": "不應用",
+      "new": "新建身份",
+      "type-product": "商品",
+      "type-model": "模特兒",
+      "name": "名稱",
+      "name-ph": "如：A 款洋裝/ 模特兒小美",
+      "subject": "主體描述（可選）",
+      "subject-ph": "如：紅色長袖連身裙，圓領",
+      "refs": "參考圖（取自已選圖片）",
+      "refs-count": "{{count}} 張參考圖",
+      "no-refs": "請先在左側選擇至少一張圖片作為參考圖",
+      "create": "創建",
+      "cancel": "取消",
+      "created": "已建立身分認同“{{name}}”",
+      "delete": "刪除",
+      "manage": "管理身份",
+      "type-brandkit": "品牌",
+      "all": "全部",
+      "brand-title": "品牌資產",
+      "brand-new": "新品牌",
+      "color": "主色",
+      "logo": "Logo（取已選第一張）",
+      "panel-title": "一致性身分與品牌權益（可選）",
+      "applied": "已應用"
+    },
+    "workflow": {
+      "title": "一鍵成套",
+      "hint": "選好圖片後點模板，自動串列產出整套素材",
+      "run": "一鍵生成"
+    },
+    "recipe": {
+      "title": "我的配方",
+      "save": "儲存為配方",
+      "saved": "已儲存配方“{{name}}”",
+      "name-ph": "配方名稱，如上架三件套",
+      "need-features": "請先選擇至少一個功能",
+      "cancel": "取消",
+      "confirm": "儲存"
+    },
+    "inpaint": {
+      "title": "局部重繪",
+      "hint": "用畫筆塗抹要修改/移除的區域（紅色），填寫要做什麼後塗抹",
+      "brush": "塗抹",
+      "restore": "擦除塗抹",
+      "size": "筆刷",
+      "undo": "撤銷",
+      "clear": "清除",
+      "prompt": "想做什麼（留空=去除塗抹區）",
+      "prompt-ph": "如：去除瑕疵/ 換成藍色/ 刪除文字",
+      "apply": "應用",
+      "applying": "處理中…",
+      "cancel": "取消",
+      "open": "局部重繪"
     }
   }
 }

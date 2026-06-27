@@ -12,14 +12,58 @@ import (
 
 	adaptercommon "chat/adapter/common"
 	"chat/admin"
+	"chat/auth"
 	"chat/channel"
 	"chat/globals"
 	"chat/manager"
 	"chat/utils"
 )
 
+// PhotoUnitPrice 返回某功能(模型)的单位计费价：ImageBilling=单张价、TimesBilling=单次价；
+// 非计费模型返回 0。复用站点既有定价(channel.ChargeInstance)，不另立价表。
+func PhotoUnitPrice(feature, channelOverride string) float32 {
+	charge := channel.ChargeInstance.GetCharge(resolveModel(feature, channelOverride))
+	if charge == nil || !charge.IsBilling() {
+		return 0
+	}
+	return charge.GetLimit()
+}
+
 const MaxWorkers = 4
 const MaxGenerateCount = 6
+
+// identityContext 承载一致性身份在处理期的派生数据：参考图 base64、锁定 seed、主体描述。
+// 所有方法对 nil 安全，未应用身份时直接传 nil 即可。
+type identityContext struct {
+	refImages  []string // base64
+	lockedSeed *int
+	subject    string
+}
+
+func (i *identityContext) refB64() []string {
+	if i == nil {
+		return nil
+	}
+	return i.refImages
+}
+
+func (i *identityContext) seed() *int {
+	if i == nil {
+		return nil
+	}
+	return i.lockedSeed
+}
+
+// composeSubject 把身份主体描述前置到用户 prompt（主体在前，强化一致性约束）。
+func composeSubject(i *identityContext, userPrompt string) string {
+	if i == nil || i.subject == "" {
+		return userPrompt
+	}
+	if userPrompt == "" {
+		return i.subject
+	}
+	return i.subject + ", " + userPrompt
+}
 
 func ResolveImagePaths(db *sql.DB, imageIDs []string, userID int64) ([]string, error) {
 	var paths []string
@@ -108,13 +152,14 @@ func extractResultURL(content string) string {
 }
 
 func callImageEdit(imageBase64, prompt, model, userGroup string) (string, error) {
-	return callImageEditMulti([]string{imageBase64}, prompt, model, userGroup)
+	return callImageEditMulti([]string{imageBase64}, prompt, model, userGroup, nil)
 }
 
-// callImageEditMulti 支持多张参考图的图生图编辑（如 Logo 定制：商品图 + Logo 图）。
-func callImageEditMulti(images []string, prompt, model, userGroup string) (string, error) {
+// callImageEditMulti 支持多张参考图的图生图编辑（如 Logo 定制：商品图 + Logo 图；
+// 一致性身份：商品图 + 身份参考图组）。seed 非空时锁定 seed 以获得更一致的结果。
+func callImageEditMulti(images []string, prompt, model, userGroup string, seed *int) (string, error) {
 	props := adaptercommon.CreateImageEditProps(&adaptercommon.ImageEditProps{
-		Model: model, Images: images, Prompt: prompt,
+		Model: model, Images: images, Prompt: prompt, Seed: seed,
 	})
 	props.OriginalModel = model
 	var resultURL string
@@ -151,7 +196,7 @@ func processLogoCustom(productPath, logoPath, position, channelOverride, userGro
 		return "", fmt.Errorf("读取 Logo 图片失败: %w", err)
 	}
 	prompt := GetSystemPrompt("logo_custom", map[string]string{"position": position})
-	return callImageEditMulti([]string{productB64, logoB64}, prompt, resolveModel("logo_custom", channelOverride), userGroup)
+	return callImageEditMulti([]string{productB64, logoB64}, prompt, resolveModel("logo_custom", channelOverride), userGroup, nil)
 }
 
 func clampGenerateCount(count int) int {
@@ -193,13 +238,14 @@ func processWhiteBg(imagePath, channelOverride, userGroup string) (string, error
 	return callImageEdit(b64, prompt, resolveModel("white_bg", channelOverride), userGroup)
 }
 
-func processSceneGen(imagePath, userPrompt, channelOverride, userGroup string) (string, error) {
+func processSceneGen(imagePath, userPrompt, channelOverride, userGroup string, idt *identityContext) (string, error) {
 	b64, err := ReadImageBytesAsBase64(imagePath)
 	if err != nil {
 		return "", err
 	}
-	prompt := GetSystemPrompt("scene_gen", map[string]string{"user_prompt": userPrompt})
-	return callImageEdit(b64, prompt, resolveModel("scene_gen", channelOverride), userGroup)
+	prompt := GetSystemPrompt("scene_gen", map[string]string{"user_prompt": composeSubject(idt, userPrompt)})
+	images := append([]string{b64}, idt.refB64()...)
+	return callImageEditMulti(images, prompt, resolveModel("scene_gen", channelOverride), userGroup, idt.seed())
 }
 
 func processImageErase(imagePath, erasePrompt, channelOverride, userGroup string) (string, error) {
@@ -223,13 +269,14 @@ func processColorChange(imagePath, targetColor, channelOverride, userGroup strin
 	return callImageEdit(b64, prompt, resolveModel("color_change", channelOverride), userGroup)
 }
 
-func processMarketing(imagePath, sellingPoint, channelOverride, userGroup string) (string, error) {
+func processMarketing(imagePath, sellingPoint, channelOverride, userGroup string, idt *identityContext) (string, error) {
 	b64, err := ReadImageBytesAsBase64(imagePath)
 	if err != nil {
 		return "", err
 	}
-	prompt := GetSystemPrompt("marketing", map[string]string{"selling_point": sellingPoint})
-	return callImageEdit(b64, prompt, resolveModel("marketing", channelOverride), userGroup)
+	prompt := composeSubject(idt, GetSystemPrompt("marketing", map[string]string{"selling_point": sellingPoint}))
+	images := append([]string{b64}, idt.refB64()...)
+	return callImageEditMulti(images, prompt, resolveModel("marketing", channelOverride), userGroup, idt.seed())
 }
 
 func processImageTranslate(imagePath, targetLang, channelOverride, userGroup string) (string, error) {
@@ -261,13 +308,14 @@ func processHdUpscale(imagePath, channelOverride, userGroup string) (string, err
 	return resultURL, err
 }
 
-func processModelImage(imagePath, prompt, channelOverride, userGroup string) (string, error) {
+func processModelImage(imagePath, prompt, channelOverride, userGroup string, idt *identityContext) (string, error) {
 	b64, err := ReadImageBytesAsBase64(imagePath)
 	if err != nil {
 		return "", err
 	}
-	fullPrompt := BuildPrompt("model_image", prompt, map[string]string{})
-	return callImageEdit(b64, fullPrompt, resolveModel("model_image", channelOverride), userGroup)
+	fullPrompt := BuildPrompt("model_image", composeSubject(idt, prompt), map[string]string{})
+	images := append([]string{b64}, idt.refB64()...)
+	return callImageEditMulti(images, fullPrompt, resolveModel("model_image", channelOverride), userGroup, idt.seed())
 }
 
 func processMaterialChange(imagePath, channelOverride, userGroup string) (string, error) {
@@ -400,7 +448,7 @@ func isGenerationModel(model string) bool {
 	return strings.HasPrefix(model, "jimeng-seedream")
 }
 
-func ProcessTask(ctx context.Context, db *sql.DB, taskID, feature string, imagePaths []string, params map[string]interface{}, channelOverride, userGroup string) {
+func ProcessTask(ctx context.Context, db *sql.DB, taskID, feature string, imagePaths []string, params map[string]interface{}, channelOverride, userGroup string, identityRefPaths []string, identitySeed *int, identitySubject string) {
 	defer func() {
 		if r := recover(); r != nil {
 			println("[ProcessTask] PANIC:", fmt.Sprintf("%v", r))
@@ -410,6 +458,167 @@ func ProcessTask(ctx context.Context, db *sql.DB, taskID, feature string, imageP
 	}()
 	db.Exec("UPDATE photo_tasks SET status = ? WHERE task_id = ?", TaskStatusProcessing, taskID)
 
+	idt := buildIdentityContext(identityRefPaths, identitySeed, identitySubject)
+	items, allResults := runFeaturePerImage(feature, imagePaths, params, channelOverride, userGroup, idt,
+		func(done, total, produced int) {
+			pct := done * 100 / max1(total)
+			if pct > 99 {
+				pct = 99
+			}
+			db.Exec("UPDATE photo_tasks SET progress = ?, processed_images = ? WHERE task_id = ?", pct, produced, taskID)
+		})
+	finalizeTask(db, taskID, feature, channelOverride, items, allResults)
+}
+
+func max1(n int) int {
+	if n < 1 {
+		return 1
+	}
+	return n
+}
+
+// runFeaturePerImage 逐图运行 feature，返回每张源图的状态与扁平结果。
+// 视频功能多图→一个产出，作为单个 item。逐图执行让"部分成功"精确、并支持只重试失败项。
+func runFeaturePerImage(feature string, imagePaths []string, params map[string]interface{}, channelOverride, userGroup string, idt *identityContext, onProgress func(done, total, produced int)) ([]ItemStatus, []string) {
+	var items []ItemStatus
+	var all []string
+
+	if feature == FeatureVideoGen {
+		urls, err := runFeature(feature, imagePaths, params, channelOverride, userGroup, idt)
+		it := ItemStatus{Index: 0, Status: TaskStatusSuccess, Urls: urls}
+		if len(imagePaths) > 0 {
+			it.Filename = filepath.Base(imagePaths[0])
+		}
+		if err != nil {
+			it.Status = TaskStatusFailed
+			it.Error = err.Error()
+		}
+		items = append(items, it)
+		all = append(all, urls...)
+		if onProgress != nil {
+			onProgress(1, 1, len(all))
+		}
+		return items, all
+	}
+
+	for i, p := range imagePaths {
+		urls, err := runFeature(feature, []string{p}, params, channelOverride, userGroup, idt)
+		it := ItemStatus{Index: i, Filename: filepath.Base(p), Status: TaskStatusSuccess, Urls: urls}
+		if err != nil {
+			it.Status = TaskStatusFailed
+			it.Error = err.Error()
+		}
+		items = append(items, it)
+		all = append(all, urls...)
+		if onProgress != nil {
+			onProgress(i+1, len(imagePaths), len(all))
+		}
+	}
+	return items, all
+}
+
+// finalizeTask 根据逐图状态写回任务：任一图失败即整任务标记 failed（保留部分产物），
+// 否则成功。同时落库 item_status 供前端展示与只重试失败项。
+func finalizeTask(db *sql.DB, taskID, feature, channelOverride string, items []ItemStatus, allResults []string) {
+	var genErr error
+	for _, it := range items {
+		if it.Status == TaskStatusFailed {
+			genErr = fmt.Errorf("%s", it.Error)
+			break
+		}
+	}
+	processedVideos := 0
+	if feature == FeatureVideoGen && len(allResults) > 0 {
+		processedVideos = 1
+	}
+	resultJSON := utils.Marshal(allResults)
+	itemJSON := utils.Marshal(items)
+	now := time.Now().Format(time.RFC3339)
+	if genErr != nil {
+		db.Exec(`UPDATE photo_tasks SET status = ?, error_message = ?, result_urls = ?, item_status = ?,
+			processed_images = ?, processed_videos = ?, completed_at = ? WHERE task_id = ?`,
+			TaskStatusFailed, genErr.Error(), resultJSON, itemJSON, len(allResults), processedVideos, now, taskID)
+	} else {
+		db.Exec(`UPDATE photo_tasks SET status = ?, error_message = '', result_urls = ?, item_status = ?, progress = 100,
+			processed_images = ?, processed_videos = ?, completed_at = ? WHERE task_id = ?`,
+			TaskStatusSuccess, resultJSON, itemJSON, len(allResults), processedVideos, now, taskID)
+	}
+	recordPhotoGeneration(db, taskID, feature, channelOverride, len(allResults), genErr)
+}
+
+// ProcessRetryTask 重试：若有逐图状态且存在失败项，只重跑失败的源图并合并结果；
+// 否则整任务重跑。视频任务始终整体重跑。
+func ProcessRetryTask(db *sql.DB, taskID, feature string, imagePaths []string, params map[string]interface{}, channelOverride, userGroup string, prevItems []ItemStatus) {
+	defer func() {
+		if r := recover(); r != nil {
+			println("[ProcessRetryTask] PANIC:", fmt.Sprintf("%v", r))
+			db.Exec("UPDATE photo_tasks SET status = ?, error_message = ? WHERE task_id = ?",
+				TaskStatusFailed, fmt.Sprintf("panic: %v", r), taskID)
+		}
+	}()
+	db.Exec("UPDATE photo_tasks SET status = ? WHERE task_id = ?", TaskStatusProcessing, taskID)
+
+	var failedIdx []int
+	for _, it := range prevItems {
+		if it.Status == TaskStatusFailed {
+			failedIdx = append(failedIdx, it.Index)
+		}
+	}
+
+	// 无逐图信息 / 无失败项 / 视频任务 → 整体重跑
+	if len(prevItems) == 0 || len(failedIdx) == 0 || feature == FeatureVideoGen {
+		items, all := runFeaturePerImage(feature, imagePaths, params, channelOverride, userGroup, nil, nil)
+		finalizeTask(db, taskID, feature, channelOverride, items, all)
+		return
+	}
+
+	// 只重跑失败索引，成功项保持不变
+	byIdx := make(map[int]ItemStatus, len(prevItems))
+	for _, it := range prevItems {
+		byIdx[it.Index] = it
+	}
+	for _, idx := range failedIdx {
+		if idx < 0 || idx >= len(imagePaths) {
+			continue
+		}
+		urls, err := runFeature(feature, []string{imagePaths[idx]}, params, channelOverride, userGroup, nil)
+		it := ItemStatus{Index: idx, Filename: filepath.Base(imagePaths[idx]), Status: TaskStatusSuccess, Urls: urls}
+		if err != nil {
+			it.Status = TaskStatusFailed
+			it.Error = err.Error()
+		}
+		byIdx[idx] = it
+	}
+
+	// 按原顺序重建 items 与扁平结果
+	items := make([]ItemStatus, 0, len(prevItems))
+	var all []string
+	for i := 0; i < len(prevItems); i++ {
+		if it, ok := byIdx[i]; ok {
+			items = append(items, it)
+			all = append(all, it.Urls...)
+		}
+	}
+	finalizeTask(db, taskID, feature, channelOverride, items, all)
+}
+
+// buildIdentityContext 读取身份参考图为 base64，组装处理期身份上下文（无身份时返回 nil）。
+func buildIdentityContext(identityRefPaths []string, identitySeed *int, identitySubject string) *identityContext {
+	if len(identityRefPaths) == 0 && identitySeed == nil && identitySubject == "" {
+		return nil
+	}
+	var refB64 []string
+	for _, p := range identityRefPaths {
+		if b, e := ReadImageBytesAsBase64(p); e == nil {
+			refB64 = append(refB64, b)
+		}
+	}
+	return &identityContext{refImages: refB64, lockedSeed: identitySeed, subject: identitySubject}
+}
+
+// runFeature 执行单个功能（不触碰 DB），返回结果 URL 列表与错误。
+// 供 ProcessTask 与工作流编排（ProcessWorkflowTask）共用。
+func runFeature(feature string, imagePaths []string, params map[string]interface{}, channelOverride, userGroup string, idt *identityContext) ([]string, error) {
 	var resultURLs []string
 	var err error
 	isVideo := feature == FeatureVideoGen
@@ -463,7 +672,7 @@ func ProcessTask(ctx context.Context, db *sql.DB, taskID, feature string, imageP
 				}
 			case FeatureSceneGen:
 				for i := 0; i < imageCount; i++ {
-					url, e := processSceneGen(p, getStringParam(params, "prompt", ""), channelOverride, userGroup)
+					url, e := processSceneGen(p, getStringParam(params, "prompt", ""), channelOverride, userGroup, idt)
 					appendGenerated(&resultURLs, &err, url, e)
 				}
 			case FeatureImageErase:
@@ -478,7 +687,7 @@ func ProcessTask(ctx context.Context, db *sql.DB, taskID, feature string, imageP
 				}
 			case FeatureMarketing:
 				for i := 0; i < imageCount; i++ {
-					url, e := processMarketing(p, getStringParam(params, "selling_point", "Premium Quality"), channelOverride, userGroup)
+					url, e := processMarketing(p, getStringParam(params, "selling_point", "Premium Quality"), channelOverride, userGroup, idt)
 					appendGenerated(&resultURLs, &err, url, e)
 				}
 			case FeatureImageTranslate:
@@ -491,7 +700,7 @@ func ProcessTask(ctx context.Context, db *sql.DB, taskID, feature string, imageP
 				appendGenerated(&resultURLs, &err, url, e)
 			case FeatureModelImage:
 				for i := 0; i < imageCount; i++ {
-					url, e := processModelImage(p, getStringParam(params, "prompt", ""), channelOverride, userGroup)
+					url, e := processModelImage(p, getStringParam(params, "prompt", ""), channelOverride, userGroup, idt)
 					appendGenerated(&resultURLs, &err, url, e)
 				}
 			case FeatureMaterialChange:
@@ -530,23 +739,7 @@ func ProcessTask(ctx context.Context, db *sql.DB, taskID, feature string, imageP
 		}
 	}
 
-	resultJSON := utils.Marshal(resultURLs)
-	now := time.Now().Format(time.RFC3339)
-	if err != nil {
-		db.Exec("UPDATE photo_tasks SET status = ?, error_message = ?, result_urls = ?, completed_at = ? WHERE task_id = ?",
-			TaskStatusFailed, err.Error(), resultJSON, now, taskID)
-	} else {
-		processedVideos := 0
-		processedImages := len(resultURLs)
-		if isVideo && len(resultURLs) > 0 {
-			processedVideos = 1
-		}
-		db.Exec(`UPDATE photo_tasks SET status = ?, result_urls = ?, progress = 100,
-			processed_images = ?, processed_videos = ?, completed_at = ? WHERE task_id = ?`,
-			TaskStatusSuccess, resultJSON, processedImages, processedVideos, now, taskID)
-	}
-
-	recordPhotoGeneration(db, taskID, feature, channelOverride, len(resultURLs), err)
+	return resultURLs, err
 }
 
 // recordPhotoGeneration 把 Photo 流水线的一次生成同时计入两处：
@@ -572,7 +765,19 @@ func recordPhotoGeneration(db *sql.DB, taskID, feature, channelOverride string, 
 	if userID > 0 {
 		_ = db.QueryRow("SELECT username FROM auth WHERE id = ?", userID).Scan(&username)
 	}
-	manager.RecordImageOutcome(db, userID, username, manager.ImageSourcePhoto, model, 0, "jimeng-api", imageCount, 0, 0, genErr)
+
+	// 计费：仅对成功产出按 单价 × 张数 扣费（失败不扣）；复用 auth.User.UseQuota。
+	var quota float32
+	if genErr == nil && imageCount > 0 {
+		if price := PhotoUnitPrice(feature, channelOverride); price > 0 {
+			quota = price * float32(imageCount)
+			if u := auth.GetUserById(db, userID); u != nil {
+				u.UseQuota(db, quota)
+			}
+		}
+	}
+
+	manager.RecordImageOutcome(db, userID, username, manager.ImageSourcePhoto, model, 0, "jimeng-api", imageCount, quota, 0, genErr)
 }
 
 func handleResult(resultURLs *[]string, url string, err error) {

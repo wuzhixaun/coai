@@ -18,12 +18,30 @@ func Register(app *gin.RouterGroup) {
 	// 图片管理
 	group.POST("/upload", UploadImagesAPI)
 	group.POST("/upload/folder", UploadFolderAPI)
+	group.POST("/fetch-url", FetchURLAPI)
 	group.GET("/images", ListImagesAPI)
 	group.GET("/images/:id", GetImageAPI)
 	group.DELETE("/images/:id", DeleteImageAPI)
 
+	// 一致性身份（商品/模特）
+	group.POST("/identity", CreateIdentityAPI)
+	group.GET("/identity", ListIdentitiesAPI)
+	group.DELETE("/identity/:id", DeleteIdentityAPI)
+
 	// 处理功能 (统一入口)
 	group.POST("/process", ProcessAPI)
+
+	// 画布内局部重绘
+	group.POST("/inpaint", InpaintAPI)
+
+	// 一键成套素材工作流
+	group.GET("/workflow/templates", ListWorkflowTemplatesAPI)
+	group.POST("/workflow", WorkflowAPI)
+
+	// 配方（保存/复用工作流）
+	group.POST("/recipe", CreateRecipeAPI)
+	group.GET("/recipe", ListRecipesAPI)
+	group.DELETE("/recipe/:id", DeleteRecipeAPI)
 
 	// 任务管理
 	group.GET("/tasks", ListTasksAPI)

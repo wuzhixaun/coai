@@ -199,6 +199,27 @@ func ProcessAPI(c *gin.Context) {
 		}
 	}
 
+	// 一致性身份 + 品牌资产：解析为注入参数（参考图路径 / 锁定 seed / 主体描述），全局套用。
+	identityRefPaths, identitySeed, identitySubject := resolveInjection(db, userID, req.IdentityId, req.BrandKitId)
+
+	// 额度预检：估算本次总消耗，余额不足则在创建任务前拒绝（避免空跑扣费）。
+	var estimate float32
+	for _, feature := range req.Features {
+		cnt := len(req.ImageIds)
+		if feature == FeatureVideoGen {
+			cnt = 1
+		} else if IsAIFeature(feature) && supportsGenerateCount(feature) {
+			cnt = len(req.ImageIds) * clampGenerateCount(getIntParam(req.Params, "image_count", 1))
+		}
+		estimate += PhotoUnitPrice(feature, req.ChannelOverride) * float32(cnt)
+	}
+	if estimate > 0 {
+		if u := auth.GetUserById(db, userID); u != nil && u.GetQuota(db) < estimate {
+			c.JSON(http.StatusPaymentRequired, gin.H{"status": "error", "message": "额度不足，请充值后重试"})
+			return
+		}
+	}
+
 	responses := make([]TaskInfo, 0, len(req.Features))
 	for _, feature := range req.Features {
 		isVideo := feature == FeatureVideoGen
@@ -230,7 +251,7 @@ func ProcessAPI(c *gin.Context) {
 			ImageIds: req.ImageIds, TotalImages: totalImages, TotalVideos: totalVideos,
 			SourceFilenames: filenames, CreatedAt: time.Now().Format(time.RFC3339), FolderName: folderName,
 		})
-		go ProcessTask(nil, db, taskID, feature, imagePaths, req.Params, req.ChannelOverride, group)
+		go ProcessTask(nil, db, taskID, feature, imagePaths, req.Params, req.ChannelOverride, group, identityRefPaths, identitySeed, identitySubject)
 	}
 	c.JSON(http.StatusOK, responses)
 }
@@ -240,12 +261,12 @@ func ProcessAPI(c *gin.Context) {
 func scanTaskRow(scanner interface{ Scan(...interface{}) error }) (TaskInfo, error) {
 	var t TaskInfo
 	var n1, n2, n3, n4, n5, n6 sql.NullString
-	var n7, n8 sql.NullString
+	var n7, n8, n9 sql.NullString
 
 	err := scanner.Scan(
 		&t.TaskId, &t.Feature, &t.Status, &n1, &n2, &n6, &t.Progress,
 		&t.TotalImages, &t.ProcessedImages, &t.TotalVideos, &t.ProcessedVideos,
-		&n3, &n4, &n5, &t.FolderName, &n7, &n8,
+		&n3, &n4, &n5, &t.FolderName, &n7, &n8, &n9,
 	)
 	if err != nil {
 		return t, err
@@ -261,6 +282,9 @@ func scanTaskRow(scanner interface{ Scan(...interface{}) error }) (TaskInfo, err
 	}
 	if n8.Valid {
 		t.CompletedAt = n8.String
+	}
+	if items, e := utils.UnmarshalString[[]ItemStatus](nullToString(n9)); e == nil {
+		t.ItemStatus = items
 	}
 	return t, nil
 }
@@ -318,15 +342,19 @@ func RetryTaskAPI(c *gin.Context) {
 	userID := getUserID(c)
 	taskID := c.Param("id")
 
-	var feature, imgIDsStr, paramsStr, pathsStr string
+	var feature, imgIDsStr, pathsStr string
+	var paramsNS, itemNS sql.NullString
 	err := db.QueryRow(
-		"SELECT feature, image_ids, params, source_paths FROM photo_tasks WHERE task_id = ?",
+		"SELECT feature, image_ids, params, source_paths, item_status FROM photo_tasks WHERE task_id = ?",
 		taskID,
-	).Scan(&feature, &imgIDsStr, &paramsStr, &pathsStr)
+	).Scan(&feature, &imgIDsStr, &paramsNS, &pathsStr, &itemNS)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "任务不存在"})
 		return
 	}
+	// 复原原始参数（此前重试传 nil 会丢参数）与逐图状态（用于只重试失败项）
+	params, _ := utils.UnmarshalString[map[string]interface{}](nullToString(paramsNS))
+	prevItems, _ := utils.UnmarshalString[[]ItemStatus](nullToString(itemNS))
 
 	// 解析图片路径
 	var imagePaths []string
@@ -353,10 +381,11 @@ func RetryTaskAPI(c *gin.Context) {
 	user := manager.ParseAuth(c, c.GetHeader("Authorization"))
 	userGroup := auth.GetGroup(db, user)
 
-	// 重置并异步重试
+	// 重置并异步重试（只重跑失败项；保留原参数）
+	// 注：当前 photo_tasks 未持久化 identity_id，重试暂不重新套用一致性身份（后续增强）。
 	db.Exec("UPDATE photo_tasks SET status = ?, progress = 0, error_message = '' WHERE task_id = ?",
 		TaskStatusPending, taskID)
-	go ProcessTask(nil, db, taskID, feature, imagePaths, nil, "", userGroup)
+	go ProcessRetryTask(db, taskID, feature, imagePaths, params, "", userGroup, prevItems)
 
 	t, _ := scanTaskRow(db.QueryRow(taskSelectSQL+" WHERE task_id = ?", taskID))
 	c.JSON(http.StatusOK, t)
@@ -404,6 +433,13 @@ func DownloadZipAPI(c *gin.Context) {
 		return
 	}
 
+	// 自定义文件名前缀（SKU/平台/序号），默认 result；做基础清洗防止路径穿越
+	zipPrefix := strings.TrimSpace(c.Query("prefix"))
+	if zipPrefix == "" {
+		zipPrefix = "result"
+	}
+	zipPrefix = strings.NewReplacer("/", "_", "\\", "_", "..", "_", " ", "_").Replace(zipPrefix)
+
 	// 解析逗号分隔的 URL 列表
 	urlParts := strings.Split(urlsParam, ",")
 	var urls []string
@@ -433,7 +469,7 @@ func DownloadZipAPI(c *gin.Context) {
 			continue
 		}
 
-		entryName := fmt.Sprintf("result_%d%s", i+1, filepath.Ext(filePath))
+		entryName := fmt.Sprintf("%s_%d%s", zipPrefix, i+1, filepath.Ext(filePath))
 		entry, err := w.Create(entryName)
 		if err != nil {
 			f.Close()
@@ -460,5 +496,6 @@ func DownloadZipAPI(c *gin.Context) {
 const taskSelectSQL = `
 	SELECT task_id, feature, status, image_ids, result_urls, error_message, progress,
 	       total_images, processed_images, total_videos, processed_videos,
-	       submit_ids, source_filenames, source_paths, folder_name, created_at, completed_at
+	       submit_ids, source_filenames, source_paths, folder_name, created_at, completed_at,
+	       item_status
 	FROM photo_tasks`

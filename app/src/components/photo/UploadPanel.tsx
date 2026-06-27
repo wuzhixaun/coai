@@ -4,12 +4,13 @@ import type { TFunction } from "i18next";
 import { Button } from "@/components/ui/button.tsx";
 import { Progress } from "@/components/ui/progress.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
-import { Upload, FolderOpen, Trash2 } from "lucide-react";
+import { Upload, FolderOpen, Trash2, Star, Sparkles, Brush, Link as LinkIcon } from "lucide-react";
 import { toast } from "sonner";
 import type { PhotoImage } from "@/api/photo";
 
 interface Props {
   images: PhotoImage[];
+  imagesLoading?: boolean;
   selectedIds: string[];
   uploading: boolean;
   uploadProgress: number;
@@ -20,6 +21,9 @@ interface Props {
   onClearSelection: () => void;
   onRemove: (id: string) => void;
   onClearAll: () => void;
+  onFavorite?: (img: PhotoImage) => void;
+  onFetchUrl?: (url: string) => void | Promise<void>;
+  onInpaint?: (img: PhotoImage) => void;
 }
 
 const ALLOWED = ["image/png", "image/jpeg", "image/webp", "image/bmp", "image/tiff"];
@@ -41,14 +45,28 @@ function filterValid(files: File[], t: TFunction): File[] {
 }
 
 const UploadPanel: React.FC<Props> = ({
-  images, selectedIds, uploading, uploadProgress, onUpload, onUploadFolder,
-  onToggleSelect, onSelectAll, onClearSelection, onRemove, onClearAll,
+  images, imagesLoading, selectedIds, uploading, uploadProgress, onUpload, onUploadFolder,
+  onToggleSelect, onSelectAll, onClearSelection, onRemove, onClearAll, onFavorite, onFetchUrl, onInpaint,
 }) => {
   const { t } = useTranslation();
   const fileRef = useRef<HTMLInputElement>(null);
   const folderRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [urlInput, setUrlInput] = useState("");
+  const [fetchingUrl, setFetchingUrl] = useState(false);
+
+  const handleFetchUrl = async () => {
+    const u = urlInput.trim();
+    if (!u || !onFetchUrl) return;
+    setFetchingUrl(true);
+    try {
+      await onFetchUrl(u);
+      setUrlInput("");
+    } finally {
+      setFetchingUrl(false);
+    }
+  };
 
   const handleFiles = (files: File[]) => {
     const valid = filterValid(files, t);
@@ -125,6 +143,24 @@ const UploadPanel: React.FC<Props> = ({
         <FolderOpen className="mr-2 h-4 w-4" /> {t("photo.upload.folder")}
       </Button>
 
+      {/* 贴链接抓图 */}
+      {onFetchUrl && (
+        <div className="mt-2 flex gap-1">
+          <input
+            type="url"
+            value={urlInput}
+            onChange={(e) => setUrlInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleFetchUrl(); }}
+            placeholder={t("photo.upload.url-ph")}
+            className="flex-1 min-w-0 rounded-md border bg-background px-2 text-sm"
+          />
+          <Button variant="outline" size="sm" disabled={!urlInput.trim() || fetchingUrl}
+            onClick={handleFetchUrl}>
+            <LinkIcon className="h-3.5 w-3.5 mr-1" />{t("photo.upload.url-fetch")}
+          </Button>
+        </div>
+      )}
+
       {/* Upload progress */}
       {uploading && (
         <div className="mt-3">
@@ -146,6 +182,27 @@ const UploadPanel: React.FC<Props> = ({
         </div>
       )}
 
+      {/* 初始加载图库时的骨架占位（刷新页面后并发拉取 images 期间） */}
+      {imagesLoading && images.length === 0 && !uploading && (
+        <div className="grid grid-cols-3 gap-2 mt-2 overflow-auto flex-1 content-start items-start auto-rows-min">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={`init-sk-${i}`} className="w-full h-24 rounded" />
+          ))}
+        </div>
+      )}
+
+      {/* 空状态引导：无图时给出清晰的上手指引（不做名不副实的伪动作按钮） */}
+      {!imagesLoading && !uploading && images.length === 0 && (
+        <div className="mt-4 rounded-md border border-dashed p-3">
+          <p className="text-sm font-medium text-foreground">{t("photo.upload.empty-title")}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{t("photo.upload.empty-desc")}</p>
+          <p className="mt-2 flex items-start gap-1.5 text-xs text-muted-foreground">
+            <Sparkles className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />
+            <span>{t("photo.upload.empty-can-do")}</span>
+          </p>
+        </div>
+      )}
+
       {/* Thumbnail grid */}
       {(images.length > 0 || (uploading && pendingCount > 0)) && (
         <div className="grid grid-cols-3 gap-2 mt-2 overflow-auto flex-1 content-start items-start auto-rows-min">
@@ -161,6 +218,20 @@ const UploadPanel: React.FC<Props> = ({
               )}
               <button className="absolute top-1 left-1 bg-destructive text-destructive-foreground rounded-full w-4 h-4 flex items-center justify-center text-[10px]"
                 onClick={(e) => { e.stopPropagation(); onRemove(img.id); }}>×</button>
+              {onFavorite && (
+                <button title={t("photo.upload.favorite")}
+                  className="absolute bottom-5 right-1 bg-background/80 text-amber-500 rounded-full w-5 h-5 flex items-center justify-center hover:bg-background"
+                  onClick={(e) => { e.stopPropagation(); onFavorite(img); }}>
+                  <Star className="h-3 w-3" />
+                </button>
+              )}
+              {onInpaint && (
+                <button title={t("photo.inpaint.open")}
+                  className="absolute bottom-5 left-1 bg-background/80 text-primary rounded-full w-5 h-5 flex items-center justify-center hover:bg-background"
+                  onClick={(e) => { e.stopPropagation(); onInpaint(img); }}>
+                  <Brush className="h-3 w-3" />
+                </button>
+              )}
             </div>
           ))}
           {/* Skeleton placeholders while uploading */}

@@ -69,6 +69,7 @@ type ImageEditProps struct {
 	Images        []string `json:"images"` // base64 编码的图片列表
 	Prompt        string   `json:"prompt"`
 	Strength      *float32 `json:"strength,omitempty"`
+	Seed          *int     `json:"seed,omitempty"` // 一致性身份：锁定 seed 以获得可复现/更一致的结果
 	User          string   `json:"-"`
 }
 

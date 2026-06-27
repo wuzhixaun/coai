@@ -13,27 +13,31 @@ interface Props {
   selectedCount: number;
   loading: boolean;
   onProcess: (features: string[], paramsMap: Record<string, Record<string, unknown>>, model: string) => void;
+  onSaveRecipe?: (name: string, steps: { feature: string; params: Record<string, unknown> }[]) => void;
 }
 
-// 功能标签文案走 i18n（photo.features.<key>），这里仅保留 key 与图标
-const FEATURES: { key: string; icon: string }[] = [
-  { key: "white_bg", icon: "⚪" },
-  { key: "scene_gen", icon: "🏞️" },
-  { key: "image_erase", icon: "🧹" },
-  { key: "color_change", icon: "🎨" },
-  { key: "marketing", icon: "📢" },
-  { key: "image_translate", icon: "🌐" },
-  { key: "hd_upscale", icon: "✨" },
-  { key: "model_image", icon: "👤" },
-  { key: "material_change", icon: "🪨" },
-  { key: "instruction_gen", icon: "📝" },
-  { key: "detail_image", icon: "🔍" },
-  { key: "logo_custom", icon: "🏷️" },
-  { key: "production_flow", icon: "📊" },
-  { key: "resize", icon: "📐" },
-  { key: "material_extract", icon: "🧩" },
-  { key: "product_extract", icon: "📦" },
-  { key: "video_gen", icon: "🎬" },
+// 功能标签文案走 i18n（photo.features.<key>），这里仅保留 key 与图标。
+// 按场景分组：基础处理 / 场景营销 / 模特商品 / 提取翻译 / 视频。
+const FEATURE_GROUPS: { group: string; items: { key: string; icon: string }[] }[] = [
+  { group: "basic", items: [
+    { key: "white_bg", icon: "⚪" }, { key: "image_erase", icon: "🧹" },
+    { key: "color_change", icon: "🎨" }, { key: "material_change", icon: "🪨" },
+    { key: "hd_upscale", icon: "✨" }, { key: "resize", icon: "📐" },
+  ] },
+  { group: "scene", items: [
+    { key: "scene_gen", icon: "🏞️" }, { key: "marketing", icon: "📢" },
+    { key: "instruction_gen", icon: "📝" }, { key: "production_flow", icon: "📊" },
+  ] },
+  { group: "model", items: [
+    { key: "model_image", icon: "👤" }, { key: "logo_custom", icon: "🏷️" },
+  ] },
+  { group: "extract", items: [
+    { key: "detail_image", icon: "🔍" }, { key: "material_extract", icon: "🧩" },
+    { key: "product_extract", icon: "📦" }, { key: "image_translate", icon: "🌐" },
+  ] },
+  { group: "video", items: [
+    { key: "video_gen", icon: "🎬" },
+  ] },
 ];
 
 const NEEDS_PARAM: Record<string, string[]> = {
@@ -48,7 +52,17 @@ const NEEDS_PARAM: Record<string, string[]> = {
 const COLOR_OPTS = ["red", "blue", "green", "black", "white", "yellow", "purple", "pink", "orange", "gray"];
 const LANG_OPTS = ["en", "zh", "ja", "ko", "fr", "de", "es"];
 const POS_OPTS = ["bottom-right", "bottom-left", "top-right", "top-left", "center"];
-const SIZE_OPTS = ["1:1", "16:9", "4:3", "3:4", "9:16"];
+const SIZE_OPTS = ["1:1", "16:9", "4:3", "3:4", "4:5", "9:16"];
+
+// 多平台主图尺寸预设（P3.1）：平台 → 推荐比例，点击即把比例加入 target_sizes。
+// outpaint 只扩不裁，保主体完整。
+const PLATFORM_PRESETS: { name: string; ratio: string }[] = [
+  { name: "淘宝", ratio: "1:1" }, { name: "天猫", ratio: "1:1" },
+  { name: "京东", ratio: "1:1" }, { name: "拼多多", ratio: "1:1" },
+  { name: "抖音", ratio: "3:4" }, { name: "Amazon", ratio: "1:1" },
+  { name: "TikTok", ratio: "4:5" }, { name: "Etsy", ratio: "4:3" },
+  { name: "Shopify", ratio: "1:1" }, { name: "Temu", ratio: "3:4" },
+];
 
 // 生图模型下拉只展示市场里打了「绘图」(image-generation) 标签的模型，并使用市场配置的
 // 中文友好名。这样以后接入 GPT 画图 / 千问(通义万相) 等模型，只要在后台给它打上该标签
@@ -56,9 +70,27 @@ const SIZE_OPTS = ["1:1", "16:9", "4:3", "3:4", "9:16"];
 // 避免电商同事误选。
 const IMAGE_GEN_TAG = "image-generation";
 
-const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) => {
+// 各需参功能的默认参数（批量整批套用时用作未配置项的兜底）
+function defaultParams(key: string): Record<string, unknown> {
+  switch (key) {
+    case "color_change": return { target_color: "red" };
+    case "image_translate": return { target_lang: "en" };
+    case "marketing": return { selling_point: "Premium Quality" };
+    case "resize": return { target_sizes: ["1:1", "16:9"] };
+    case "logo_custom": return { position: "bottom-right" };
+    case "material_extract": return { category: "提取图案" };
+    case "product_extract": return { category: "服装" };
+    case "video_gen": return { duration: 5 };
+    default: return {};
+  }
+}
+
+const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess, onSaveRecipe }) => {
   const { t } = useTranslation();
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [recipeOpen, setRecipeOpen] = useState(false);
+  const [recipeName, setRecipeName] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(false); // 参数渐进式披露：高级项默认折叠
   const [dialogKey, setDialogKey] = useState<string | null>(null);
   const [params, setParams] = useState<Record<string, Record<string, unknown>>>({});
   const [prompts, setPrompts] = useState<PromptsConfig | null>(null);
@@ -90,38 +122,36 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
     return next;
   });
 
-  const handleFeatureClick = (key: string) => {
-    if (selectedCount === 0) return;
-    if (!NEEDS_PARAM[key]) { onProcess([key], withImageCount([key]), chosenModel); return; }
+  // 打开某功能的参数配置（配置持久化于 params，不立即处理）
+  const openConfig = (key: string) => {
     setDialogKey(key);
-    if (!params[key]) {
-      const init: Record<string, unknown> = {};
-      if (key === "color_change") init.target_color = "red";
-      if (key === "image_translate") init.target_lang = "en";
-      if (key === "marketing") init.selling_point = "Premium Quality";
-      if (key === "resize") init.target_sizes = ["1:1", "16:9"];
-      if (key === "logo_custom") init.position = "bottom-right";
-      if (key === "material_extract") init.category = "提取图案";
-      if (key === "product_extract") init.category = "服装";
-      if (key === "video_gen") init.duration = 5;
-      setParams((p) => ({ ...p, [key]: init }));
-    }
+    setShowAdvanced(false);
+    if (!params[key]) setParams((p) => ({ ...p, [key]: defaultParams(key) }));
   };
 
+  // 整批处理：一次性处理全部已选功能；需参功能用已配置参数、未配置则用默认（配置一次整批套用）
   const handleBatchProcess = () => {
     if (selectedCount === 0 || selected.size === 0) return;
-    const needParams = Array.from(selected).filter((k) => NEEDS_PARAM[k]);
-    if (needParams.length > 0) { handleFeatureClick(needParams[0]); return; }
     const features = Array.from(selected);
-    onProcess(features, withImageCount(features), chosenModel);
+    const effective: Record<string, Record<string, unknown>> = {};
+    features.forEach((f) => {
+      effective[f] = NEEDS_PARAM[f] ? (params[f] || defaultParams(f)) : (params[f] || {});
+    });
+    onProcess(features, withImageCount(features, effective), chosenModel);
     setSelected(new Set());
   };
 
-  const handleDialogOk = () => {
-    if (!dialogKey) return;
-    onProcess([dialogKey], withImageCount([dialogKey], { [dialogKey]: params[dialogKey] || {} }), chosenModel);
-    setDialogKey(null);
+  // 把当前选中的功能(含已配置参数)按顺序存为配方步骤
+  const handleSaveRecipe = () => {
+    const steps = Array.from(selected).map((f) => ({ feature: f, params: params[f] || {} }));
+    if (steps.length === 0 || !recipeName.trim() || !onSaveRecipe) return;
+    onSaveRecipe(recipeName.trim(), steps);
+    setRecipeOpen(false);
+    setRecipeName("");
   };
+
+  // 参数对话框确认：保存配置并关闭（不立即处理，统一由「整批处理」触发）
+  const handleDialogOk = () => setDialogKey(null);
 
   const setParam = (field: string, value: unknown) => {
     if (!dialogKey) return;
@@ -193,19 +223,62 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-4">
-        {FEATURES.map((f) => (
-          <Button key={f.key} size="sm" variant={selected.has(f.key) ? "default" : "outline"}
-            onClick={() => toggle(f.key)}>
-            {f.icon} {t(`photo.features.${f.key}`)}
-          </Button>
+      <div className="space-y-3 mb-4">
+        {FEATURE_GROUPS.map((grp) => (
+          <div key={grp.group}>
+            <p className="text-[11px] font-medium text-muted-foreground mb-1.5">{t(`photo.feature.group.${grp.group}`)}</p>
+            <div className="flex flex-wrap gap-2">
+              {grp.items.map((f) => (
+                <span key={f.key} className="inline-flex items-center">
+                  <Button size="sm" variant={selected.has(f.key) ? "default" : "outline"}
+                    onClick={() => toggle(f.key)}>
+                    {f.icon} {t(`photo.features.${f.key}`)}
+                  </Button>
+                  {/* 已选且需参的功能：齿轮按钮单独配置参数（配置一次，整批套用） */}
+                  {selected.has(f.key) && NEEDS_PARAM[f.key] && (
+                    <button type="button" title={t("photo.feature.config-param")}
+                      onClick={() => openConfig(f.key)}
+                      className="ml-0.5 text-muted-foreground hover:text-foreground text-sm">
+                      ⚙
+                    </button>
+                  )}
+                </span>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
 
-      <Button className="w-full" onClick={handleBatchProcess}
-        disabled={selectedCount === 0 || selected.size === 0 || loading}>
-        {loading ? t("photo.feature.processing") : t("photo.feature.process", { count: selected.size })}
-      </Button>
+      <div className="flex gap-2">
+        <Button className="flex-1" onClick={handleBatchProcess}
+          disabled={selectedCount === 0 || selected.size === 0 || loading}>
+          {loading ? t("photo.feature.processing") : t("photo.feature.process", { count: selected.size })}
+        </Button>
+        {onSaveRecipe && (
+          <Button variant="outline" disabled={selected.size === 0}
+            onClick={() => setRecipeOpen(true)} title={t("photo.recipe.save")}>
+            {t("photo.recipe.save")}
+          </Button>
+        )}
+      </div>
+
+      {/* 保存配方对话框 */}
+      <Dialog open={recipeOpen} onOpenChange={setRecipeOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t("photo.recipe.save")}</DialogTitle>
+          </DialogHeader>
+          {selected.size === 0 ? (
+            <p className="text-sm text-destructive">{t("photo.recipe.need-features")}</p>
+          ) : (
+            <Input value={recipeName} onChange={(e) => setRecipeName(e.target.value)} placeholder={t("photo.recipe.name-ph")} />
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRecipeOpen(false)}>{t("photo.recipe.cancel")}</Button>
+            <Button onClick={handleSaveRecipe} disabled={selected.size === 0 || !recipeName.trim()}>{t("photo.recipe.confirm")}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!dialogKey} onOpenChange={(open) => { if (!open) setDialogKey(null); }}>
         <DialogContent>
@@ -213,19 +286,6 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
             <DialogTitle>{t("photo.feature.params-title", { feature: dialogKey ? t(`photo.features.${dialogKey}`) : "" })}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3" style={{ maxHeight: "60vh", overflow: "auto" }}>
-            {/* Templates */}
-            {(cfg?.templates?.length ?? 0) > 0 && (
-              <div>
-                <Label>{t("photo.feature.templates")}</Label>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {cfg!.templates!.map((t, i) => (
-                    <Badge key={i} variant="secondary" className="cursor-pointer"
-                      onClick={() => setParam("prompt", t.prompt)}>{t.label}</Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Prompt input */}
             {dialogKey && ["scene_gen", "image_erase", "model_image", "instruction_gen", "video_gen"].includes(dialogKey) && (
               <div>
@@ -331,6 +391,27 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
               </div>
             )}
 
+            {/* 多平台尺寸预设：点击平台把推荐比例加入目标尺寸 */}
+            {dialogKey === "resize" && (
+              <div>
+                <Label>{t("photo.feature.platforms")}</Label>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {PLATFORM_PRESETS.map((pf) => {
+                    const cur = (p.target_sizes as string[]) || [];
+                    const active = cur.includes(pf.ratio);
+                    return (
+                      <Badge key={pf.name} variant={active ? "default" : "outline"} className="cursor-pointer"
+                        title={pf.ratio}
+                        onClick={() => setParam("target_sizes", active ? cur : Array.from(new Set([...cur, pf.ratio])))}>
+                        {pf.name}
+                        <span className="ml-1 text-[10px] opacity-70">{pf.ratio}</span>
+                      </Badge>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Size picker */}
             {dialogKey === "resize" && (
               <div>
@@ -349,12 +430,30 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess }) =>
                 </div>
               </div>
             )}
+
+            {/* 高级：快捷模板（渐进式披露，默认折叠） */}
+            {(cfg?.templates?.length ?? 0) > 0 && (
+              <div className="border-t pt-2">
+                <button type="button" className="text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowAdvanced((v) => !v)}>
+                  {showAdvanced ? "▾" : "▸"} {t("photo.feature.templates")}
+                </button>
+                {showAdvanced && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {cfg!.templates!.map((tpl, i) => (
+                      <Badge key={i} variant="secondary" className="cursor-pointer"
+                        onClick={() => setParam("prompt", tpl.prompt)}>{tpl.label}</Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogKey(null)}>{t("photo.feature.cancel")}</Button>
             <Button onClick={handleDialogOk}
               disabled={logoUploading || (dialogKey === "logo_custom" && !p.logo_image_id)}>
-              {t("photo.feature.start")}
+              {t("photo.feature.save-param")}
             </Button>
           </DialogFooter>
         </DialogContent>

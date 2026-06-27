@@ -94,6 +94,8 @@ func ConnectDatabase() *sql.DB {
 	CreatePaymentTable(db)
 	CreatePhotoImagesTable(db)
 	CreatePhotoTasksTable(db)
+	CreatePhotoIdentityTable(db)
+	CreatePhotoRecipeTable(db)
 	CreateImageGenerationTable(db)
 
 	if err := doMigration(db); err != nil {
@@ -432,6 +434,46 @@ func CreateImageGenerationTable(db *sql.DB) {
 	}
 }
 
+// CreatePhotoIdentityTable 商品/模特一致性身份：保存一组参考图(引用 photo_images)、
+// 锁定的 seed 与主体描述 prompt，用于跨场景/跨功能保持主体一致（Phase 1 一致性引擎）。
+func CreatePhotoIdentityTable(db *sql.DB) {
+	_, err := globals.ExecDb(db, `
+		CREATE TABLE IF NOT EXISTS photo_identity (
+		  id VARCHAR(12) PRIMARY KEY,
+		  user_id BIGINT NOT NULL,
+		  type VARCHAR(16) NOT NULL DEFAULT 'product',
+		  name VARCHAR(255) NOT NULL,
+		  ref_image_ids TEXT NOT NULL,
+		  seed INT DEFAULT -1,
+		  subject_prompt TEXT,
+		  meta TEXT,
+		  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		  INDEX idx_user (user_id),
+		  INDEX idx_type (type)
+		);
+	`)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+// CreatePhotoRecipeTable 配方：用户保存的命名工作流（有序步骤），便于复用标准化流程。
+func CreatePhotoRecipeTable(db *sql.DB) {
+	_, err := globals.ExecDb(db, `
+		CREATE TABLE IF NOT EXISTS photo_recipe (
+		  id VARCHAR(12) PRIMARY KEY,
+		  user_id BIGINT NOT NULL,
+		  name VARCHAR(255) NOT NULL,
+		  steps TEXT NOT NULL,
+		  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		  INDEX idx_user (user_id)
+		);
+	`)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
 func CreatePhotoTasksTable(db *sql.DB) {
 	// MySQL strict mode 不允许 TEXT 列有 DEFAULT，所以 TEXT 列不设默认值
 	_, err := globals.ExecDb(db, `
@@ -452,6 +494,7 @@ func CreatePhotoTasksTable(db *sql.DB) {
 		  submit_ids TEXT,
 		  source_filenames TEXT,
 		  source_paths TEXT,
+		  item_status TEXT,
 		  folder_name VARCHAR(255) DEFAULT '',
 		  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		  completed_at DATETIME,

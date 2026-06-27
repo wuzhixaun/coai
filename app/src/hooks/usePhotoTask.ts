@@ -1,16 +1,28 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import type { PhotoImage, PhotoTask } from "@/api/photo";
+import type { PhotoImage, PhotoTask, PhotoIdentity, WorkflowTemplate, WorkflowStep, PhotoRecipe } from "@/api/photo";
 import * as api from "@/api/photo";
 
 const POLL_INTERVAL = 10_000;
 
+// 从 axios 错误中提取后端 message（如"额度不足"），否则回退
+function serverErrMsg(e: unknown, fallback: string): string {
+  const r = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+  return r || (e instanceof Error ? e.message : fallback);
+}
+
 export function usePhotoTask() {
   const { t } = useTranslation();
   const [images, setImages] = useState<PhotoImage[]>([]);
+  const [imagesLoading, setImagesLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [tasks, setTasks] = useState<PhotoTask[]>([]);
+  const [identities, setIdentities] = useState<PhotoIdentity[]>([]);
+  const [selectedIdentityId, setSelectedIdentityId] = useState<string>("");
+  const [selectedBrandKitId, setSelectedBrandKitId] = useState<string>("");
+  const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
+  const [recipes, setRecipes] = useState<PhotoRecipe[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -39,7 +51,8 @@ export function usePhotoTask() {
     pollingRef.current.set(taskId, setInterval(poll, POLL_INTERVAL));
   }, [stopPolling]);
 
-  // Init: load tasks once, restore polling for active ones
+  // Init: 并发拉取任务与图库，并对在途任务恢复轮询。
+  // 此前只拉 tasks，刷新页面后图库（images）丢失，已上传图无法再选中处理。
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
@@ -49,6 +62,18 @@ export function usePhotoTask() {
       data.forEach((t) => {
         if (t.status === "pending" || t.status === "processing") startPolling(t.task_id);
       });
+    }).catch(() => {});
+    api.listImages().then((data) => {
+      if (Array.isArray(data)) setImages(data);
+    }).catch(() => {}).finally(() => setImagesLoading(false));
+    api.listIdentities().then((data) => {
+      if (Array.isArray(data)) setIdentities(data);
+    }).catch(() => {});
+    api.listWorkflowTemplates().then((data) => {
+      if (Array.isArray(data)) setTemplates(data);
+    }).catch(() => {});
+    api.listRecipes().then((data) => {
+      if (Array.isArray(data)) setRecipes(data);
     }).catch(() => {});
     return () => { pollingRef.current.forEach((t) => clearInterval(t)); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -77,17 +102,38 @@ export function usePhotoTask() {
     return upload(files, folderName);
   }, [upload]);
 
+  // 贴链接抓图：抓取主图落库并加入图库
+  const fetchUrl = useCallback(async (url: string) => {
+    try {
+      const img = await api.fetchImageFromUrl(url);
+      if (img && img.id) {
+        setImages((prev) => [...prev, img]);
+        toast.success(t("photo.upload.url-ok"));
+      }
+    } catch (e) {
+      toast.error(serverErrMsg(e, t("photo.upload.url-fail")));
+    }
+  }, [t]);
+
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   }, []);
 
   const selectAll = useCallback(() => setSelectedIds(images.map((i) => i.id)), [images]);
   const clearSelection = useCallback(() => setSelectedIds([]), []);
-  const removeImage = useCallback((id: string) => {
+  // 删除需同步后端，否则刷新后图库会从 DB 重新拉回（P0.1 后图库已持久化加载）。
+  const removeImage = useCallback(async (id: string) => {
     setImages((prev) => prev.filter((x) => x.id !== id));
     setSelectedIds((prev) => prev.filter((x) => x !== id));
+    try { await api.deleteImage(id); } catch (e) { console.error("Delete image failed:", e); }
   }, []);
-  const clearAll = useCallback(() => { setImages([]); setSelectedIds([]); }, []);
+  const clearAll = useCallback(async () => {
+    const ids = images.map((i) => i.id);
+    setImages([]);
+    setSelectedIds([]);
+    try { await Promise.allSettled(ids.map((id) => api.deleteImage(id))); }
+    catch (e) { console.error("Clear images failed:", e); }
+  }, [images]);
 
   const process = useCallback(async (features: string[], paramsMap: Record<string, Record<string, unknown>> = {}, model = "") => {
     if (selectedIds.length === 0) return;
@@ -95,17 +141,108 @@ export function usePhotoTask() {
     for (const feature of features) {
       try {
         const params = paramsMap[feature] || {};
-        const newTasks = await api.submitProcess(selectedIds, [feature], params, model);
+        const newTasks = await api.submitProcess(selectedIds, [feature], params, model, selectedIdentityId, selectedBrandKitId);
         if (Array.isArray(newTasks)) {
           newTasks.forEach((t) => {
             if (t.status !== "success" && t.status !== "failed") startPolling(t.task_id);
           });
           setTasks((prev) => [...newTasks, ...prev]);
         }
-      } catch (e) { console.error("Process failed:", e); }
+      } catch (e) {
+        console.error("Process failed:", e);
+        toast.error(serverErrMsg(e, t("photo.upload.failed-retry")));
+      }
     }
     setLoading(false);
-  }, [selectedIds, startPolling]);
+  }, [selectedIds, startPolling, selectedIdentityId, selectedBrandKitId, t]);
+
+  // 一键成套：按模板或自定义步骤(配方)串行执行，结果聚合为一个 workflow 任务
+  const submitWorkflowBody = useCallback(async (body: { template?: string; steps?: WorkflowStep[] }) => {
+    if (selectedIds.length === 0) return;
+    setLoading(true);
+    try {
+      const task = await api.submitWorkflow({
+        ...body, image_ids: selectedIds,
+        identity_id: selectedIdentityId, brand_kit_id: selectedBrandKitId,
+      });
+      if (task && task.task_id) {
+        setTasks((prev) => [task, ...prev]);
+        if (task.status !== "success" && task.status !== "failed") startPolling(task.task_id);
+      }
+    } catch (e) {
+      console.error("Workflow failed:", e);
+      toast.error(serverErrMsg(e, t("photo.upload.failed-retry")));
+    }
+    setLoading(false);
+  }, [selectedIds, startPolling, selectedIdentityId, selectedBrandKitId, t]);
+
+  const runWorkflow = useCallback((templateKey: string) => submitWorkflowBody({ template: templateKey }), [submitWorkflowBody]);
+  const runWorkflowSteps = useCallback((steps: WorkflowStep[]) => submitWorkflowBody({ steps }), [submitWorkflowBody]);
+
+  // ── 配方 ──
+  const createRecipeAction = useCallback(async (name: string, steps: WorkflowStep[]) => {
+    try {
+      const created = await api.createRecipe({ name, steps });
+      setRecipes((prev) => [created, ...prev]);
+      toast.success(t("photo.recipe.saved", { name: created.name }));
+    } catch (e) { console.error("Save recipe failed:", e); }
+  }, [t]);
+
+  const deleteRecipeAction = useCallback(async (id: string) => {
+    try {
+      await api.deleteRecipe(id);
+      setRecipes((prev) => prev.filter((x) => x.id !== id));
+    } catch (e) { console.error("Delete recipe failed:", e); }
+  }, []);
+
+  // ── 一致性身份 ──
+  const refreshIdentities = useCallback(async () => {
+    try {
+      const data = await api.listIdentities();
+      if (Array.isArray(data)) setIdentities(data);
+    } catch { /* ignore */ }
+  }, []);
+
+  const createIdentityAction = useCallback(async (body: { type: string; name: string; ref_image_ids: string[]; subject_prompt?: string; color?: string }) => {
+    const created = await api.createIdentity(body);
+    setIdentities((prev) => [created, ...prev]);
+    // 品牌资产与商品/模特身份是两条正交轴，分别记选中态
+    if (created.type === "brandkit") setSelectedBrandKitId(created.id);
+    else setSelectedIdentityId(created.id);
+    toast.success(t("photo.identity.created", { name: created.name }));
+    return created;
+  }, [t]);
+
+  const deleteIdentityAction = useCallback(async (id: string) => {
+    try {
+      await api.deleteIdentity(id);
+      setIdentities((prev) => prev.filter((x) => x.id !== id));
+      setSelectedIdentityId((cur) => (cur === id ? "" : cur));
+      setSelectedBrandKitId((cur) => (cur === id ? "" : cur));
+    } catch (e) { console.error("Delete identity failed:", e); }
+  }, []);
+
+  // 收藏：把单张图片一键收藏为可复用的商品身份（参考图资产化）
+  const favoriteImage = useCallback(async (img: PhotoImage) => {
+    try {
+      await createIdentityAction({ type: "product", name: img.filename || "参考图", ref_image_ids: [img.id] });
+    } catch (e) { console.error("Favorite image failed:", e); }
+  }, [createIdentityAction]);
+
+  // 局部重绘：提交源图 + mask + prompt，结果进任务表并轮询
+  const inpaint = useCallback(async (imageUrl: string, maskBase64: string, prompt: string) => {
+    try {
+      const task = await api.submitInpaint(imageUrl, maskBase64, prompt);
+      if (task && task.task_id) {
+        setTasks((prev) => [task, ...prev]);
+        if (task.status !== "success" && task.status !== "failed") startPolling(task.task_id);
+      }
+      return task;
+    } catch (e) {
+      toast.error(serverErrMsg(e, t("photo.upload.failed-retry")));
+      throw e;
+    }
+  }, [startPolling, t]);
 
   const retryAction = useCallback(async (taskId: string) => {
     try {
@@ -137,7 +274,12 @@ export function usePhotoTask() {
     } catch (e) { /* ignore */ }
   }, []);
 
-  return { images, selectedIds, tasks, loading, uploading, uploadProgress, upload, uploadFolder,
+  return { images, imagesLoading, selectedIds, tasks, loading, uploading, uploadProgress, upload, uploadFolder, fetchUrl,
     toggleSelect, selectAll, clearSelection, removeImage, clearAll, process,
-    retryAction, deleteAction, refreshTask, refreshAll };
+    retryAction, deleteAction, refreshTask, refreshAll, inpaint,
+    identities, selectedIdentityId, setSelectedIdentityId,
+    selectedBrandKitId, setSelectedBrandKitId,
+    refreshIdentities, createIdentityAction, deleteIdentityAction, favoriteImage,
+    templates, runWorkflow, runWorkflowSteps,
+    recipes, createRecipeAction, deleteRecipeAction };
 }

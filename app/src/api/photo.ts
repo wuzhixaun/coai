@@ -5,12 +5,28 @@ export interface PhotoImage {
   url: string; folder_name: string; created_at: string;
 }
 
+export interface PhotoItemStatus {
+  index: number; filename: string; status: "success" | "failed"; urls: string[]; error: string;
+}
+
 export interface PhotoTask {
   task_id: string; feature: string; status: "pending" | "processing" | "success" | "failed";
   image_ids: string[]; result_urls: string[]; error_message: string; progress: number;
   created_at: string; folder_name: string; total_images: number; processed_images: number;
   total_videos: number; processed_videos: number; completed_at?: string;
-  source_filenames: string[]; submit_ids: string[];
+  source_filenames: string[]; submit_ids: string[]; item_status?: PhotoItemStatus[];
+}
+
+export interface PhotoIdentity {
+  id: string;
+  type: "product" | "model" | "brandkit";
+  name: string;
+  ref_image_ids: string[];
+  ref_image_urls: string[];
+  seed: number;
+  subject_prompt: string;
+  color: string;
+  created_at: string;
 }
 
 export interface FeatureConfig {
@@ -70,17 +86,94 @@ export async function listImages(): Promise<PhotoImage[]> {
   return data;
 }
 
+// 贴商品链接 / 直链图片 → 抓取主图落库
+export async function fetchImageFromUrl(url: string): Promise<PhotoImage> {
+  const { data } = await axios.post("/photo/fetch-url", { url });
+  return data;
+}
+
 export async function deleteImage(id: string): Promise<void> {
   await axios.delete(`/photo/images/${id}`);
 }
 
 export async function submitProcess(
   imageIds: string[], features: string[],
-  params: Record<string, unknown> = {}, channelOverride = "",
+  params: Record<string, unknown> = {}, channelOverride = "", identityId = "", brandKitId = "",
 ): Promise<PhotoTask[]> {
   const { data } = await axios.post("/photo/process", {
     image_ids: imageIds, features, params, channel_override: channelOverride,
+    identity_id: identityId, brand_kit_id: brandKitId,
   });
+  return data;
+}
+
+// ── 一致性身份（商品/模特）──────────────────────────────────
+export async function listIdentities(type?: string): Promise<PhotoIdentity[]> {
+  const { data } = await axios.get("/photo/identity", { params: type ? { type } : {} });
+  return data;
+}
+
+export async function createIdentity(body: {
+  type: string; name: string; ref_image_ids: string[]; subject_prompt?: string; color?: string;
+}): Promise<PhotoIdentity> {
+  const { data } = await axios.post("/photo/identity", body);
+  return data;
+}
+
+export async function deleteIdentity(id: string): Promise<void> {
+  await axios.delete(`/photo/identity/${id}`);
+}
+
+// ── 一键成套素材工作流 ──────────────────────────────────────
+export interface WorkflowStep {
+  feature: string;
+  params?: Record<string, unknown>;
+}
+
+export interface WorkflowTemplate {
+  key: string;
+  name: string;
+  steps: WorkflowStep[];
+}
+
+export async function listWorkflowTemplates(): Promise<WorkflowTemplate[]> {
+  const { data } = await axios.get("/photo/workflow/templates");
+  return data;
+}
+
+export async function submitWorkflow(body: {
+  template?: string; steps?: WorkflowStep[]; image_ids: string[];
+  identity_id?: string; brand_kit_id?: string;
+}): Promise<PhotoTask> {
+  const { data } = await axios.post("/photo/workflow", body);
+  return data;
+}
+
+// ── 配方（保存/复用工作流）──────────────────────────────────
+export interface PhotoRecipe {
+  id: string;
+  name: string;
+  steps: WorkflowStep[];
+  created_at: string;
+}
+
+export async function listRecipes(): Promise<PhotoRecipe[]> {
+  const { data } = await axios.get("/photo/recipe");
+  return data;
+}
+
+export async function createRecipe(body: { name: string; steps: WorkflowStep[] }): Promise<PhotoRecipe> {
+  const { data } = await axios.post("/photo/recipe", body);
+  return data;
+}
+
+export async function deleteRecipe(id: string): Promise<void> {
+  await axios.delete(`/photo/recipe/${id}`);
+}
+
+// 画布内局部重绘：源图(本地 url) + mask(base64) + prompt
+export async function submitInpaint(imageUrl: string, maskBase64: string, prompt: string): Promise<PhotoTask> {
+  const { data } = await axios.post("/photo/inpaint", { image_url: imageUrl, mask_base64: maskBase64, prompt });
   return data;
 }
 
@@ -112,6 +205,7 @@ export function getDownloadFileUrl(url: string): string {
   return `/photo/download/file?url=${encodeURIComponent(url)}`;
 }
 
-export function getDownloadZipUrl(urls: string[]): string {
-  return `/photo/download/zip?urls=${encodeURIComponent(urls.join(","))}`;
+export function getDownloadZipUrl(urls: string[], prefix?: string): string {
+  const base = `/photo/download/zip?urls=${encodeURIComponent(urls.join(","))}`;
+  return prefix ? `${base}&prefix=${encodeURIComponent(prefix)}` : base;
 }
