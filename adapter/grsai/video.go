@@ -12,11 +12,14 @@ import (
 // videoPollMaxWait 视频生成较慢，给足轮询时长。
 const videoPollMaxWait = 20 * time.Minute
 
-// CreateImageToVideoRequest 图/文生视频（veo）。
+// CreateImageToVideoRequest 图/文生视频。
+// 放开本地能力校验：所选模型一律提交到 grsai 视频端点 /v1/video/veo，由 grsai API
+// 决定是否支持（不支持时原样透传 API 错误，如 "model not found"）。
 func (c *Generator) CreateImageToVideoRequest(props *adaptercommon.ImageToVideoProps, hook globals.Hook) error {
-	spec, ok := GetModelSpec(props.Model)
-	if !ok || spec.Capability != CapabilityVideo {
-		return fmt.Errorf("grsai 不支持的视频模型: %s", props.Model)
+	// 默认强制走视频端点；若注册表里该模型本就是视频模型，则沿用其配置。
+	spec := ModelSpec{Model: props.Model, Path: "/v1/video/veo", Surface: SurfaceB, Capability: CapabilityVideo, MaxImages: 1}
+	if s, ok := GetModelSpec(props.Model); ok && s.Capability == CapabilityVideo {
+		spec = s
 	}
 	images := classifyImages(props.Images)
 	if spec.MaxImages > 0 && len(images) > spec.MaxImages {
