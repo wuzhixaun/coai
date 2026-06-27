@@ -28,6 +28,11 @@ func TestGetModelSpec(t *testing.T) {
 			t.Fatalf("%s: spec=%+v", c.model, spec)
 		}
 	}
+
+	// 大小写不敏感：市场里写成 Veo3.1-Fast 也应能命中。
+	if spec, ok := GetModelSpec("Veo3.1-Fast"); !ok || spec.Model != "veo3.1-fast" {
+		t.Fatalf("case-insensitive lookup failed: ok=%v spec=%+v", ok, spec)
+	}
 }
 
 func TestTaskResponseState(t *testing.T) {

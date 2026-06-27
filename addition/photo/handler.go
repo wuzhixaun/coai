@@ -207,7 +207,8 @@ func ProcessAPI(c *gin.Context) {
 	for _, feature := range req.Features {
 		cnt := len(req.ImageIds)
 		if feature == FeatureVideoGen {
-			cnt = 1
+			// 视频：X 张素材作为一组参考图，生成 Y(=生成数量) 个视频。
+			cnt = clampGenerateCount(getIntParam(req.Params, "image_count", 1))
 		} else if IsAIFeature(feature) && supportsGenerateCount(feature) {
 			cnt = len(req.ImageIds) * clampGenerateCount(getIntParam(req.Params, "image_count", 1))
 		}
@@ -226,7 +227,9 @@ func ProcessAPI(c *gin.Context) {
 		totalVideos := 0
 		totalImages := len(req.ImageIds)
 		if isVideo {
-			totalVideos = 1
+			// 视频：X 张素材一组参考图 → 生成 Y 个视频；图片计数置 0，按视频计数展示。
+			totalVideos = clampGenerateCount(getIntParam(req.Params, "image_count", 1))
+			totalImages = 0
 		} else if IsAIFeature(feature) && supportsGenerateCount(feature) {
 			totalImages = len(req.ImageIds) * clampGenerateCount(getIntParam(req.Params, "image_count", 1))
 		}

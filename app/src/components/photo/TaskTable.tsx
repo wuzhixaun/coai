@@ -264,8 +264,9 @@ const TaskRow: React.FC<{
           )}
         </div>
         <span className="text-xs text-muted-foreground">
-          {task.processed_images}/{task.total_images}
-          {task.total_videos > 0 && ` +${task.processed_videos}V`}
+          {task.total_videos > 0
+            ? `${task.processed_videos}/${task.total_videos}V`
+            : `${task.processed_images}/${task.total_images}`}
         </span>
         <span className="text-xs text-muted-foreground hidden sm:inline">{formatLocalTime(task.created_at)}</span>
 

@@ -1465,7 +1465,7 @@
       "title": "AI Image Tools",
       "model": "Image Model",
       "count": "Count",
-      "count-hint": "Only generation features repeat; upscale, resize, video and local ops run once.",
+      "count-hint": "Generation features: N images per source. Video: N videos from all selected reference images. Upscale, resize and local ops run once.",
       "process": "Process ({{count}} features)",
       "processing": "Processing…",
       "params-title": "{{feature}} Settings",

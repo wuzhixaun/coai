@@ -396,8 +396,8 @@ func processVideoGenSingle(imagePaths []string, prompt string, duration int, cha
 	if len(imagePaths) == 0 {
 		return "", fmt.Errorf("视频生成需要至少 1 张参考图")
 	}
-	if len(imagePaths) > 9 {
-		return "", fmt.Errorf("视频生成最多支持 9 张参考图")
+	if len(imagePaths) > 20 {
+		return "", fmt.Errorf("视频生成最多支持 20 张参考图")
 	}
 	var b64Images []string
 	for _, p := range imagePaths {
@@ -465,7 +465,12 @@ func ProcessTask(ctx context.Context, db *sql.DB, taskID, feature string, imageP
 			if pct > 99 {
 				pct = 99
 			}
-			db.Exec("UPDATE photo_tasks SET progress = ?, processed_images = ? WHERE task_id = ?", pct, produced, taskID)
+			// 视频任务按视频计数（X 张素材→Y 个视频），其余按图片计数。
+			if feature == FeatureVideoGen {
+				db.Exec("UPDATE photo_tasks SET progress = ?, processed_videos = ? WHERE task_id = ?", pct, produced, taskID)
+			} else {
+				db.Exec("UPDATE photo_tasks SET progress = ?, processed_images = ? WHERE task_id = ?", pct, produced, taskID)
+			}
 		})
 	finalizeTask(db, taskID, feature, channelOverride, items, allResults)
 }
@@ -484,19 +489,24 @@ func runFeaturePerImage(feature string, imagePaths []string, params map[string]i
 	var all []string
 
 	if feature == FeatureVideoGen {
-		urls, err := runFeature(feature, imagePaths, params, channelOverride, userGroup, idt)
-		it := ItemStatus{Index: 0, Status: TaskStatusSuccess, Urls: urls}
-		if len(imagePaths) > 0 {
-			it.Filename = filepath.Base(imagePaths[0])
-		}
-		if err != nil {
-			it.Status = TaskStatusFailed
-			it.Error = err.Error()
-		}
-		items = append(items, it)
-		all = append(all, urls...)
-		if onProgress != nil {
-			onProgress(1, 1, len(all))
+		// 视频：X 张素材作为一组参考图，生成 Y(=生成数量) 个视频。逐个视频为一个 item，
+		// 支持部分成功与只重试失败项。
+		count := clampGenerateCount(getIntParam(params, "image_count", 1))
+		for i := 0; i < count; i++ {
+			urls, err := runFeature(feature, imagePaths, params, channelOverride, userGroup, idt)
+			it := ItemStatus{Index: i, Status: TaskStatusSuccess, Urls: urls}
+			if len(imagePaths) > 0 {
+				it.Filename = filepath.Base(imagePaths[0])
+			}
+			if err != nil {
+				it.Status = TaskStatusFailed
+				it.Error = err.Error()
+			}
+			items = append(items, it)
+			all = append(all, urls...)
+			if onProgress != nil {
+				onProgress(i+1, count, len(all))
+			}
 		}
 		return items, all
 	}
@@ -527,9 +537,12 @@ func finalizeTask(db *sql.DB, taskID, feature, channelOverride string, items []I
 			break
 		}
 	}
+	// 视频任务：产出按视频计（每个结果 = 1 个视频），图片计数置 0；其余功能反之。
+	processedImages := len(allResults)
 	processedVideos := 0
-	if feature == FeatureVideoGen && len(allResults) > 0 {
-		processedVideos = 1
+	if feature == FeatureVideoGen {
+		processedVideos = len(allResults)
+		processedImages = 0
 	}
 	resultJSON := utils.Marshal(allResults)
 	itemJSON := utils.Marshal(items)
@@ -537,11 +550,11 @@ func finalizeTask(db *sql.DB, taskID, feature, channelOverride string, items []I
 	if genErr != nil {
 		db.Exec(`UPDATE photo_tasks SET status = ?, error_message = ?, result_urls = ?, item_status = ?,
 			processed_images = ?, processed_videos = ?, completed_at = ? WHERE task_id = ?`,
-			TaskStatusFailed, genErr.Error(), resultJSON, itemJSON, len(allResults), processedVideos, now, taskID)
+			TaskStatusFailed, genErr.Error(), resultJSON, itemJSON, processedImages, processedVideos, now, taskID)
 	} else {
 		db.Exec(`UPDATE photo_tasks SET status = ?, error_message = '', result_urls = ?, item_status = ?, progress = 100,
 			processed_images = ?, processed_videos = ?, completed_at = ? WHERE task_id = ?`,
-			TaskStatusSuccess, resultJSON, itemJSON, len(allResults), processedVideos, now, taskID)
+			TaskStatusSuccess, resultJSON, itemJSON, processedImages, processedVideos, now, taskID)
 	}
 	recordPhotoGeneration(db, taskID, feature, channelOverride, len(allResults), genErr)
 }

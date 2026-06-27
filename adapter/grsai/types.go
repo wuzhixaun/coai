@@ -42,10 +42,16 @@ var modelSpecs = map[string]ModelSpec{
 	"veo3.1-pro":    {Model: "veo3.1-pro", Path: "/v1/video/veo", Surface: SurfaceB, Capability: CapabilityVideo, MaxImages: 1},
 }
 
-// GetModelSpec 按模型名查注册表。
+// GetModelSpec 按模型名查注册表（大小写不敏感，兼容市场里 Veo3.1-Fast 这类显示名写法）。
 func GetModelSpec(model string) (ModelSpec, bool) {
-	spec, ok := modelSpecs[model]
-	return spec, ok
+	if spec, ok := modelSpecs[model]; ok {
+		return spec, true
+	}
+	lower := strings.ToLower(strings.TrimSpace(model))
+	if spec, ok := modelSpecs[lower]; ok {
+		return spec, true
+	}
+	return ModelSpec{}, false
 }
 
 // GenerateRequest 是两套接口面通用的提交体（model 字段决定路由）。
