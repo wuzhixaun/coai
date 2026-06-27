@@ -119,7 +119,7 @@ func (g *Generator) runChatMedia(model, prompt string, images []string, wantVide
 		return fmt.Errorf("openai media error: cannot parse response")
 	}
 	if data.Error.Message != "" {
-		return fmt.Errorf(hideRequestId(data.Error.Message))
+		return fmt.Errorf("%s", hideRequestId(data.Error.Message))
 	}
 	if len(data.Choices) == 0 {
 		return fmt.Errorf("openai media error: empty choices")
@@ -144,8 +144,10 @@ func (g *Generator) runChatMedia(model, prompt string, images []string, wantVide
 		return fmt.Errorf("未从响应中解析到图片结果")
 	}
 	for _, img := range imgs {
-		markdown := utils.GetImageMarkdown(img) // data: URI 直接内联
-		if !strings.HasPrefix(img, "data:") {
+		var markdown string
+		if strings.HasPrefix(img, "data:") {
+			markdown = utils.GetImageMarkdown(img) // data: URI 直接内联
+		} else {
 			markdown = utils.GetImageMarkdown(utils.StoreImage(img)) // http 图落地后再回推
 		}
 		if err := hook(&globals.Chunk{Content: markdown}); err != nil {
