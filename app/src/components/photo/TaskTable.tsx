@@ -53,6 +53,18 @@ function friendlyError(raw: string, t: TFunction): string {
 
 const isVideoUrl = (url: string) => url.endsWith(".mp4") || url.endsWith(".webm");
 
+// 后端 created_at 多为 UTC（DB CURRENT_TIMESTAMP，无时区标记）。
+// 这里按 UTC 解析再转成浏览器本地时区显示，修正"少 8 小时"。
+function formatLocalTime(s?: string): string {
+  if (!s) return "";
+  const hasTz = /[zZ]|[+-]\d{2}:?\d{2}$/.test(s);
+  const iso = hasTz ? s : s.replace(" ", "T") + "Z";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return s.slice(0, 16);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 // 灯箱：包裹任意 trigger，点击后弹出大图/视频预览，支持复制链接、新窗口打开、下载；
 // 传入 sourceUrl（且非视频）时提供「对比原图 / 仅看结果」切换。
 const ResultLightbox: React.FC<{ url: string; index: number; trigger: React.ReactNode; sourceUrl?: string; onInpaint?: (url: string) => void }> = ({ url, index, trigger, sourceUrl, onInpaint }) => {
@@ -253,7 +265,7 @@ const TaskRow: React.FC<{
           {task.processed_images}/{task.total_images}
           {task.total_videos > 0 && ` +${task.processed_videos}V`}
         </span>
-        <span className="text-xs text-muted-foreground hidden sm:inline">{task.created_at?.slice(0, 16)}</span>
+        <span className="text-xs text-muted-foreground hidden sm:inline">{formatLocalTime(task.created_at)}</span>
 
         {/* 行内结果缩略图：成功/部分成功无需展开即可预览（窄屏隐藏，避免溢出） */}
         {!isActive && results.length > 0 && (
