@@ -54,6 +54,8 @@ func extractImages(content string) []string {
 }
 
 // extractVideoURLs 从响应文本抠出视频链接（.mp4/.webm/.mov，允许带 query）。
+// 注意：仅按 .mp4/.webm/.mov 后缀识别（去掉 ?query/#fragment 后判断），属最佳努力范围；
+// 无扩展名的签名视频 URL（如 https://cdn/x?token=...）不会被识别。
 func extractVideoURLs(content string) []string {
 	var out []string
 	for _, u := range utils.ExtractUrls(content) {
