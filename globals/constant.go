@@ -35,6 +35,7 @@ const (
 	// dreamina（自定义 Bearer 代理）已退役，能力由官方 jimeng-api 取代。
 	JimengChannelType    = "jimeng"     // 即梦 CLI (subprocess)，仅 video_gen 仍在使用，待官方视频模型接入后下线
 	JimengAPIChannelType = "jimeng-api" // 火山引擎即梦官方 Visual API
+	GrsaiChannelType     = "grsai"      // grsai 多模型平台（nano-banana / gpt-image / veo）
 )
 
 const (
