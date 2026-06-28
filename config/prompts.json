@@ -166,8 +166,8 @@
       ]
     },
     "video_gen": {
-      "channel_type": "grsai",
-      "model": "veo3.1-fast",
+      "channel_type": "ark",
+      "model": "doubao-seedance-1-0-pro-250528",
       "system_prompt": "根据参考图自动推理商品特性，生成商品功能使用与细节展示视频：{user_prompt}。展示商品各角度细节、材质特写、使用场景切换，运镜平顺专业，{english_only}",
       "templates": [
         { "label": "智能推理（推荐）", "prompt": "" },
