@@ -43,6 +43,34 @@ func TestBuildVideoPrompt(t *testing.T) {
 	}
 }
 
+func TestModelCapabilityDetection(t *testing.T) {
+	if !isImageModel("doubao-seedream-4-0-250828") {
+		t.Error("seedream should be image model")
+	}
+	if !isVideoModel("doubao-seedance-2-0-260128") {
+		t.Error("seedance should be video model")
+	}
+	if isImageModel("doubao-seed-1-6-250615") || isVideoModel("doubao-seed-1-6-250615") {
+		t.Error("doubao-seed-1-6 should be a chat model (neither image nor video)")
+	}
+}
+
+func TestLatestPromptAndImages(t *testing.T) {
+	prompt, imgs := latestPromptAndImages(&adaptercommon.ChatProps{
+		Message: []globals.Message{
+			{Role: globals.User, Content: "第一条"},
+			{Role: globals.Assistant, Content: "回复"},
+			{Role: globals.User, Content: "做个视频 ![image](https://x/a.png)"},
+		},
+	})
+	if prompt != "做个视频" {
+		t.Errorf("prompt=%q want 做个视频", prompt)
+	}
+	if len(imgs) != 1 || imgs[0] != "https://x/a.png" {
+		t.Errorf("imgs=%v", imgs)
+	}
+}
+
 func TestImageRole(t *testing.T) {
 	if got := imageRole(0); got != "first_frame" {
 		t.Errorf("0 images role=%q want first_frame", got)

@@ -51,7 +51,7 @@ var channelFactories = map[string]adaptercommon.FactoryCreator{
 
 	globals.GrsaiChannelType: grsai.NewChatInstanceFromConfig, // 对话框内直接出图/出视频
 
-	globals.ArkChannelType: skylark.NewChatInstanceFromConfig, // 火山方舟对话（arkruntime SDK，OpenAI 兼容）
+	globals.ArkChannelType: ark.NewChatInstanceFromConfig, // 火山方舟：对话框按模型分流（对话/出图/出视频）
 }
 
 // 图片处理适配器工厂映射
