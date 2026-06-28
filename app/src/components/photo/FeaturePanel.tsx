@@ -125,7 +125,7 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess, onSa
   // 打开某功能的参数配置（配置持久化于 params，不立即处理）
   const openConfig = (key: string) => {
     setDialogKey(key);
-    setShowAdvanced(false);
+    setShowAdvanced(true); // 快捷模板默认展开
     if (!params[key]) setParams((p) => ({ ...p, [key]: defaultParams(key) }));
   };
 
@@ -431,7 +431,7 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess, onSa
               </div>
             )}
 
-            {/* 高级：快捷模板（渐进式披露，默认折叠） */}
+            {/* 高级：快捷模板（默认展开，可折叠） */}
             {(cfg?.templates?.length ?? 0) > 0 && (
               <div className="border-t pt-2">
                 <button type="button" className="text-xs text-muted-foreground hover:text-foreground"

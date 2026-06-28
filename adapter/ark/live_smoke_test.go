@@ -140,5 +140,23 @@ func TestLiveImageToVideo(t *testing.T) {
 	if strings.TrimSpace(*got) == "" {
 		t.Fatalf("图生视频 未返回结果")
 	}
-	t.Logf("图生视频 OK: %.120s...", *got)
+	t.Logf("图生视频(单图 first_frame) OK: %.120s...", *got)
+}
+
+func TestLiveImageToVideoMulti(t *testing.T) {
+	g, _, videoModel := liveGen(t)
+	if videoModel == "" {
+		t.Skip("set ARK_VIDEO_MODEL to run video scenario")
+	}
+	got, hook := collect()
+	if err := g.CreateImageToVideoRequest(&adaptercommon.ImageToVideoProps{
+		Model: videoModel, Prompt: "用这些素材做一个商品展示视频",
+		Images: []string{sampleInputImage, "https://picsum.photos/seed/coai2/512"}, Duration: 5,
+	}, hook); err != nil {
+		t.Fatalf("图生视频(多图 reference_image) 失败: %v", err)
+	}
+	if strings.TrimSpace(*got) == "" {
+		t.Fatalf("图生视频(多图) 未返回结果")
+	}
+	t.Logf("图生视频(多图 reference_image) OK: %.120s...", *got)
 }

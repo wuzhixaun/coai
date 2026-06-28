@@ -43,6 +43,18 @@ func TestBuildVideoPrompt(t *testing.T) {
 	}
 }
 
+func TestImageRole(t *testing.T) {
+	if got := imageRole(0); got != "first_frame" {
+		t.Errorf("0 images role=%q want first_frame", got)
+	}
+	if got := imageRole(1); got != "first_frame" {
+		t.Errorf("1 image role=%q want first_frame", got)
+	}
+	if got := imageRole(3); got != "reference_image" {
+		t.Errorf("3 images role=%q want reference_image", got)
+	}
+}
+
 func TestResultFilename(t *testing.T) {
 	a := resultFilename("https://x/v.mp4", ".mp4")
 	if !strings.HasPrefix(a, "ark_") || !strings.HasSuffix(a, ".mp4") {
