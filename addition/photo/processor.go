@@ -396,8 +396,8 @@ func processVideoGenSingle(imagePaths []string, prompt string, duration int, cha
 	if len(imagePaths) == 0 {
 		return "", fmt.Errorf("视频生成需要至少 1 张参考图")
 	}
-	if len(imagePaths) > 20 {
-		return "", fmt.Errorf("视频生成最多支持 20 张参考图")
+	if len(imagePaths) > 9 {
+		return "", fmt.Errorf("视频生成最多支持 9 张参考图")
 	}
 	var b64Images []string
 	for _, p := range imagePaths {

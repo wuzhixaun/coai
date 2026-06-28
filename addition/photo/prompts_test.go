@@ -53,9 +53,9 @@ func TestGetChannelType(t *testing.T) {
 			t.Errorf("%s channel_type: got %s, want jimeng-api", feature, ct)
 		}
 	}
-	// 视频生成仍走 CLI jimeng 渠道，本阶段未接入官方视频模型。
-	if ct := GetChannelType("video_gen"); ct != "jimeng" {
-		t.Errorf("video_gen channel_type: got %s, want jimeng", ct)
+	// 视频生成已接入火山方舟(ark)官方视频模型（grsai veo 下架后切换）。
+	if ct := GetChannelType("video_gen"); ct != "ark" {
+		t.Errorf("video_gen channel_type: got %s, want ark", ct)
 	}
 }
 
