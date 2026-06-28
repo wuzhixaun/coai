@@ -1,6 +1,7 @@
 package adapter
 
 import (
+	"chat/adapter/ark"
 	"chat/adapter/azure"
 	"chat/adapter/baichuan"
 	"chat/adapter/bing"
@@ -49,6 +50,8 @@ var channelFactories = map[string]adaptercommon.FactoryCreator{
 	globals.GroqChannelType:     openai.NewChatInstanceFromConfig, // openai format
 
 	globals.GrsaiChannelType: grsai.NewChatInstanceFromConfig, // 对话框内直接出图/出视频
+
+	globals.ArkChannelType: skylark.NewChatInstanceFromConfig, // 火山方舟对话（arkruntime SDK，OpenAI 兼容）
 }
 
 // 图片处理适配器工厂映射
@@ -57,12 +60,14 @@ var imageProcessorFactories = map[string]adaptercommon.ImageEditFactoryCreator{
 	globals.JimengAPIChannelType: jimengapi.NewImageProcessorFromConfig,
 	globals.GrsaiChannelType:     grsai.NewImageProcessorFromConfig,
 	globals.OpenAIChannelType:    openai.NewImageProcessorFromConfig,
+	globals.ArkChannelType:       ark.NewImageProcessorFromConfig, // 图片处理 + 图生视频
 }
 
 var imageGenerationFactories = map[string]adaptercommon.ImageGenerationFactoryCreator{
 	globals.JimengAPIChannelType: jimengapi.NewImageGeneratorFromConfig,
 	globals.GrsaiChannelType:     grsai.NewImageGeneratorFromConfig,
 	globals.OpenAIChannelType:    openai.NewImageGeneratorFromConfig,
+	globals.ArkChannelType:       ark.NewImageGeneratorFromConfig, // 文生图/图生图
 }
 
 func createImageGenerationRequest(conf globals.ChannelConfig, props *adaptercommon.ImageGenerationProps, hook globals.Hook) error {

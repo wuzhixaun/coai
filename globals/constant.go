@@ -36,6 +36,9 @@ const (
 	JimengChannelType    = "jimeng"     // 即梦 CLI (subprocess)，仅 video_gen 仍在使用，待官方视频模型接入后下线
 	JimengAPIChannelType = "jimeng-api" // 火山引擎即梦官方 Visual API
 	GrsaiChannelType     = "grsai"      // grsai 多模型平台（nano-banana / gpt-image / veo）
+	// ArkChannelType 火山方舟（Ark）：一个 API Key 同时服务对话(/chat/completions)、
+	// 图片生成(/images/generations)、视频生成(/contents/generations/tasks 异步任务)。
+	ArkChannelType = "ark"
 )
 
 const (
