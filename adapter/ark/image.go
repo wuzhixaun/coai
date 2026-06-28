@@ -94,16 +94,25 @@ func (g *Generator) runImage(modelID, prompt string, images []string, size strin
 
 	pushed := 0
 	for _, d := range data.Data {
-		var markdown string
+		var stored string
 		switch {
 		case strings.TrimSpace(d.URL) != "":
-			markdown = utils.GetImageMarkdown(utils.StoreImage(d.URL)) // http 图落地后回推
+			s, e := g.storeImageURL(d.URL) // 落地为本地文件（持久化 + 支持套图链式读取）
+			if e != nil {
+				globals.Warn(fmt.Sprintf("[ark] 图片结果落地失败，回退源地址: %s", e.Error()))
+				s = d.URL
+			}
+			stored = s
 		case strings.TrimSpace(d.B64JSON) != "":
-			markdown = utils.GetImageMarkdown("data:image/png;base64," + d.B64JSON) // base64 直接内联
+			s, e := g.storeImageB64(d.B64JSON)
+			if e != nil {
+				return fmt.Errorf("ark 图片解码失败: %s", e.Error())
+			}
+			stored = s
 		default:
 			continue
 		}
-		if err := hook(&globals.Chunk{Content: markdown}); err != nil {
+		if err := hook(&globals.Chunk{Content: utils.GetImageMarkdown(stored)}); err != nil {
 			return err
 		}
 		pushed++

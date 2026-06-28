@@ -10,7 +10,7 @@ export interface PhotoItemStatus {
 }
 
 export interface PhotoTask {
-  task_id: string; feature: string; status: "pending" | "processing" | "success" | "failed";
+  task_id: string; feature: string; display_name?: string; status: "pending" | "processing" | "success" | "failed";
   image_ids: string[]; result_urls: string[]; error_message: string; progress: number;
   created_at: string; folder_name: string; total_images: number; processed_images: number;
   total_videos: number; processed_videos: number; completed_at?: string;
@@ -143,7 +143,7 @@ export async function listWorkflowTemplates(): Promise<WorkflowTemplate[]> {
 
 export async function submitWorkflow(body: {
   template?: string; steps?: WorkflowStep[]; image_ids: string[];
-  identity_id?: string; brand_kit_id?: string;
+  identity_id?: string; brand_kit_id?: string; channel_override?: string;
 }): Promise<PhotoTask> {
   const { data } = await axios.post("/photo/workflow", body);
   return data;

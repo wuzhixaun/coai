@@ -81,6 +81,14 @@ func doMigration(db *sql.DB) error {
 		return err
 	}
 
+	// add `display_name` field in `photo_tasks` to distinguish workflow kits in history
+	if err := execSql(db, `
+		ALTER TABLE photo_tasks
+		ADD COLUMN display_name VARCHAR(64) DEFAULT '';
+	`); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -108,6 +116,14 @@ func doSqliteMigration(db *sql.DB) error {
 	if err := execSql(db, `
 		ALTER TABLE photo_tasks
 		ADD COLUMN item_status TEXT;
+	`); err != nil {
+		return err
+	}
+
+	// add `display_name` field in `photo_tasks` to distinguish workflow kits in history
+	if err := execSql(db, `
+		ALTER TABLE photo_tasks
+		ADD COLUMN display_name VARCHAR(64) DEFAULT '';
 	`); err != nil {
 		return err
 	}

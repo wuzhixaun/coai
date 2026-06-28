@@ -238,7 +238,7 @@ const TaskRow: React.FC<{
     }`}>
       <div className="flex items-center p-3 gap-3 cursor-pointer" onClick={() => setExpanded(!expanded)}>
         <span className="font-mono text-xs text-muted-foreground w-20 truncate">{task.task_id}</span>
-        <span className="text-sm w-16">{t(`photo.features.${task.feature}`, task.feature)}</span>
+        <span className="text-sm w-16 truncate" title={task.display_name || t(`photo.features.${task.feature}`, task.feature)}>{task.display_name || t(`photo.features.${task.feature}`, task.feature)}</span>
         {isPartial ? (
           <Badge variant="outline" className="border-amber-500 text-amber-600">
             {t("photo.task.partial", { done: succeeded, total: expected })}

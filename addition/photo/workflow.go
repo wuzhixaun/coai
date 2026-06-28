@@ -88,6 +88,7 @@ func WorkflowAPI(c *gin.Context) {
 
 	// 解析步骤：优先自定义 steps，否则取预置模板
 	steps := req.Steps
+	displayName := "自定义配方"
 	if len(steps) == 0 {
 		tpl, ok := findTemplate(req.Template)
 		if !ok {
@@ -95,6 +96,7 @@ func WorkflowAPI(c *gin.Context) {
 			return
 		}
 		steps = tpl.Steps
+		displayName = tpl.Name
 	}
 	if len(steps) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "工作流步骤为空"})
@@ -140,10 +142,10 @@ func WorkflowAPI(c *gin.Context) {
 
 	taskID := generateImageID()
 	_, e := db.Exec(`INSERT INTO photo_tasks
-		(task_id, user_id, feature, status, image_ids, params, total_images, total_videos,
+		(task_id, user_id, feature, display_name, status, image_ids, params, total_images, total_videos,
 		 source_filenames, source_paths, folder_name)
-		VALUES (?, ?, ?, 'pending', ?, ?, ?, 0, ?, ?, ?)`,
-		taskID, userID, FeatureWorkflow,
+		VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, 0, ?, ?, ?)`,
+		taskID, userID, FeatureWorkflow, displayName,
 		utils.Marshal(req.ImageIds), utils.Marshal(steps), len(req.ImageIds),
 		utils.Marshal(filenames), utils.Marshal(imagePaths), folderName,
 	)
@@ -155,7 +157,7 @@ func WorkflowAPI(c *gin.Context) {
 	go ProcessWorkflowTask(db, taskID, imagePaths, steps, req.ChannelOverride, group, identityRefPaths, identitySeed, identitySubject)
 
 	c.JSON(http.StatusOK, TaskInfo{
-		TaskId: taskID, Feature: FeatureWorkflow, Status: TaskStatusPending,
+		TaskId: taskID, Feature: FeatureWorkflow, DisplayName: displayName, Status: TaskStatusPending,
 		ImageIds: req.ImageIds, TotalImages: len(req.ImageIds),
 		SourceFilenames: filenames, CreatedAt: time.Now().Format(time.RFC3339), FolderName: folderName,
 	})

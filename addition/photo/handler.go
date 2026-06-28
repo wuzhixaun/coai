@@ -264,16 +264,17 @@ func ProcessAPI(c *gin.Context) {
 func scanTaskRow(scanner interface{ Scan(...interface{}) error }) (TaskInfo, error) {
 	var t TaskInfo
 	var n1, n2, n3, n4, n5, n6 sql.NullString
-	var n7, n8, n9 sql.NullString
+	var n7, n8, n9, n10 sql.NullString
 
 	err := scanner.Scan(
 		&t.TaskId, &t.Feature, &t.Status, &n1, &n2, &n6, &t.Progress,
 		&t.TotalImages, &t.ProcessedImages, &t.TotalVideos, &t.ProcessedVideos,
-		&n3, &n4, &n5, &t.FolderName, &n7, &n8, &n9,
+		&n3, &n4, &n5, &t.FolderName, &n7, &n8, &n9, &n10,
 	)
 	if err != nil {
 		return t, err
 	}
+	t.DisplayName = nullToString(n10)
 
 	t.ErrorMessage = nullToString(n6)
 	t.ImageIds = parseJSONStringArray(nullToString(n1))
@@ -500,5 +501,5 @@ const taskSelectSQL = `
 	SELECT task_id, feature, status, image_ids, result_urls, error_message, progress,
 	       total_images, processed_images, total_videos, processed_videos,
 	       submit_ids, source_filenames, source_paths, folder_name, created_at, completed_at,
-	       item_status
+	       item_status, display_name
 	FROM photo_tasks`

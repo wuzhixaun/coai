@@ -29,6 +29,8 @@ const Photo: React.FC = () => {
   const [mobileTab, setMobileTab] = useState<MobileTab>("upload");
   const [inpaintUrl, setInpaintUrl] = useState<string | null>(null);
   const [inpainting, setInpainting] = useState(false);
+  // 「一键成套」复用 FeaturePanel 当前所选生图模型（否则套件回退到各功能默认模型）
+  const [workflowModel, setWorkflowModel] = useState("");
 
   const applyInpaint = async (mask: string, prompt: string) => {
     if (!inpaintUrl) return;
@@ -115,19 +117,22 @@ const Photo: React.FC = () => {
           onCreate={createIdentityAction}
           onDelete={deleteIdentityAction}
         />
-        <WorkflowBar
-          templates={templates}
-          recipes={recipes}
-          selectedCount={selectedIds.length}
-          loading={loading}
-          onRun={runWorkflow}
-          onRunSteps={runWorkflowSteps}
-          onDeleteRecipe={deleteRecipeAction}
-        />
         <FeaturePanel
           selectedCount={selectedIds.length} loading={loading}
           onProcess={(features, paramsMap, model) => process(features, paramsMap, model)}
           onSaveRecipe={createRecipeAction}
+          onModelChange={setWorkflowModel}
+          workflowSlot={
+            <WorkflowBar
+              templates={templates}
+              recipes={recipes}
+              selectedCount={selectedIds.length}
+              loading={loading}
+              onRun={(key) => runWorkflow(key, workflowModel)}
+              onRunSteps={(steps) => runWorkflowSteps(steps, workflowModel)}
+              onDeleteRecipe={deleteRecipeAction}
+            />
+          }
         />
       </div>
 

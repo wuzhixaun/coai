@@ -157,12 +157,12 @@ export function usePhotoTask() {
   }, [selectedIds, startPolling, selectedIdentityId, selectedBrandKitId, t]);
 
   // 一键成套：按模板或自定义步骤(配方)串行执行，结果聚合为一个 workflow 任务
-  const submitWorkflowBody = useCallback(async (body: { template?: string; steps?: WorkflowStep[] }) => {
+  const submitWorkflowBody = useCallback(async (body: { template?: string; steps?: WorkflowStep[] }, model = "") => {
     if (selectedIds.length === 0) return;
     setLoading(true);
     try {
       const task = await api.submitWorkflow({
-        ...body, image_ids: selectedIds,
+        ...body, image_ids: selectedIds, channel_override: model,
         identity_id: selectedIdentityId, brand_kit_id: selectedBrandKitId,
       });
       if (task && task.task_id) {
@@ -176,8 +176,8 @@ export function usePhotoTask() {
     setLoading(false);
   }, [selectedIds, startPolling, selectedIdentityId, selectedBrandKitId, t]);
 
-  const runWorkflow = useCallback((templateKey: string) => submitWorkflowBody({ template: templateKey }), [submitWorkflowBody]);
-  const runWorkflowSteps = useCallback((steps: WorkflowStep[]) => submitWorkflowBody({ steps }), [submitWorkflowBody]);
+  const runWorkflow = useCallback((templateKey: string, model = "") => submitWorkflowBody({ template: templateKey }, model), [submitWorkflowBody]);
+  const runWorkflowSteps = useCallback((steps: WorkflowStep[], model = "") => submitWorkflowBody({ steps }, model), [submitWorkflowBody]);
 
   // ── 配方 ──
   const createRecipeAction = useCallback(async (name: string, steps: WorkflowStep[]) => {

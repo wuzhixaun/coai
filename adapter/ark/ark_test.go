@@ -129,18 +129,22 @@ func TestImageEditRequiresInputImage(t *testing.T) {
 
 func newHTTPGen(t *testing.T, h http.HandlerFunc) (*Generator, func()) {
 	t.Helper()
+	prevDir := globals.StorageResultDir
+	globals.StorageResultDir = t.TempDir() // 结果落地到临时目录，避免污染仓库
 	srv := httptest.NewServer(h)
 	g := newGenerator(stubConfig{endpoint: srv.URL})
-	return g, srv.Close
+	return g, func() { srv.Close(); globals.StorageResultDir = prevDir }
 }
 
 func TestRunImageURLResult(t *testing.T) {
-	defer withImageStoreDisabled()()
 	g, closeFn := newHTTPGen(t, func(w http.ResponseWriter, r *http.Request) {
-		if !strings.HasSuffix(r.URL.Path, "/images/generations") {
-			t.Errorf("unexpected path %s", r.URL.Path)
+		if strings.HasSuffix(r.URL.Path, "/images/generations") {
+			// 返回指向同一测试服务器的图片 URL，供 storeImageURL 下载落地
+			_, _ = w.Write([]byte(`{"data":[{"url":"http://` + r.Host + `/pic.png"}]}`))
+			return
 		}
-		_, _ = w.Write([]byte(`{"data":[{"url":"https://cdn/x.png"}]}`))
+		w.Header().Set("Content-Type", "image/png")
+		_, _ = w.Write([]byte("\x89PNG\r\n\x1a\nfake")) // 假 PNG 字节
 	})
 	defer closeFn()
 
@@ -149,14 +153,14 @@ func TestRunImageURLResult(t *testing.T) {
 	if err != nil {
 		t.Fatalf("runImage err: %v", err)
 	}
-	if !strings.Contains(got, "![image](https://cdn/x.png)") {
-		t.Fatalf("markdown got %q", got)
+	if !strings.Contains(got, "![image](/storage/results/ark_") {
+		t.Fatalf("expected local stored markdown, got %q", got)
 	}
 }
 
 func TestRunImageB64Result(t *testing.T) {
-	defer withImageStoreDisabled()()
 	g, closeFn := newHTTPGen(t, func(w http.ResponseWriter, r *http.Request) {
+		// "AAAA" 是合法 base64（解码为 3 字节），落地为本地文件
 		_, _ = w.Write([]byte(`{"data":[{"b64_json":"AAAA"}]}`))
 	})
 	defer closeFn()
@@ -166,8 +170,8 @@ func TestRunImageB64Result(t *testing.T) {
 	if err != nil {
 		t.Fatalf("runImage err: %v", err)
 	}
-	if !strings.Contains(got, "data:image/png;base64,AAAA") {
-		t.Fatalf("inline b64 got %q", got)
+	if !strings.Contains(got, "![image](/storage/results/ark_") {
+		t.Fatalf("expected local stored markdown, got %q", got)
 	}
 }
 

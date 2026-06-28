@@ -14,6 +14,10 @@ interface Props {
   loading: boolean;
   onProcess: (features: string[], paramsMap: Record<string, Record<string, unknown>>, model: string) => void;
   onSaveRecipe?: (name: string, steps: { feature: string; params: Record<string, unknown> }[]) => void;
+  // 把当前所选生图模型上抛，供「一键成套」工作流使用（否则套件会回退到各功能默认模型）
+  onModelChange?: (model: string) => void;
+  // 「一键成套」插槽：渲染在模型/数量之后、基础处理之前
+  workflowSlot?: React.ReactNode;
 }
 
 // 功能标签文案走 i18n（photo.features.<key>），这里仅保留 key 与图标。
@@ -85,7 +89,7 @@ function defaultParams(key: string): Record<string, unknown> {
   }
 }
 
-const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess, onSaveRecipe }) => {
+const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess, onSaveRecipe, onModelChange, workflowSlot }) => {
   const { t } = useTranslation();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [recipeOpen, setRecipeOpen] = useState(false);
@@ -113,8 +117,18 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess, onSa
 
   // 市场模型加载后，默认选中第一个生图模型
   useEffect(() => {
-    if (!chosenModel && genModels.length > 0) setChosenModel(genModels[0].id);
+    if (!chosenModel && genModels.length > 0) {
+      // 默认优先选 Seedream（即梦/方舟）这类忠实保留商品的编辑模型，
+      // 而非 GPT-Image 这类会"重新想象"商品的创意生成模型，保证开箱即得好结果。
+      const faithful = genModels.find((m) => /seedream|jimeng|即梦/i.test(`${m.id} ${m.name || ""}`));
+      setChosenModel((faithful || genModels[0]).id);
+    }
   }, [genModels, chosenModel]);
+
+  // 所选生图模型变化时上抛，供「一键成套」工作流复用同一模型
+  useEffect(() => {
+    onModelChange?.(chosenModel);
+  }, [chosenModel, onModelChange]);
 
   const toggle = (key: string) => setSelected((prev) => {
     const next = new Set(prev);
@@ -224,6 +238,8 @@ const FeaturePanel: React.FC<Props> = ({ selectedCount, loading, onProcess, onSa
       </div>
 
       <div className="space-y-3 mb-4">
+        {/* 一键成套：作为第一个分组，与基础处理等同样式 */}
+        {workflowSlot}
         {FEATURE_GROUPS.map((grp) => (
           <div key={grp.group}>
             <p className="text-[11px] font-medium text-muted-foreground mb-1.5">{t(`photo.feature.group.${grp.group}`)}</p>

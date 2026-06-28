@@ -74,6 +74,7 @@ type ItemStatus struct {
 type TaskInfo struct {
 	TaskId          string   `json:"task_id"`
 	Feature         string   `json:"feature"`
+	DisplayName     string   `json:"display_name"` // 套件等任务的展示名（区分服装/主图套件），普通任务为空
 	Status          string   `json:"status"`
 	ImageIds        []string `json:"image_ids"`
 	ResultUrls      []string `json:"result_urls"`
